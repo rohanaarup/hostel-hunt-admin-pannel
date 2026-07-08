@@ -80,14 +80,15 @@ class SignupSerializer(serializers.Serializer):
             if Owner.objects.filter(phone_number=identifier).exists():
                 raise serializers.ValidationError({"identifier": "Phone number is already registered."})
                 
-        # Validate verification_token
+        # Validate verification_token — must be verified (OTP checked) but not yet consumed
         from .models import OTPRecord
         token = data.get('verification_token')
         if not OTPRecord.objects.filter(
             identifier=identifier,
             purpose='signup',
             verification_token=token,
-            is_used=True
+            is_verified=True,
+            is_used=False
         ).exists():
             raise serializers.ValidationError({"verification_token": "Invalid or expired verification token. Please verify your OTP again."})
                 
@@ -96,7 +97,7 @@ class SignupSerializer(serializers.Serializer):
     def create(self, validated_data):
         identifier = validated_data.pop('identifier')
         identifier_type = validated_data.pop('identifier_type')
-        validated_data.pop('verification_token', None)
+        verification_token = validated_data.pop('verification_token', None)
         
         email = identifier if identifier_type == 'email' else None
         phone = identifier if identifier_type == 'phone' else None
@@ -108,6 +109,17 @@ class SignupSerializer(serializers.Serializer):
             display_name=validated_data['display_name'],
             is_verified=True  # Because they already passed OTP step
         )
+        
+        # Consume the verification token so it can't be reused
+        from .models import OTPRecord
+        OTPRecord.objects.filter(
+            identifier=identifier,
+            purpose='signup',
+            verification_token=verification_token,
+            is_verified=True,
+            is_used=False
+        ).update(is_used=True, verification_token=None)
+        
         return owner
 
 
@@ -131,18 +143,18 @@ class LoginSerializer(serializers.Serializer):
             user = Owner.objects.filter(phone_number=identifier).first()
             
         if user is None:
-            raise serializers.ValidationError({"detail": "User not found with this identifier."})
+            raise serializers.ValidationError({"detail": ["User not found with this identifier."]})
             
         # Standard authenticate expects 'username', so we must use the correct kwargs
         # Since we set USERNAME_FIELD='email', authenticate requires email
         if not user.check_password(password):
-             raise serializers.ValidationError({"detail": "Incorrect password."})
+             raise serializers.ValidationError({"detail": ["Incorrect password."]})
              
         if not user.is_active:
-             raise serializers.ValidationError({"detail": "This account is inactive."})
+             raise serializers.ValidationError({"detail": ["This account is inactive."]})
              
         if not user.is_verified:
-             raise serializers.ValidationError({"detail": "This account is not verified."})
+             raise serializers.ValidationError({"detail": ["This account is not verified."]})
 
         data['user'] = user
         return data
@@ -164,7 +176,8 @@ class ResetPasswordSerializer(serializers.Serializer):
             identifier=identifier,
             purpose='forgot_password',
             verification_token=token,
-            is_used=True
+            is_verified=True,
+            is_used=False
         ).exists():
             raise serializers.ValidationError({"verification_token": "Invalid or expired verification token."})
             

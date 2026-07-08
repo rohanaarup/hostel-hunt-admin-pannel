@@ -9,32 +9,9 @@ import { Step5RoomConfig } from '../../components/hostel/steps/Step5RoomConfig';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { INITIAL_ENROLLMENT_STATE } from '../../types';
 import type { HostelEnrollmentState } from '../../types';
+import { hostelService } from '../../services/api';
 
-// Seed with some example data
-const INITIAL_DATA: HostelEnrollmentState = {
-  ...INITIAL_ENROLLMENT_STATE,
-  name: 'Sunrise Boys Hostel',
-  owner_name: 'Rajan Sharma',
-  contact_number: '9876543210',
-  email: 'rajan@sunrisehostel.com',
-  address: '12, MG Road, Near City Mall',
-  city: 'Mumbai',
-  state: 'Maharashtra',
-  pincode: '400001',
-  landmark: 'Opposite City Park',
-  latitude: '19.0760',
-  longitude: '72.8777',
-  gender_type: 'boys',
-  total_floors: '4',
-  total_rooms: '24',
-  total_beds: '48',
-  occupancy_types: ['single', 'double'],
-  description: 'A clean and comfortable hostel for working professionals and students, located in the heart of Mumbai.',
-  rules: 'No alcohol. No loud music after 10 PM. Guests not allowed after 8 PM.',
-  check_in_policy: 'Check-in from 11 AM',
-  check_out_policy: 'Check-out by 10 AM',
-  amenities: ['wifi', 'food', 'laundry', 'cctv', 'power_backup', 'water_supply', 'hot_water'],
-};
+// Removed dummy data
 
 const SECTIONS = [
   { id: 'basic', label: 'Basic Details', icon: '📍', step: 0 },
@@ -47,13 +24,35 @@ const SECTIONS = [
 export const EditHostelPage: React.FC = () => {
   const { theme } = useTheme();
 
-  const [data, setData] = useState<HostelEnrollmentState>(INITIAL_DATA);
-  const [savedData, setSavedData] = useState<HostelEnrollmentState>(INITIAL_DATA);
+  const [data, setData] = useState<any>(INITIAL_ENROLLMENT_STATE);
+  const [savedData, setSavedData] = useState<any>(INITIAL_ENROLLMENT_STATE);
   const [errors, setErrors] = useState<Partial<Record<keyof HostelEnrollmentState, string>>>({});
   const [activeSection, setActiveSection] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [showSaved, setShowSaved] = useState(false);
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
+
+  React.useEffect(() => {
+    const fetchHostel = async () => {
+      try {
+        const res = await hostelService.getHostels();
+        // The API wraps responses in { success, data: [...] } or returns [...] directly depending on standard
+        // Since we didn't add a custom paginator or wrapper on GET list, it's usually an array or {results: []}
+        const hostels = Array.isArray(res) ? res : res.data || res.results;
+        if (hostels && hostels.length > 0) {
+          const fetched = hostels[0];
+          setData({ ...INITIAL_ENROLLMENT_STATE, ...fetched });
+          setSavedData({ ...INITIAL_ENROLLMENT_STATE, ...fetched });
+        }
+      } catch (error) {
+        console.error("Error fetching hostel:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchHostel();
+  }, []);
 
   const isDirty = JSON.stringify(data) !== JSON.stringify(savedData);
 
@@ -62,17 +61,64 @@ export const EditHostelPage: React.FC = () => {
   const textSub = theme === 'dark' ? 'text-[#9A9690]' : 'text-[#6B6B6B]';
 
   const handleChange = (key: keyof HostelEnrollmentState, value: unknown) => {
-    setData(prev => ({ ...prev, [key]: value }));
+    setData(prev => {
+      const newValue = typeof value === 'function' ? (value as Function)(prev[key]) : value;
+      return { ...prev, [key]: newValue };
+    });
     if (errors[key]) setErrors(prev => ({ ...prev, [key]: undefined }));
   };
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await new Promise(r => setTimeout(r, 900)); // API: PUT /hostels/:id
+      const payload: any = { ...data };
+      
+      // Convert to numbers
+      payload.total_floors = Number(payload.total_floors) || 0;
+      payload.total_rooms = Number(payload.total_rooms) || 0;
+      payload.total_beds = Number(payload.total_beds) || 0;
+      
+      // Ensure arrays
+      payload.occupancy_types = Array.isArray(payload.occupancy_types) ? payload.occupancy_types : [];
+      payload.amenities = Array.isArray(payload.amenities) ? payload.amenities : [];
+      
+      // Handle empty coordinates
+      payload.latitude = payload.latitude ? String(payload.latitude) : null;
+      payload.longitude = payload.longitude ? String(payload.longitude) : null;
+      
+      // Format media for backend
+      payload.media_ids = payload.media
+        ? payload.media.map((m: any) => m.id).filter(Boolean)
+        : [];
+        
+      // Format rooms for backend
+      payload.rooms_data = payload.rooms
+        ? payload.rooms.map((r: any) => ({
+            ...r,
+            capacity: Number(r.capacity) || 0,
+            price_per_month: Number(r.price_per_month) || 0,
+            available_beds: Number(r.available_beds) || 0,
+          }))
+        : [];
+      
+      // Drop frontend fields and owner references
+      delete payload.media;
+      delete payload.rooms;
+      delete payload.owner;
+      delete payload.owner_id;
+      
+      if (data.hostel_id) {
+        await hostelService.updateHostel(data.hostel_id, payload);
+      } else {
+        const created = await hostelService.createHostel(payload);
+        setData(prev => ({...prev, hostel_id: created.hostel_id || created.data?.hostel_id}));
+      }
+
       setSavedData(data);
       setShowSaved(true);
       setTimeout(() => setShowSaved(false), 3000);
+    } catch (err) {
+      console.error('Error saving hostel:', err);
     } finally {
       setIsSaving(false);
     }
@@ -103,7 +149,7 @@ export const EditHostelPage: React.FC = () => {
           <div>
             <h1 className="text-2xl font-bold">Edit Hostel Details</h1>
             <p className={`${textSub} mt-1 text-sm font-medium`}>
-              {data.name} · Last edited just now
+              {loading ? 'Loading...' : data.name ? `${data.name} · Details` : 'No hostel configured yet'}
             </p>
           </div>
 

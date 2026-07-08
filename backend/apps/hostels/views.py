@@ -11,7 +11,7 @@ class HostelViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         # Only return hostels owned by the current user
-        return Hostel.objects.filter(owner=self.request.user)
+        return Hostel.objects.filter(owner=self.request.user).prefetch_related('rooms', 'media')
 
     def perform_create(self, serializer):
         # Auto-set the owner to the current user

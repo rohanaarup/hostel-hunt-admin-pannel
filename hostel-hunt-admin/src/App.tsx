@@ -3,7 +3,9 @@ import { LoginPage } from './pages/auth/LoginPage';
 import { SignupPage } from './pages/auth/SignupPage';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
+import { MyHostelPage } from './pages/hostel/MyHostelPage';
 import { EditHostelPage } from './pages/hostel/EditHostelPage';
+import { RoomsPage } from './pages/rooms/RoomsPage';
 import { BookingsPage } from './pages/bookings/BookingsPage';
 import { PaymentsPage } from './pages/payments/PaymentsPage';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
@@ -39,9 +41,9 @@ function App() {
 
         {/* Protected routes */}
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-        <Route path="/hostel" element={<ProtectedRoute><PlaceholderPage title="My Hostel" /></ProtectedRoute>} />
+        <Route path="/hostel" element={<ProtectedRoute><MyHostelPage /></ProtectedRoute>} />
         <Route path="/hostel/edit" element={<ProtectedRoute><EditHostelPage /></ProtectedRoute>} />
-        <Route path="/rooms" element={<ProtectedRoute><PlaceholderPage title="Rooms" /></ProtectedRoute>} />
+        <Route path="/rooms" element={<ProtectedRoute><RoomsPage /></ProtectedRoute>} />
         <Route path="/bookings" element={<ProtectedRoute><BookingsPage /></ProtectedRoute>} />
         <Route path="/payments" element={<ProtectedRoute><PaymentsPage /></ProtectedRoute>} />
         <Route path="/users" element={<ProtectedRoute><UsersPage /></ProtectedRoute>} />

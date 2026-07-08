@@ -20,6 +20,7 @@ class Owner(AbstractBaseUser, PermissionsMixin):
     
     profile_photo = models.ImageField(upload_to='profiles/', null=True, blank=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='owner')
+    signup_source = models.CharField(max_length=50, default='admin_panel', blank=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -36,9 +37,6 @@ class Owner(AbstractBaseUser, PermissionsMixin):
         return self.display_name or self.email or self.phone_number or str(self.id)
 
 
-class OTP(models.fields.Field):
-    pass # Wait, let me replace this with proper model
-
 class OTPRecord(models.Model):
     PURPOSE_CHOICES = (
         ('signup', 'Signup'),
@@ -48,7 +46,8 @@ class OTPRecord(models.Model):
     identifier = models.CharField(max_length=150) # email or phone
     otp_code = models.CharField(max_length=128) # Hashed OTP
     purpose = models.CharField(max_length=20, choices=PURPOSE_CHOICES)
-    is_used = models.BooleanField(default=False)
+    is_used = models.BooleanField(default=False)       # True = fully consumed or expired/invalidated
+    is_verified = models.BooleanField(default=False)    # True = OTP code was verified, token is active
     verification_token = models.UUIDField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
@@ -60,4 +59,9 @@ class OTPRecord(models.Model):
         return f"{self.identifier} - {self.purpose}"
     
     def is_valid(self):
-        return not self.is_used and timezone.now() < self.expires_at
+        """OTP is still awaiting verification (not used, not verified yet, not expired)."""
+        return not self.is_used and not self.is_verified and timezone.now() < self.expires_at
+    
+    def has_valid_token(self):
+        """Verification token is active (verified but not yet consumed)."""
+        return self.is_verified and not self.is_used and self.verification_token is not None

@@ -17,12 +17,12 @@ class MediaItem(models.Model):
     hostel = models.ForeignKey(Hostel, on_delete=models.CASCADE, related_name='media', null=True, blank=True)
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='media', null=True, blank=True)
     
-    # The actual file
-    file = models.FileField(upload_to='media_uploads/')
+    # The direct URL from Cloudinary or S3
+    file_url = models.URLField(max_length=1000)
     
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
-    mime_type = models.CharField(max_length=100)
-    file_name = models.CharField(max_length=255)
+    mime_type = models.CharField(max_length=100, null=True, blank=True)
+    file_name = models.CharField(max_length=255, null=True, blank=True)
     
     # Allows reordering images on the frontend
     order_index = models.PositiveIntegerField(default=0)
@@ -34,10 +34,8 @@ class MediaItem(models.Model):
         ordering = ['order_index', '-created_at']
 
     def __str__(self):
-        return f"{self.category} - {self.file_name}"
+        return f"{self.category} - {self.file_url}"
 
     @property
     def remote_url(self):
-        if self.file:
-            return self.file.url
-        return None
+        return self.file_url

@@ -88,7 +88,7 @@ class RegisterView(APIView):
     def post(self, request):
         serializer = SignupSerializer(data=request.data)
         if serializer.is_valid():
-            # OTP token was already validated securely in the serializer
+            # OTP token validation AND consumption happen inside the serializer
             user = serializer.save()
             tokens = get_tokens_for_user(user)
             profile = OwnerProfileSerializer(user).data
@@ -97,7 +97,7 @@ class RegisterView(APIView):
                 "tokens": tokens,
                 "user": profile
             }, message="Registration successful.", status_code=status.HTTP_201_CREATED)
-            
+        
         return error_response(serializer.errors)
 
 
@@ -152,9 +152,15 @@ class ResetPasswordView(APIView):
                 user.set_password(serializer.validated_data['new_password'])
                 user.save()
                 
-                # Invalidate the used verification token so it can't be reused
+                # Consume the verification token so it can't be reused
                 from .models import OTPRecord
-                OTPRecord.objects.filter(verification_token=serializer.validated_data['verification_token']).update(is_used=True, verification_token=None)
+                OTPRecord.objects.filter(
+                    identifier=identifier,
+                    purpose='forgot_password',
+                    verification_token=serializer.validated_data['verification_token'],
+                    is_verified=True,
+                    is_used=False
+                ).update(is_used=True, verification_token=None)
                 
                 return success_response(message="Password reset successfully.")
             return error_response({"identifier": "User not found."})
