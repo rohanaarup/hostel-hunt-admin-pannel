@@ -59,8 +59,17 @@ export const LoginPage: React.FC = () => {
       login(response.data.user, response.data.tokens, rememberMe);
       navigate('/dashboard');
     } catch (err: any) {
-      if (err.response?.data?.errors?.detail) {
-        setError(err.response.data.errors.detail);
+      if (!err.response) {
+        setError('Cannot connect to backend server. Is it running?');
+      } else if (err.response?.data?.errors?.detail) {
+        const detail = err.response.data.errors.detail;
+        setError(Array.isArray(detail) ? detail[0] : detail);
+      } else if (err.response?.data?.errors) {
+        const errors = err.response.data.errors;
+        const firstError = Object.values(errors)[0];
+        setError(Array.isArray(firstError) ? firstError[0] : (firstError as string));
+      } else if (err.response?.data?.message) {
+        setError(err.response.data.message);
       } else {
         setError('Invalid credentials. Please check and try again.');
       }

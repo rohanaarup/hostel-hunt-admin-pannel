@@ -8,6 +8,7 @@ import { Step4MediaUpload } from './steps/Step4MediaUpload';
 import { Step5RoomConfig } from './steps/Step5RoomConfig';
 import { Step6Review } from './steps/Step6Review';
 import { useAuth } from '../../contexts/AuthContext';
+import { hostelService } from '../../services/api';
 import { INITIAL_ENROLLMENT_STATE } from '../../types';
 import type { HostelEnrollmentState } from '../../types';
 
@@ -33,9 +34,13 @@ export const HostelEnrollmentWizard: React.FC<Props> = ({ onClose }) => {
   const [errors, setErrors] = useState<Partial<Record<keyof HostelEnrollmentState, string>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleChange = (key: keyof HostelEnrollmentState, value: unknown) => {
-    setData(prev => ({ ...prev, [key]: value }));
+    setData(prev => {
+      const newValue = typeof value === 'function' ? (value as Function)(prev[key]) : value;
+      return { ...prev, [key]: newValue };
+    });
     if (errors[key]) setErrors(prev => ({ ...prev, [key]: undefined }));
   };
 
@@ -79,16 +84,55 @@ export const HostelEnrollmentWizard: React.FC<Props> = ({ onClose }) => {
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
-      // API: POST /hostels – data maps 1:1 to PostgreSQL hostels table
-      await new Promise(r => setTimeout(r, 1500));
+      const payload: any = { ...data };
+      
+      // Convert to numbers
+      payload.total_floors = Number(payload.total_floors) || 0;
+      payload.total_rooms = Number(payload.total_rooms) || 0;
+      payload.total_beds = Number(payload.total_beds) || 0;
+      
+      // Ensure arrays
+      payload.occupancy_types = Array.isArray(payload.occupancy_types) ? payload.occupancy_types : [];
+      payload.amenities = Array.isArray(payload.amenities) ? payload.amenities : [];
+      
+      // Handle empty coordinates
+      payload.latitude = payload.latitude ? String(payload.latitude) : null;
+      payload.longitude = payload.longitude ? String(payload.longitude) : null;
+      
+      // Format media for backend
+      payload.media_ids = payload.media
+        ? payload.media.map((m: any) => m.id).filter(Boolean)
+        : [];
+        
+      // Format rooms for backend
+      payload.rooms_data = payload.rooms
+        ? payload.rooms.map((r: any) => ({
+            ...r,
+            capacity: Number(r.capacity) || 0,
+            price_per_month: Number(r.price_per_month) || 0,
+            available_beds: Number(r.available_beds) || 0,
+          }))
+        : [];
+        
+      // We don't send nested objects
+      delete payload.rooms;
+      delete payload.media;
+      delete payload.owner;
+      delete payload.owner_id;
+      delete payload.owner_id;
+
+      await hostelService.createHostel(payload);
+      
       setSubmitted(true);
       setTimeout(() => {
         setEnrollmentComplete();
         navigate('/dashboard');
       }, 2500);
-    } catch {
-      // handle error
+    } catch (err) {
+      console.error('Error creating hostel:', err);
+      setSubmitError('Something went wrong, please try again');
     } finally {
       setIsSubmitting(false);
     }
@@ -148,12 +192,19 @@ export const HostelEnrollmentWizard: React.FC<Props> = ({ onClose }) => {
         {currentStep === 3 && <Step4MediaUpload data={data} onChange={handleChange} />}
         {currentStep === 4 && <Step5RoomConfig data={data} onChange={handleChange} />}
         {currentStep === 5 && (
-          <Step6Review
-            data={data}
-            onEditStep={setCurrentStep}
-            onSubmit={handleSubmit}
-            isSubmitting={isSubmitting}
-          />
+          <div className="flex flex-col gap-4">
+            <Step6Review
+              data={data}
+              onEditStep={setCurrentStep}
+              onSubmit={handleSubmit}
+              isSubmitting={isSubmitting}
+            />
+            {submitError && (
+              <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">
+                {submitError}
+              </div>
+            )}
+          </div>
         )}
       </div>
 

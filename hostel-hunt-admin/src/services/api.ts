@@ -88,6 +88,10 @@ export const hostelService = {
   getHostels: () => api.get('/hostels/').then(res => res.data),
 };
 
+export const roomService = {
+  getRooms: (hostelId: string) => api.get(`/hostels/${hostelId}/rooms/`).then(res => res.data),
+};
+
 export const bookingService = {
   getBookings: () => api.get('/bookings/').then(res => res.data),
   approveBooking: (id: string) => api.post(`/bookings/${id}/approve/`).then(res => res.data),
@@ -100,10 +104,8 @@ export const paymentService = {
 };
 
 export const mediaService = {
-  upload: (formData: FormData) => 
-    api.post('/media/upload/', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    }).then(res => res.data),
+  upload: (data: any) => 
+    api.post('/media/upload/', data).then(res => res.data),
     
   reorder: (items: any[]) => api.patch('/media/reorder/', { items }).then(res => res.data),
   delete: (id: string) => api.delete(`/media/${id}/`).then(res => res.data),

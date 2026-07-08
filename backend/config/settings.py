@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 from decouple import config, Csv
+from django.core.management.utils import get_random_secret_key
 import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -22,8 +23,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-v*ejv7^p@7kp5vpg2v2sj)utw$xw73z596jypoi(^yo1xc%q*h')
-
+SECRET_KEY = config('SECRET_KEY', default=get_random_secret_key())
+print(SECRET_KEY)
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
@@ -91,19 +92,13 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
-
-database_url = config('DATABASE_URL', default=None)
-if database_url:
-    DATABASES['default'] = dj_database_url.config(
-        default=database_url,
+    'default': dj_database_url.config(
+        default=config('DATABASE_URL'),
         conn_max_age=600,
         conn_health_checks=True,
     )
+}
+print(f"[DB CONNECTED] host={DATABASES['default']['HOST']} name={DATABASES['default']['NAME']}")
 
 
 # Password validation
@@ -151,7 +146,8 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Custom User Model
+
+# Custom User Model
 AUTH_USER_MODEL = 'owners.Owner'
 
 # REST Framework Configuration

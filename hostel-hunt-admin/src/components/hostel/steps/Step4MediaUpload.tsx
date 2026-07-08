@@ -1,4 +1,5 @@
 import React, { useCallback, useRef } from 'react';
+import axios from 'axios';
 import type { HostelEnrollmentState, MediaItem, MediaCategory } from '../../../types';
 
 interface Props {
@@ -34,22 +35,70 @@ export const Step4MediaUpload: React.FC<Props> = ({ data, onChange }) => {
       order_index: media.filter(m => m.category === category).length + i,
     }));
 
-    // Simulate upload progress
     const updated = [...media, ...newItems];
     onChange('media', updated);
 
+    // Get Cloudinary credentials from environment variables
+    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+    if (!cloudName || !uploadPreset) {
+      alert("Cloudinary credentials are missing. Please add VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET to your .env file.");
+      return;
+    }
+
     newItems.forEach(item => {
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += Math.random() * 30;
-        if (progress >= 100) {
-          progress = 100;
-          clearInterval(interval);
+      if (!item.file) return;
+
+      const formData = new FormData();
+      formData.append('file', item.file);
+      formData.append('upload_preset', uploadPreset);
+
+      const resourceType = item.mime_type.startsWith('video/') ? 'video' : 'image';
+      const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;
+
+      axios.post(uploadUrl, formData, {
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const progress = (progressEvent.loaded / progressEvent.total) * 100;
+            onChange('media', (prev: MediaItem[]) =>
+              (Array.isArray(prev) ? prev : media).map(m => 
+                m.id === item.id ? { ...m, upload_progress: progress } : m
+              )
+            );
+          }
         }
-        onChange('media', (prev: MediaItem[]) =>
-          (Array.isArray(prev) ? prev : media).map(m => m.id === item.id ? { ...m, upload_progress: progress } : m)
-        );
-      }, 200);
+      }).then(res => {
+        const secureUrl = res.data.secure_url;
+        
+        // Dynamically import mediaService to avoid circular dependencies if any
+        import('../../../services/api').then(({ mediaService }) => {
+          mediaService.upload({
+            hostel: data.hostel_id || null,
+            category: item.category,
+            file_url: secureUrl,
+            mime_type: item.mime_type,
+            file_name: item.file_name,
+          }).then(backendRes => {
+            onChange('media', (prev: MediaItem[]) =>
+              (Array.isArray(prev) ? prev : media).map(m => 
+                m.id === item.id ? { 
+                  ...m, 
+                  id: backendRes.id || m.id, // Replace with actual backend UUID
+                  upload_progress: 100, 
+                  remote_url: secureUrl 
+                } : m
+              )
+            );
+          }).catch(err => {
+            console.error('Backend link failed:', err);
+            alert(`Failed to save ${item.file_name} to database.`);
+          });
+        });
+      }).catch(err => {
+        console.error('Upload failed:', err);
+        alert(`Failed to upload ${item.file_name} to cloud.`);
+      });
     });
   }, [media, onChange]);
 

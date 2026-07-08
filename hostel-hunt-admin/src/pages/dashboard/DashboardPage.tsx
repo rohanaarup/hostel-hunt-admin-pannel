@@ -6,28 +6,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Modal } from '../../components/ui/Modal';
 import { HostelEnrollmentWizard } from '../../components/hostel/HostelEnrollmentWizard';
 import type { DashboardStats, ActivityItem, Booking } from '../../types';
+import { hostelService, bookingService } from '../../services/api';
 
-// ── Demo data ─────────────────────────────────────────────────────────────────
-const MOCK_STATS: DashboardStats = {
-  registered_hostel: true, total_rooms: 24, available_rooms: 9,
-  occupied_rooms: 15, pending_requests: 5, booked_users: 42,
-  monthly_revenue: 126000, pending_payments: 18500,
-};
-
-const MOCK_ACTIVITY: ActivityItem[] = [
-  { activity_id: '1', type: 'booking_request', title: 'New Booking Request', description: 'Rahul Verma requested Room 204 (Double)', timestamp: new Date(Date.now() - 1000 * 60 * 12).toISOString(), },
-  { activity_id: '2', type: 'payment_received', title: 'Payment Received', description: '₹6,500 received from Priya Sharma – Room 101', timestamp: new Date(Date.now() - 1000 * 60 * 45).toISOString(), },
-  { activity_id: '3', type: 'booking_approved', title: 'Booking Approved', description: 'Amit Kumar – Room 305 (Triple) approved', timestamp: new Date(Date.now() - 1000 * 60 * 120).toISOString(), },
-  { activity_id: '4', type: 'hostel_updated', title: 'Hostel Profile Updated', description: 'Amenities and photos updated', timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(), },
-  { activity_id: '5', type: 'booking_rejected', title: 'Booking Rejected', description: 'Sneha Pillai – Room 207 (Single) – capacity full', timestamp: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(), },
-];
-
-const MOCK_BOOKINGS: Booking[] = [
-  { booking_id: 'bkg_001', hostel_id: 'h1', room_id: 'r1', room_name: 'Room 204 (Double)', user: { user_id: 'u1', name: 'Rahul Verma', email: 'rahul@example.com', phone: '9876543210', profile_photo_url: null }, status: 'pending', check_in_date: '2026-07-01', check_out_date: null, requested_at: new Date(Date.now() - 1000 * 60 * 12).toISOString(), updated_at: '', notes: '' },
-  { booking_id: 'bkg_002', hostel_id: 'h1', room_id: 'r2', room_name: 'Room 305 (Triple)', user: { user_id: 'u2', name: 'Amit Kumar', email: 'amit@example.com', phone: '9123456789', profile_photo_url: null }, status: 'pending', check_in_date: '2026-07-05', check_out_date: null, requested_at: new Date(Date.now() - 1000 * 60 * 90).toISOString(), updated_at: '', notes: '' },
-  { booking_id: 'bkg_003', hostel_id: 'h1', room_id: 'r3', room_name: 'Room 101 (Single)', user: { user_id: 'u3', name: 'Priya Sharma', email: 'priya@example.com', phone: '9988776655', profile_photo_url: null }, status: 'approved', check_in_date: '2026-06-20', check_out_date: null, requested_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), updated_at: '', notes: '' },
-  { booking_id: 'bkg_004', hostel_id: 'h1', room_id: 'r4', room_name: 'Room 207 (Single)', user: { user_id: 'u4', name: 'Sneha Pillai', email: 'sneha@example.com', phone: '9087654321', profile_photo_url: null }, status: 'rejected', check_in_date: '2026-06-25', check_out_date: null, requested_at: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(), updated_at: '', notes: '' },
-];
+// ── Dynamic Data Loading ──────────────────────────────────────────────────────
 
 // ── Animated counter ──────────────────────────────────────────────────────────
 const AnimatedCounter: React.FC<{ value: number | string; prefix?: string }> = ({ value, prefix = '' }) => {
@@ -119,13 +100,25 @@ export const DashboardPage: React.FC = () => {
   }, [isFirstTimeOwner]);
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      setStats(MOCK_STATS);
-      setActivity(MOCK_ACTIVITY);
-      setBookings(MOCK_BOOKINGS);
-      setLoading(false);
-    }, 900);
-    return () => clearTimeout(t);
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [statsRes, activityRes, bookingsRes] = await Promise.all([
+          hostelService.getDashboardStats().catch(() => null),
+          hostelService.getRecentActivity().catch(() => null),
+          bookingService.getBookings().catch(() => null)
+        ]);
+
+        if (statsRes?.data) setStats(statsRes.data);
+        if (activityRes?.data) setActivity(activityRes.data);
+        if (bookingsRes?.data) setBookings(bookingsRes.data);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
   const today = new Date().toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
@@ -182,31 +175,31 @@ export const DashboardPage: React.FC = () => {
               badge="Active" color="#22C55E" loading={loading} delay="0ms"
               icon={<svg className="w-5 h-5 text-[#22C55E]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>} />
 
-            <StatCard title="Total Rooms" value={loading ? '—' : stats!.total_rooms}
+            <StatCard title="Total Rooms" value={loading ? '—' : stats?.total_rooms || 0}
               badge="All rooms" color="#3B82F6" loading={loading} delay="60ms"
               icon={<svg className="w-5 h-5 text-[#3B82F6]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>} />
 
-            <StatCard title="Available Rooms" value={loading ? '—' : stats!.available_rooms}
+            <StatCard title="Available Rooms" value={loading ? '—' : stats?.available_rooms || 0}
               badge="Vacant" color="#A78BFA" loading={loading} delay="120ms"
               icon={<svg className="w-5 h-5 text-[#A78BFA]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
 
-            <StatCard title="Occupied Rooms" value={loading ? '—' : stats!.occupied_rooms}
+            <StatCard title="Occupied Rooms" value={loading ? '—' : stats?.occupied_rooms || 0}
               badge="In use" color="#F97316" loading={loading} delay="180ms"
               icon={<svg className="w-5 h-5 text-[#F97316]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>} />
 
-            <StatCard title="Pending Requests" value={loading ? '—' : stats!.pending_requests}
+            <StatCard title="Pending Requests" value={loading ? '—' : stats?.pending_requests || 0}
               badge="Needs action" color="#F59E0B" loading={loading} delay="240ms"
               icon={<svg className="w-5 h-5 text-[#F59E0B]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
 
-            <StatCard title="Booked Users" value={loading ? '—' : stats!.booked_users}
+            <StatCard title="Booked Users" value={loading ? '—' : stats?.booked_users || 0}
               badge="Total guests" color="#EC4899" loading={loading} delay="300ms"
               icon={<svg className="w-5 h-5 text-[#EC4899]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>} />
 
-            <StatCard title="Monthly Revenue" value={loading ? '—' : stats!.monthly_revenue}
+            <StatCard title="Monthly Revenue" value={loading ? '—' : stats?.monthly_revenue || 0}
               prefix="₹" badge="This month" color="#10B981" loading={loading} delay="360ms"
               icon={<svg className="w-5 h-5 text-[#10B981]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
 
-            <StatCard title="Pending Payments" value={loading ? '—' : stats!.pending_payments}
+            <StatCard title="Pending Payments" value={loading ? '—' : stats?.pending_payments || 0}
               prefix="₹" badge="Outstanding" color="#EF4444" loading={loading} delay="420ms"
               icon={<svg className="w-5 h-5 text-[#EF4444]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>} />
           </div>

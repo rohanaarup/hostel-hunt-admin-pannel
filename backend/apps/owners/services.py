@@ -15,13 +15,13 @@ class OTPService:
     @staticmethod
     def create_otp(identifier, purpose):
         """Creates an OTP record for a given identifier."""
-        # Expire any existing unexpired OTPs for this identifier/purpose
+        # Invalidate ALL existing OTP records for this identifier/purpose
+        # This covers both unverified OTPs AND verified-but-unconsumed tokens
         OTPRecord.objects.filter(
             identifier=identifier, 
             purpose=purpose, 
             is_used=False,
-            expires_at__gt=timezone.now()
-        ).update(is_used=True)
+        ).update(is_used=True, verification_token=None)
         
         code = OTPService.generate_otp_code()
         
@@ -45,6 +45,7 @@ class OTPService:
             identifier=identifier,
             purpose=purpose,
             is_used=False,
+            is_verified=False,
             expires_at__gt=timezone.now()
         ).order_by('-created_at').first()
         
@@ -57,8 +58,9 @@ class OTPService:
         if not check_password(code, record.otp_code):
             return False, "Invalid OTP code.", None
             
-        # Mark as used and generate verification token
-        record.is_used = True
+        # Mark as verified (NOT used) and generate verification token
+        # The token stays valid until consumed by register/reset-password
+        record.is_verified = True
         record.verification_token = uuid.uuid4()
         record.save()
         

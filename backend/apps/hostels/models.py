@@ -2,8 +2,7 @@ import uuid
 from django.db import models
 from django.conf import settings
 
-class Hostel(models.fields.Field):
-    pass # Wait, let me rewrite this properly
+
 
 GENDER_CHOICES = (
     ('boys', 'Boys'),
