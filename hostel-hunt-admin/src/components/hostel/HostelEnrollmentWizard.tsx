@@ -106,14 +106,16 @@ export const HostelEnrollmentWizard: React.FC<Props> = ({ onClose }) => {
         ? payload.media.map((m: any) => m.id).filter(Boolean)
         : [];
         
-      // Format rooms for backend
+      // Format rooms for backend and filter out incomplete rooms
       payload.rooms_data = payload.rooms
-        ? payload.rooms.map((r: any) => ({
-            ...r,
-            capacity: Number(r.capacity) || 0,
-            price_per_month: Number(r.price_per_month) || 0,
-            available_beds: Number(r.available_beds) || 0,
-          }))
+        ? payload.rooms
+            .filter((r: any) => r.room_name && r.sharing_type)
+            .map((r: any) => ({
+              ...r,
+              capacity: Number(r.capacity) || 0,
+              price_per_month: Number(r.price_per_month) || 0,
+              available_beds: Number(r.available_beds) || 0,
+            }))
         : [];
         
       // We don't send nested objects

@@ -42,6 +42,13 @@ export const EditHostelPage: React.FC = () => {
         const hostels = Array.isArray(res) ? res : res.data || res.results;
         if (hostels && hostels.length > 0) {
           const fetched = hostels[0];
+          // Ensure rooms have _draft_id for UI state tracking
+          if (fetched.rooms) {
+            fetched.rooms = fetched.rooms.map((r: any) => ({
+              ...r,
+              _draft_id: r._draft_id || r.room_id || Math.random().toString(36).slice(2, 10)
+            }));
+          }
           setData({ ...INITIAL_ENROLLMENT_STATE, ...fetched });
           setSavedData({ ...INITIAL_ENROLLMENT_STATE, ...fetched });
         }
@@ -61,11 +68,11 @@ export const EditHostelPage: React.FC = () => {
   const textSub = theme === 'dark' ? 'text-[#9A9690]' : 'text-[#6B6B6B]';
 
   const handleChange = (key: keyof HostelEnrollmentState, value: unknown) => {
-    setData(prev => {
+    setData((prev: any) => {
       const newValue = typeof value === 'function' ? (value as Function)(prev[key]) : value;
       return { ...prev, [key]: newValue };
     });
-    if (errors[key]) setErrors(prev => ({ ...prev, [key]: undefined }));
+    if (errors[key]) setErrors((prev: any) => ({ ...prev, [key]: undefined }));
   };
 
   const handleSave = async () => {
@@ -91,14 +98,16 @@ export const EditHostelPage: React.FC = () => {
         ? payload.media.map((m: any) => m.id).filter(Boolean)
         : [];
         
-      // Format rooms for backend
+      // Format rooms for backend and filter out incomplete rooms
       payload.rooms_data = payload.rooms
-        ? payload.rooms.map((r: any) => ({
-            ...r,
-            capacity: Number(r.capacity) || 0,
-            price_per_month: Number(r.price_per_month) || 0,
-            available_beds: Number(r.available_beds) || 0,
-          }))
+        ? payload.rooms
+            .filter((r: any) => r.room_name && r.sharing_type)
+            .map((r: any) => ({
+              ...r,
+              capacity: Number(r.capacity) || 0,
+              price_per_month: Number(r.price_per_month) || 0,
+              available_beds: Number(r.available_beds) || 0,
+            }))
         : [];
       
       // Drop frontend fields and owner references
@@ -111,7 +120,7 @@ export const EditHostelPage: React.FC = () => {
         await hostelService.updateHostel(data.hostel_id, payload);
       } else {
         const created = await hostelService.createHostel(payload);
-        setData(prev => ({...prev, hostel_id: created.hostel_id || created.data?.hostel_id}));
+        setData((prev: any) => ({...prev, hostel_id: created.hostel_id || created.data?.hostel_id}));
       }
 
       setSavedData(data);

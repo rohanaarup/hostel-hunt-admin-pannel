@@ -114,6 +114,15 @@ export const Step4MediaUpload: React.FC<Props> = ({ data, onChange }) => {
   };
 
   const removeMedia = (id: string) => {
+    const item = media.find(m => m.id === id);
+    // Backend UUIDs are 36 chars long, temporary frontend IDs are 8 chars
+    if (item && item.id.length > 10) {
+      import('../../../services/api').then(({ mediaService }) => {
+        mediaService.delete(item.id).catch(err => {
+          console.error('Failed to delete media from backend:', err);
+        });
+      });
+    }
     onChange('media', media.filter(m => m.id !== id));
   };
 
@@ -222,7 +231,7 @@ export const Step4MediaUpload: React.FC<Props> = ({ data, onChange }) => {
                 <button
                   type="button"
                   onClick={() => removeMedia(item.id)}
-                  className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 rounded-full items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hidden group-hover:flex"
+                  className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white shadow-md hover:bg-red-600 transition-colors z-10"
                 >
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
