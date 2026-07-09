@@ -6,12 +6,14 @@ import { hostelService, roomService } from '../../services/api';
 interface Room {
   room_id: string;
   hostel: string;
-  room_number: string;
-  floor: number;
-  occupancy_type: string;
-  price: string;
-  is_available: boolean;
-  amenities: string[];
+  room_name: string;
+  sharing_type: string;
+  capacity: number;
+  price_per_month: string;
+  available_beds: number;
+  has_attached_bathroom: boolean;
+  is_ac: boolean;
+  description: string;
   created_at: string;
 }
 
@@ -53,7 +55,7 @@ export const RoomsPage: React.FC = () => {
   const cardBorder = theme === 'dark' ? 'border-[#2A2A2A]' : 'border-[#E8E5E0]';
   const textSub = theme === 'dark' ? 'text-[#9A9690]' : 'text-[#6B6B6B]';
 
-  const availableRooms = rooms.filter(r => r.is_available).length;
+  const availableRooms = rooms.filter(r => r.available_beds > 0).length;
   const occupiedRooms = rooms.length - availableRooms;
 
   return (
@@ -141,14 +143,14 @@ export const RoomsPage: React.FC = () => {
                     <div className="p-5">
                       <div className="flex justify-between items-start mb-4">
                         <div>
-                          <h3 className="text-xl font-bold">Room {room.room_number}</h3>
+                          <h3 className="text-xl font-bold">{room.room_name}</h3>
                           <p className={`text-xs font-semibold uppercase tracking-wider ${textSub} mt-1`}>
-                            Floor {room.floor} · {room.occupancy_type}
+                            {room.sharing_type} · {room.capacity} Persons
                           </p>
                         </div>
-                        {room.is_available ? (
+                        {room.available_beds > 0 ? (
                           <span className="bg-green-500/10 text-green-400 border border-green-500/20 text-[10px] font-bold px-2 py-1 rounded-[6px] uppercase tracking-wider">
-                            Available
+                            Available ({room.available_beds} beds)
                           </span>
                         ) : (
                           <span className="bg-orange-500/10 text-orange-400 border border-orange-500/20 text-[10px] font-bold px-2 py-1 rounded-[6px] uppercase tracking-wider">
@@ -158,18 +160,22 @@ export const RoomsPage: React.FC = () => {
                       </div>
                       
                       <div className="mb-4">
-                        <p className="text-2xl font-bold text-[#E8571A]">₹{Number(room.price).toLocaleString('en-IN')}</p>
+                        <p className="text-2xl font-bold text-[#E8571A]">₹{Number(room.price_per_month).toLocaleString('en-IN')}</p>
                         <p className={`text-[10px] font-semibold uppercase tracking-wider ${textSub}`}>Per month</p>
                       </div>
 
                       <div className="flex flex-wrap gap-1.5">
-                        {room.amenities && room.amenities.length > 0 ? (
-                          room.amenities.map(am => (
-                            <span key={am} className="px-2 py-1 bg-[#FFFFFF08] border border-[#2A2A2A] rounded-md text-[10px] font-medium text-[#9A9690] capitalize">
-                              {am.replace('_', ' ')}
-                            </span>
-                          ))
-                        ) : (
+                        {room.has_attached_bathroom && (
+                          <span className="px-2 py-1 bg-[#FFFFFF08] border border-[#2A2A2A] rounded-md text-[10px] font-medium text-[#9A9690] capitalize">
+                            Attached Bath
+                          </span>
+                        )}
+                        {room.is_ac && (
+                          <span className="px-2 py-1 bg-[#FFFFFF08] border border-[#2A2A2A] rounded-md text-[10px] font-medium text-[#9A9690] capitalize">
+                            AC Room
+                          </span>
+                        )}
+                        {!room.has_attached_bathroom && !room.is_ac && (
                           <span className={`text-[10px] font-medium ${textSub}`}>No amenities listed</span>
                         )}
                       </div>

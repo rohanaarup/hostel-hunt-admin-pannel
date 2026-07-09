@@ -208,6 +208,7 @@ export interface DashboardStats {
 
 export interface HostelEnrollmentState {
   // Step 1 – Basic Details
+  hostel_id?: string;
   name: string;
   owner_name: string;
   contact_number: string;
