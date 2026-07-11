@@ -32,6 +32,9 @@ urlpatterns = [
         path('', include('apps.payments.urls')),
         path('', include('apps.dashboard.urls')),
     ])),
+    
+    # Auth Route (Matching old app backend)
+    path('api/otp/', include('apps.otp_auth.urls')),
 ]
 
 if settings.DEBUG:

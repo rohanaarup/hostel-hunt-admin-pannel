@@ -19,3 +19,6 @@ django-filter>=24.3
 # Media handling
 Pillow>=10.4
 requests
+
+gunicorn==23.0.0
+

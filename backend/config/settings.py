@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'apps.bookings',
     'apps.payments',
     'apps.dashboard',
+    'apps.otp_auth',
 ]
 
 MIDDLEWARE = [
