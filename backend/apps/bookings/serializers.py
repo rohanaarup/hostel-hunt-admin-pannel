@@ -8,9 +8,6 @@ class BookingSerializer(serializers.ModelSerializer):
         model = Booking
         fields = '__all__'
         read_only_fields = ('id', 'requested_at', 'updated_at')
-        extra_kwargs = {
-            'id': {'source': 'booking_id'}
-        }
 
     def get_user(self, obj):
         return {
