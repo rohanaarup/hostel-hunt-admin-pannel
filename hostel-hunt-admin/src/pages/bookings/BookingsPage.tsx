@@ -3,15 +3,9 @@ import { DashboardLayout } from '../../components/common/DashboardLayout';
 import { useTheme } from '../../contexts/ThemeContext';
 import type { Booking } from '../../types';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { bookingService } from '../../services/api';
 
-const MOCK_BOOKINGS: Booking[] = [
-  { booking_id: 'bkg_001', hostel_id: 'h1', room_id: 'r1', room_name: 'Room 204 (Double)', user: { user_id: 'u1', name: 'Rahul Verma', email: 'rahul@example.com', phone: '9876543210', profile_photo_url: null }, status: 'pending', check_in_date: '2026-07-01', check_out_date: null, requested_at: new Date(Date.now() - 1000 * 60 * 12).toISOString(), updated_at: '', notes: '' },
-  { booking_id: 'bkg_002', hostel_id: 'h1', room_id: 'r2', room_name: 'Room 305 (Triple)', user: { user_id: 'u2', name: 'Amit Kumar', email: 'amit@example.com', phone: '9123456789', profile_photo_url: null }, status: 'pending', check_in_date: '2026-07-05', check_out_date: null, requested_at: new Date(Date.now() - 1000 * 60 * 90).toISOString(), updated_at: '', notes: '' },
-  { booking_id: 'bkg_003', hostel_id: 'h1', room_id: 'r3', room_name: 'Room 101 (Single)', user: { user_id: 'u3', name: 'Priya Sharma', email: 'priya@example.com', phone: '9988776655', profile_photo_url: null }, status: 'approved', check_in_date: '2026-06-20', check_out_date: null, requested_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), updated_at: '', notes: '' },
-  { booking_id: 'bkg_004', hostel_id: 'h1', room_id: 'r4', room_name: 'Room 207 (Single)', user: { user_id: 'u4', name: 'Sneha Pillai', email: 'sneha@example.com', phone: '9087654321', profile_photo_url: null }, status: 'rejected', check_in_date: '2026-06-25', check_out_date: null, requested_at: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(), updated_at: '', notes: '' },
-  { booking_id: 'bkg_005', hostel_id: 'h1', room_id: 'r5', room_name: 'Room 108 (Double)', user: { user_id: 'u5', name: 'Mohan Das', email: 'mohan@example.com', phone: '9871234560', profile_photo_url: null }, status: 'checked_in', check_in_date: '2026-06-10', check_out_date: '2026-07-10', requested_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(), updated_at: '', notes: '' },
-];
-
+// MOCK_BOOKINGS removed
 type FilterStatus = 'all' | 'pending' | 'approved' | 'rejected' | 'checked_in';
 
 const STATUS_STYLES: Record<string, string> = {
@@ -33,9 +27,27 @@ function timeAgo(iso: string) {
 
 export const BookingsPage: React.FC = () => {
   const { theme } = useTheme();
-  const [bookings, setBookings] = useState(MOCK_BOOKINGS);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<FilterStatus>('all');
   const [actionTarget, setActionTarget] = useState<{ id: string; action: 'approve' | 'reject' } | null>(null);
+
+  React.useEffect(() => {
+    fetchBookings();
+  }, []);
+
+  const fetchBookings = async () => {
+    try {
+      setIsLoading(true);
+      const res = await bookingService.getBookings();
+      // Adjust if backend nests data or directly returns array
+      setBookings(res?.data || res || []);
+    } catch (error) {
+      console.error('Failed to fetch bookings:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const cardBg = theme === 'dark' ? 'bg-[#1A1A1A]' : 'bg-white';
   const cardBorder = theme === 'dark' ? 'border-[#2A2A2A]' : 'border-[#E8E5E0]';
@@ -44,15 +56,22 @@ export const BookingsPage: React.FC = () => {
 
   const filtered = filter === 'all' ? bookings : bookings.filter(b => b.status === filter);
 
-  const handleAction = () => {
+  const handleAction = async () => {
     if (!actionTarget) return;
-    setBookings(prev =>
-      prev.map(b => b.booking_id === actionTarget.id
-        ? { ...b, status: actionTarget.action === 'approve' ? 'approved' : 'rejected' }
-        : b
-      )
-    );
-    setActionTarget(null);
+    try {
+      if (actionTarget.action === 'approve') {
+        await bookingService.approveBooking(actionTarget.id);
+      } else {
+        await bookingService.rejectBooking(actionTarget.id);
+      }
+      // Re-fetch after action
+      await fetchBookings();
+    } catch (error) {
+      console.error('Failed to update booking status', error);
+      alert('Failed to update booking status');
+    } finally {
+      setActionTarget(null);
+    }
   };
 
   const FILTERS: { key: FilterStatus; label: string }[] = [
@@ -155,7 +174,12 @@ export const BookingsPage: React.FC = () => {
                           </div>
                         </td>
                         <td className="px-5 py-4 hidden sm:table-cell">
-                          <p className="text-white text-sm font-medium">{booking.room_name}</p>
+                          <p className="text-white text-sm font-medium">{booking.room_name || 'N/A'}</p>
+                          <p className={`${textSub} text-xs`}>
+                            {booking.floor_number ? `Floor ${booking.floor_number}` : ''} 
+                            {booking.room_number ? ` • Room ${booking.room_number}` : ''} 
+                            {booking.bed_number ? ` • ${booking.bed_number}` : ''}
+                          </p>
                         </td>
                         <td className={`px-5 py-4 ${textSub} text-sm hidden md:table-cell`}>
                           {new Date(booking.check_in_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}

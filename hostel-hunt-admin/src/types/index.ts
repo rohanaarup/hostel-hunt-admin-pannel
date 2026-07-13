@@ -150,6 +150,9 @@ export interface Booking {
   hostel_id: string;
   room_id: string;
   room_name: string;
+  floor_number?: string;
+  room_number?: string;
+  bed_number?: string;
   user: BookingUser;
   status: BookingStatus;
   check_in_date: string;

@@ -5,7 +5,7 @@ from rest_framework.decorators import action
 from .models import Booking
 from .serializers import BookingSerializer
 
-class BookingViewSet(viewsets.ReadOnlyModelViewSet):
+class BookingViewSet(viewsets.ModelViewSet):
     """
     Owners can only read bookings. Creation is typically done by the user in the Flutter app.
     We expose custom endpoints for approve/reject.
@@ -16,6 +16,16 @@ class BookingViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         # Only return bookings for hostels owned by the current user
         return Booking.objects.filter(hostel__owner=self.request.user)
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        serializer.save(
+            user_id=str(user.id),
+            user_name=getattr(user, 'display_name', user.email),
+            user_email=user.email,
+            user_phone=getattr(user, 'phone_number', ''),
+            user_profile_photo=None
+        )
 
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
