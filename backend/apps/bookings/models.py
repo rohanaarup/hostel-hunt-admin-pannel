@@ -21,6 +21,10 @@ class Booking(models.Model):
     room_name = models.CharField(max_length=100)
     
     # External User fields (from Flutter app)
+    floor_number = models.CharField(max_length=50, null=True, blank=True)
+    room_number = models.CharField(max_length=50, null=True, blank=True)
+    bed_number = models.CharField(max_length=50, null=True, blank=True)
+    
     user_id = models.CharField(max_length=255)
     user_name = models.CharField(max_length=255)
     user_email = models.EmailField()
