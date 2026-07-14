@@ -96,7 +96,10 @@ class OTPService:
                 logger.info(f"SMTP EMAIL SENT TO {identifier}")
                 return True, "Email sent successfully."
             except Exception as e:
-                error_msg = f"SMTP authentication or connection failed: {str(e)}"
+                try:
+                    error_msg = f"SMTP authentication or connection failed: {repr(e)}"
+                except Exception:
+                    error_msg = "SMTP authentication or connection failed: (unrepresentable error)"
                 logger.error(error_msg)
                 if settings.DEBUG:
                     logger.warning(f"DEV FALLBACK: SMTP failed. Printing OTP for {identifier}: {code}")
