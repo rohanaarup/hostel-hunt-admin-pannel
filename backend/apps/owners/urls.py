@@ -2,7 +2,7 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     SendOtpView, VerifyOtpView, RegisterView, LoginView, 
-    LogoutView, ResetPasswordView, OwnerProfileView, OwnerListView
+    LogoutView, ResetPasswordView, OwnerProfileView, OwnerListView, DebugVersionView
 )
 
 urlpatterns = [
@@ -17,4 +17,5 @@ urlpatterns = [
     path('auth/reset-password/', ResetPasswordView.as_view(), name='reset-password'),
     path('auth/me/', OwnerProfileView.as_view(), name='auth-me'),
     path('owners/', OwnerListView.as_view(), name='owner-list'),
+    path('debug-version/', DebugVersionView.as_view(), name='debug-version'),
 ]

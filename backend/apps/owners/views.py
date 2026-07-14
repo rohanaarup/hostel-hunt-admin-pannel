@@ -187,3 +187,10 @@ class OwnerProfileView(APIView):
     def get(self, request):
         serializer = OwnerProfileSerializer(request.user)
         return success_response(data=serializer.data)
+
+
+class DebugVersionView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        return Response({"version": "debug-v2-traceback"})
