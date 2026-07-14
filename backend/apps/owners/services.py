@@ -80,11 +80,8 @@ class OTPService:
             subject = "Hostel Hunt - Verification Code"
             try:
                 if not getattr(settings, 'EMAIL_HOST_USER', None):
-                    if settings.DEBUG:
-                        logger.warning(f"DEV FALLBACK: No EMAIL_HOST_USER. Printing OTP for {identifier}: {code}")
-                        return True, "Email sent successfully (Dev Fallback)."
-                    else:
-                        return False, "SMTP credentials not configured."
+                    logger.warning(f"DEV FALLBACK: No EMAIL_HOST_USER. Printing OTP for {identifier}: {code}")
+                    return True, f"Email failed (No SMTP). Your TEST OTP is: {code}"
                         
                 send_mail(
                     subject,
@@ -98,13 +95,12 @@ class OTPService:
             except Exception as e:
                 try:
                     error_msg = f"SMTP authentication or connection failed: {repr(e)}"
-                except Exception:
-                    error_msg = "SMTP authentication or connection failed: (unrepresentable error)"
-                logger.error(error_msg)
-                if settings.DEBUG:
-                    logger.warning(f"DEV FALLBACK: SMTP failed. Printing OTP for {identifier}: {code}")
-                    return True, "Email sent successfully (Dev Fallback)."
-                return False, error_msg
+                    logger.error(error_msg)
+                except Exception as log_e:
+                    print("Critical logger failure:", str(log_e))
+                # Fallback for Render Free Tier which blocks outbound SMTP ports
+                # We return True so the mobile app can proceed to the OTP verification screen
+                return True, f"Email failed (Render SMTP block). Your TEST OTP is: {code}"
             
         elif identifier_type == 'phone':
             if not getattr(settings, 'TWILIO_ACCOUNT_SID', None) or not getattr(settings, 'TWILIO_AUTH_TOKEN', None):
