@@ -193,4 +193,19 @@ class DebugVersionView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        return Response({"version": "debug-v2-traceback"})
+        return Response({"version": "debug-v3-logs"})
+
+
+class DebugLogsView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        import os
+        from django.conf import settings
+        log_path = os.path.join(settings.BASE_DIR, 'django.log')
+        if not os.path.exists(log_path):
+            return Response("No log file found.", status=status.HTTP_404_NOT_FOUND)
+        with open(log_path, 'r', errors='ignore') as f:
+            content = f.read()
+        from django.http import HttpResponse
+        return HttpResponse(content[-50000:], content_type='text/plain')
