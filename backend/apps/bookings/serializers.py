@@ -7,7 +7,7 @@ class BookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Booking
         fields = '__all__'
-        read_only_fields = ('id', 'requested_at', 'updated_at')
+        read_only_fields = ('id', 'requested_at', 'updated_at', 'user_id', 'user_name', 'user_email', 'user_phone')
 
     def get_user(self, obj):
         return {

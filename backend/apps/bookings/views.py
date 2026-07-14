@@ -21,9 +21,9 @@ class BookingViewSet(viewsets.ModelViewSet):
         user = self.request.user
         serializer.save(
             user_id=str(user.id),
-            user_name=getattr(user, 'display_name', user.email),
+            user_name=getattr(user, 'display_name', '') or user.email,
             user_email=user.email,
-            user_phone=getattr(user, 'phone_number', ''),
+            user_phone=getattr(user, 'phone_number', '') or '',
             user_profile_photo=None
         )
 
@@ -33,10 +33,25 @@ class BookingViewSet(viewsets.ModelViewSet):
         if booking.status != 'pending':
             return Response({"error": "Can only approve pending bookings."}, status=status.HTTP_400_BAD_REQUEST)
             
-        booking.status = 'approved'
+        booking.status = 'confirmed'
         booking.save(update_fields=['status'])
         
         # We could also decrement available beds in the room here.
+        
+        serializer = self.get_serializer(booking)
+        return Response({"success": True, "data": serializer.data})
+
+    @action(detail=True, methods=['post'])
+    def verify(self, request, pk=None):
+        booking = self.get_object()
+        if booking.status != 'pending':
+            return Response({"error": "Can only verify pending bookings."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if booking.payment_method != 'online':
+            return Response({"error": "Can only verify online bookings."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        booking.status = 'verified'
+        booking.save(update_fields=['status'])
         
         serializer = self.get_serializer(booking)
         return Response({"success": True, "data": serializer.data})

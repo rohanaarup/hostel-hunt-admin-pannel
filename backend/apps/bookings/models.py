@@ -6,10 +6,12 @@ from apps.rooms.models import Room
 STATUS_CHOICES = (
     ('pending', 'Pending'),
     ('approved', 'Approved'),
+    ('confirmed', 'Confirmed'),
     ('rejected', 'Rejected'),
     ('cancelled', 'Cancelled'),
     ('checked_in', 'Checked In'),
     ('checked_out', 'Checked Out'),
+    ('verified', 'Verified'),
 )
 
 class Booking(models.Model):
@@ -19,6 +21,14 @@ class Booking(models.Model):
     
     # Store snapshot of room name to keep historical data intact
     room_name = models.CharField(max_length=100)
+    
+    # Payment info
+    PAYMENT_METHOD_CHOICES = (
+        ('offline', 'Offline'),
+        ('online', 'Online'),
+    )
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='offline', null=True, blank=True)
+    rent_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     
     # External User fields (from Flutter app)
     floor_number = models.CharField(max_length=50, null=True, blank=True)
