@@ -36,32 +36,36 @@ class SendOtpView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        serializer = SendOtpSerializer(data=request.data)
-        if serializer.is_valid():
-            identifier = serializer.validated_data['identifier']
-            identifier_type = serializer.validated_data['identifier_type']
-            purpose = serializer.validated_data['purpose']
-            
-            # If signup, check if already exists
-            if purpose == 'signup':
-                if identifier_type == 'email' and Owner.objects.filter(email=identifier).exists():
-                    return error_response({"identifier": "Email already registered."})
-                if identifier_type == 'phone' and Owner.objects.filter(phone_number=identifier).exists():
-                    return error_response({"identifier": "Phone number already registered."})
-            elif purpose == 'forgot_password':
-                # If forgot_password, check if user exists
-                exists = Owner.objects.filter(email=identifier).exists() if identifier_type == 'email' else Owner.objects.filter(phone_number=identifier).exists()
-                if not exists:
-                    return error_response({"identifier": "User not found."})
+        try:
+            serializer = SendOtpSerializer(data=request.data)
+            if serializer.is_valid():
+                identifier = serializer.validated_data['identifier']
+                identifier_type = serializer.validated_data['identifier_type']
+                purpose = serializer.validated_data['purpose']
+                
+                # If signup, check if already exists
+                if purpose == 'signup':
+                    if identifier_type == 'email' and Owner.objects.filter(email=identifier).exists():
+                        return error_response({"identifier": "Email already registered."})
+                    if identifier_type == 'phone' and Owner.objects.filter(phone_number=identifier).exists():
+                        return error_response({"identifier": "Phone number already registered."})
+                elif purpose == 'forgot_password':
+                    exists = Owner.objects.filter(email=identifier).exists() if identifier_type == 'email' else Owner.objects.filter(phone_number=identifier).exists()
+                    if not exists:
+                        return error_response({"identifier": "User not found."})
 
-            code, record = OTPService.create_otp(identifier, purpose)
-            
-            sent, msg = OTPService.send_otp(identifier, code, purpose, identifier_type)
-            if sent:
-                return success_response(message="OTP sent successfully.")
-            return error_response({"identifier": msg}, "Failed to send OTP.", status.HTTP_503_SERVICE_UNAVAILABLE)
-            
-        return error_response(serializer.errors)
+                code, record = OTPService.create_otp(identifier, purpose)
+                
+                sent, msg = OTPService.send_otp(identifier, code, purpose, identifier_type)
+                if sent:
+                    return success_response(message="OTP sent successfully.")
+                return error_response({"identifier": msg}, "Failed to send OTP.", status.HTTP_503_SERVICE_UNAVAILABLE)
+                
+            return error_response(serializer.errors)
+        except Exception as e:
+            import traceback
+            tb = traceback.format_exc()
+            return Response({"success": False, "traceback": tb}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class VerifyOtpView(APIView):
