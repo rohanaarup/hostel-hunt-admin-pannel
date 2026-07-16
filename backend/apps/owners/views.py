@@ -58,7 +58,7 @@ class SendOtpView(APIView):
                 
                 sent, msg = OTPService.send_otp(identifier, code, purpose, identifier_type)
                 if sent:
-                    return success_response(message="OTP sent successfully.")
+                    return success_response(message=msg)
                 return error_response({"identifier": msg}, "Failed to send OTP.", status.HTTP_503_SERVICE_UNAVAILABLE)
                 
             return error_response(serializer.errors)
