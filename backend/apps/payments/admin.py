@@ -3,7 +3,6 @@ from .models import Payment
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
-    list_display = ('user_name', 'hostel', 'amount', 'status', 'method', 'paid_at')
-    list_filter = ('status', 'method', 'hostel')
-    search_fields = ('user_name', 'transaction_ref', 'hostel__name')
-    readonly_fields = ('id', 'created_at')
+    list_display = ('id', 'resident_name', 'hostel', 'amount_due', 'amount_paid', 'status', 'due_date')
+    list_filter = ('status', 'mode', 'hostel')
+    search_fields = ('resident_name', 'resident_phone')

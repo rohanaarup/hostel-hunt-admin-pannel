@@ -1,4 +1,4 @@
-﻿import os
+import os
 import django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
@@ -18,7 +18,8 @@ OTPRecord.objects.create(
     otp_code=make_password('123456'),
     purpose='signup',
     expires_at=timezone.now() + timedelta(minutes=10),
-    is_used=True,
+    is_used=False,
+    is_verified=True,
     verification_token=v_token
 )
 

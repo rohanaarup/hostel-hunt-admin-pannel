@@ -1,10 +1,18 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import BookingViewSet
-
-router = DefaultRouter()
-router.register(r'', BookingViewSet, basename='bookings')
+from django.urls import path
+from .views import (
+    BookingListView,
+    BookingDetailView,
+    BookingApproveView,
+    BookingRejectView,
+    BookingVerifyPaymentView,
+    BookingMarkPaidView,
+)
 
 urlpatterns = [
-    path('bookings/', include(router.urls)),
+    path('bookings/', BookingListView.as_view(), name='booking-list'),
+    path('bookings/<uuid:pk>/', BookingDetailView.as_view(), name='booking-detail'),
+    path('bookings/<uuid:pk>/approve/', BookingApproveView.as_view(), name='booking-approve'),
+    path('bookings/<uuid:pk>/reject/', BookingRejectView.as_view(), name='booking-reject'),
+    path('bookings/<uuid:pk>/verify/', BookingVerifyPaymentView.as_view(), name='booking-verify'),
+    path('bookings/<uuid:pk>/mark-paid/', BookingMarkPaidView.as_view(), name='booking-mark-paid'),
 ]

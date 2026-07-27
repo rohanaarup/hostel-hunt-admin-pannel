@@ -172,14 +172,6 @@ class ResetPasswordView(APIView):
         return error_response(serializer.errors)
 
 
-class OwnerListView(APIView):
-    permission_classes = [AllowAny]  # For now; lock down with IsAuthenticated + IsAdminUser in production
-
-    def get(self, request):
-        owners = Owner.objects.all().order_by('-created_at')
-        serializer = OwnerProfileSerializer(owners, many=True)
-        return success_response(data=serializer.data, message="Owners retrieved successfully.")
-
 
 class OwnerProfileView(APIView):
     permission_classes = [IsAuthenticated]

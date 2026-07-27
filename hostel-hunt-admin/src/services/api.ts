@@ -96,6 +96,7 @@ export const bookingService = {
   getBookings: () => api.get('/bookings/').then(res => res.data),
   approveBooking: (id: string) => api.post(`/bookings/${id}/approve/`).then(res => res.data),
   rejectBooking: (id: string) => api.post(`/bookings/${id}/reject/`).then(res => res.data),
+  verifyPayment: (id: string) => api.post(`/bookings/${id}/verify/`).then(res => res.data),
 };
 
 export const paymentService = {

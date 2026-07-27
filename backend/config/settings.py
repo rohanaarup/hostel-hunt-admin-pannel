@@ -28,7 +28,7 @@ print(SECRET_KEY)
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='', cast=Csv())
+ALLOWED_HOSTS = ['*']  # Allow all devices on Wi-Fi to connect
 
 
 # Application definition
@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'corsheaders',
     
     # Local apps
+    'apps.core',
     'apps.owners',
     'apps.hostels',
     'apps.rooms',
@@ -56,6 +57,8 @@ INSTALLED_APPS = [
     'apps.payments',
     'apps.dashboard',
     'apps.otp_auth',
+    'apps.residents',
+    'apps.notices',
 ]
 
 MIDDLEWARE = [
@@ -91,15 +94,40 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+#
+# Three options, controlled by USE_DB in .env:
+#   - 'supabase' (default): use DATABASE_URL (Supabase / remote Postgres)
+#   - 'local':   use LOCAL_DATABASE_URL (local Postgres for development)
+#   - 'sqlite':  fall back to a local SQLite file
 
-DATABASES = {
-    'default': dj_database_url.config(
-        default=config('DATABASE_URL'),
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
-}
-print(f"[DB CONNECTED] host={DATABASES['default']['HOST']} name={DATABASES['default']['NAME']}")
+USE_DB = config('USE_DB', default='supabase')
+
+if USE_DB == 'sqlite':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+    print(f"[DB CONNECTED] sqlite path={DATABASES['default']['NAME']}")
+elif USE_DB == 'local':
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=config('LOCAL_DATABASE_URL', default='postgresql://postgres:postgres@localhost:5432/hh_core'),
+            conn_max_age=0,
+            conn_health_checks=True,
+        )
+    }
+    print(f"[DB CONNECTED] LOCAL host={DATABASES['default']['HOST']} name={DATABASES['default']['NAME']}")
+else:
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=config('DATABASE_URL'),
+            conn_max_age=0,
+            conn_health_checks=True,
+        )
+    }
+    print(f"[DB CONNECTED] host={DATABASES['default']['HOST']} name={DATABASES['default']['NAME']}")
 
 
 # Password validation
@@ -179,7 +207,7 @@ EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
-EMAIL_TIMEOUT = 5  # Prevent Gunicorn worker timeout if Render blocks SMTP ports
+EMAIL_TIMEOUT = 15  # Prevent Gunicorn worker timeout if Render blocks SMTP ports
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Hostel Hunt <noreply@hostelhunt.com>')
 
 # Twilio SMS Configuration

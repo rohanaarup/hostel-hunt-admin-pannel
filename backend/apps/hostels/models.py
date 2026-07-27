@@ -1,6 +1,7 @@
 import uuid
 from django.db import models
 from django.conf import settings
+from apps.core.models import TenantScopedModel
 
 
 
@@ -10,7 +11,9 @@ GENDER_CHOICES = (
     ('co_living', 'Co-Living'),
 )
 
-class Hostel(models.Model):
+class Hostel(TenantScopedModel):
+    OWNER_LOOKUP = "owner"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, db_column='hostel_id')
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='hostels')
     name = models.CharField(max_length=255)
@@ -18,6 +21,7 @@ class Hostel(models.Model):
     contact_number = models.CharField(max_length=20)
     email = models.EmailField()
     
+    locality = models.CharField(max_length=255)
     address = models.TextField()
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=100)

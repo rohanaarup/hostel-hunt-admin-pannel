@@ -1,6 +1,7 @@
 import uuid
 from django.db import models
 from apps.hostels.models import Hostel
+from apps.core.models import TenantScopedModel
 
 SHARING_CHOICES = (
     ('single', 'Single'),
@@ -10,13 +11,19 @@ SHARING_CHOICES = (
     ('dormitory', 'Dormitory'),
 )
 
-class Room(models.Model):
+class Room(TenantScopedModel):
+    OWNER_LOOKUP = "hostel__owner"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, db_column='room_id')
     hostel = models.ForeignKey(Hostel, on_delete=models.CASCADE, related_name='rooms')
+    
+    floor_number = models.PositiveIntegerField(default=1)
+    room_number = models.CharField(max_length=20, default='')
     room_name = models.CharField(max_length=100)
     
     sharing_type = models.CharField(max_length=20, choices=SHARING_CHOICES)
     capacity = models.PositiveIntegerField()
+    bed_count = models.PositiveIntegerField(default=1)
     price_per_month = models.DecimalField(max_digits=10, decimal_places=2)
     available_beds = models.PositiveIntegerField()
     

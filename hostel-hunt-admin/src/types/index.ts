@@ -134,7 +134,7 @@ export interface Room {
 
 // ─── Booking ──────────────────────────────────────────────────────────────────
 
-export type BookingStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'checked_in' | 'checked_out';
+export type BookingStatus = 'pending' | 'approved' | 'confirmed' | 'rejected' | 'cancelled' | 'checked_in' | 'checked_out' | 'verified';
 
 export interface BookingUser {
   user_id: string;
@@ -143,6 +143,8 @@ export interface BookingUser {
   phone: string;
   profile_photo_url: string | null;
 }
+
+export type BookingPaymentMethod = 'offline' | 'online';
 
 /** Maps 1:1 to bookings table in PostgreSQL */
 export interface Booking {
@@ -154,6 +156,8 @@ export interface Booking {
   room_number?: string;
   bed_number?: string;
   user: BookingUser;
+  payment_method: BookingPaymentMethod;
+  rent_amount?: number | null;
   status: BookingStatus;
   check_in_date: string;
   check_out_date: string | null;

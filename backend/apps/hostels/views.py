@@ -12,7 +12,7 @@ class PublicHostelSerializer(HostelSerializer):
         # Explicitly list public-safe fields (exclude 'owner' UUID)
         fields = [
             'id', 'name', 'owner_name', 'contact_number', 'email',
-            'address', 'city', 'state', 'pincode', 'landmark',
+            'locality', 'address', 'city', 'state', 'pincode', 'landmark',
             'latitude', 'longitude', 'google_maps_url',
             'gender_type', 'total_floors', 'total_rooms', 'total_beds',
             'occupancy_types', 'description', 'rules',
@@ -42,19 +42,21 @@ class HostelViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated(), IsOwner()]
 
     def get_serializer_class(self):
-        if self.action in ['list', 'retrieve']:
+        if self.action in ['list', 'retrieve'] and not self.request.user.is_authenticated:
             return PublicHostelSerializer
         return HostelSerializer
 
     def get_queryset(self):
-        if self.action in ['list', 'retrieve']:
+        # For public unauthenticated requests, return all active hostels
+        if self.action in ['list', 'retrieve'] and not self.request.user.is_authenticated:
             qs = Hostel.objects.filter(is_active=True).prefetch_related('rooms', 'media')
             # Optional filter by gender_type query param
             gender = self.request.query_params.get('gender_type')
             if gender:
                 qs = qs.filter(gender_type=gender)
             return qs
-        # Only return hostels owned by the current user
+        
+        # For authenticated owners (and all other actions), return only their hostels
         return Hostel.objects.filter(owner=self.request.user).prefetch_related('rooms', 'media')
 
     def perform_create(self, serializer):

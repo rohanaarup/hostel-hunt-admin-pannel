@@ -93,14 +93,9 @@ class OTPService:
                 logger.info(f"SMTP EMAIL SENT TO {identifier}")
                 return True, "Email sent successfully."
             except Exception as e:
-                try:
-                    error_msg = f"SMTP authentication or connection failed: {repr(e)}"
-                    logger.error(error_msg)
-                except Exception as log_e:
-                    print("Critical logger failure:", str(log_e))
-                # Fallback for Render Free Tier which blocks outbound SMTP ports
-                # We return True so the mobile app can proceed to the OTP verification screen
-                return True, f"Email failed (Render SMTP block). Your TEST OTP is: {code}"
+                error_msg = f"Failed to send email: {str(e)}"
+                logger.error(error_msg)
+                return False, error_msg
             
         elif identifier_type == 'phone':
             if not getattr(settings, 'TWILIO_ACCOUNT_SID', None) or not getattr(settings, 'TWILIO_AUTH_TOKEN', None):
@@ -137,9 +132,6 @@ class OTPService:
             except requests.exceptions.RequestException as e:
                 error_msg = f"Failed to connect to SMS provider: {str(e)}"
                 logger.error(error_msg)
-                if settings.DEBUG:
-                    logger.warning(f"DEV FALLBACK: SMS connection failed. Printing OTP for {identifier}: {code}")
-                    return True, "SMS sent successfully (Dev Fallback)."
                 return False, error_msg
             
         return False, "Invalid identifier type."

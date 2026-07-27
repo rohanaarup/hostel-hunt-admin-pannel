@@ -2,19 +2,21 @@ from rest_framework import viewsets, permissions
 from .models import Room
 from .serializers import RoomSerializer
 from utils.permissions import IsOwner
+from apps.core.querysets import TenantScopedQuerysetMixin
 
-class RoomViewSet(viewsets.ModelViewSet):
+class RoomViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     serializer_class = RoomSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwner]
+    queryset = Room.objects.all()
 
     def get_queryset(self):
-        # We want to return rooms for a specific hostel. 
-        # Usually this is nested: /api/v1/hostels/{hostel_id}/rooms/
+        # TenantScopedQuerysetMixin restricts to rooms owned by request.user.
+        # Additionally filter by hostel_id when coming from a nested route.
+        qs = super().get_queryset()
         hostel_id = self.kwargs.get('hostel_id')
         if hostel_id:
-            return Room.objects.filter(hostel_id=hostel_id, hostel__owner=self.request.user)
-        # Fallback to all rooms owned by the user
-        return Room.objects.filter(hostel__owner=self.request.user)
+            qs = qs.filter(hostel_id=hostel_id)
+        return qs
 
     def perform_create(self, serializer):
         # The hostel is passed in the payload, but we could also extract it from URL.

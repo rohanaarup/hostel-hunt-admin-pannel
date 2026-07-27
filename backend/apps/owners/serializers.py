@@ -66,6 +66,7 @@ class SignupSerializer(serializers.Serializer):
     display_name = serializers.CharField()
     password = serializers.CharField(write_only=True)
     verification_token = serializers.UUIDField(write_only=True)
+    signup_source = serializers.CharField(required=False, allow_blank=True)
     
     def validate(self, data):
         data['identifier'] = normalize_and_validate_identifier(data.get('identifier', ''), data.get('identifier_type'))
@@ -98,6 +99,7 @@ class SignupSerializer(serializers.Serializer):
         identifier = validated_data.pop('identifier')
         identifier_type = validated_data.pop('identifier_type')
         verification_token = validated_data.pop('verification_token', None)
+        signup_source = validated_data.pop('signup_source', 'admin_panel')
         
         email = identifier if identifier_type == 'email' else None
         phone = identifier if identifier_type == 'phone' else None
@@ -107,6 +109,7 @@ class SignupSerializer(serializers.Serializer):
             phone_number=phone,
             password=validated_data['password'],
             display_name=validated_data['display_name'],
+            signup_source=signup_source,
             is_verified=True  # Because they already passed OTP step
         )
         

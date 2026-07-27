@@ -1,59 +1,62 @@
 import uuid
 from django.db import models
+from django.conf import settings
+import django.utils.timezone
 from apps.hostels.models import Hostel
 from apps.rooms.models import Room
+from apps.core.models import TenantScopedModel
 
-STATUS_CHOICES = (
-    ('pending', 'Pending'),
-    ('approved', 'Approved'),
-    ('confirmed', 'Confirmed'),
-    ('rejected', 'Rejected'),
-    ('cancelled', 'Cancelled'),
-    ('checked_in', 'Checked In'),
-    ('checked_out', 'Checked Out'),
-    ('verified', 'Verified'),
-)
+class Booking(TenantScopedModel):
+    OWNER_LOOKUP = "hostel__owner"
 
-class Booking(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, db_column='booking_id')
-    hostel = models.ForeignKey(Hostel, on_delete=models.CASCADE, related_name='bookings')
-    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='bookings')
-    
-    # Store snapshot of room name to keep historical data intact
-    room_name = models.CharField(max_length=100)
-    
-    # Payment info
-    PAYMENT_METHOD_CHOICES = (
+    PAYMENT_MODE_CHOICES = (
         ('offline', 'Offline'),
         ('online', 'Online'),
     )
-    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='offline', null=True, blank=True)
-    rent_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    
-    # External User fields (from Flutter app)
-    floor_number = models.CharField(max_length=50, null=True, blank=True)
-    room_number = models.CharField(max_length=50, null=True, blank=True)
-    bed_number = models.CharField(max_length=50, null=True, blank=True)
-    
-    user_id = models.CharField(max_length=255)
-    user_name = models.CharField(max_length=255)
-    user_email = models.EmailField()
-    user_phone = models.CharField(max_length=20)
-    user_profile_photo = models.URLField(null=True, blank=True)
-    
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-    
-    check_in_date = models.DateField()
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('confirmed', 'Confirmed'),
+        ('paid', 'Paid'),
+        ('cancelled', 'Cancelled'),
+        ('rejected', 'Rejected'),
+    )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, db_column='booking_id')
+    hostel = models.ForeignKey(Hostel, on_delete=models.CASCADE, related_name='bookings')
+    room = models.ForeignKey(Room, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
+
+    # Denormalised room info sent by the Flutter app (room FK may be null)
+    room_name = models.CharField(max_length=100, null=True, blank=True)
+    floor_number = models.CharField(max_length=20, null=True, blank=True)
+    room_number = models.CharField(max_length=20, null=True, blank=True)
+    bed_number = models.CharField(max_length=20, null=True, blank=True)
+
+    # Guest info
+    student_name = models.CharField(max_length=100, default='', blank=True)
+    student_phone = models.CharField(max_length=15, default='', blank=True)
+
+    # Dates
+    check_in_date = models.DateField(null=True, blank=True)
     check_out_date = models.DateField(null=True, blank=True)
-    
+
+    payment_mode = models.CharField(max_length=20, choices=PAYMENT_MODE_CHOICES, default='offline')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
     notes = models.TextField(null=True, blank=True)
-    
-    requested_at = models.DateTimeField(auto_now_add=True)
+
+    marked_paid_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='bookings_marked_paid'
+    )
+    marked_paid_at = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(default=django.utils.timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'bookings'
-        ordering = ['-requested_at']
+        ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.user_name} - {self.room_name} ({self.status})"
+        return f"{self.student_name or 'Guest'} - {self.hostel.name} ({self.status})"

@@ -1,0 +1,362 @@
+ERROR 2026-07-14 13:18:56,825 services SMTP authentication or connection failed: SMTPDataError(550, b'5.4.5 Daily user sending limit exceeded. For more information on Gmail\n5.4.5 sending limits go to\n5.4.5  https://support.google.com/a/answer/166852 5a478bee46e88-3117483dec6sm79274351eec.11 - gsmtp')
+WARNING 2026-07-14 13:18:56,825 services DEV FALLBACK: SMTP failed. Printing OTP for test@yopmail.com: 688089
+INFO 2026-07-16 16:02:14,072 services SMTP EMAIL SENT TO developmentrohan5@gmail.com
+INFO 2026-07-16 16:06:58,214 services SMTP EMAIL SENT TO developmentrohan5@gmail.com
+INFO 2026-07-16 16:13:15,951 services SMTP EMAIL SENT TO test@yopmail.com
+ERROR 2026-07-16 16:45:09,101 log Invalid HTTP_HOST header: '192.168.0.112:8000'. You may need to add '192.168.0.112' to ALLOWED_HOSTS.
+Traceback (most recent call last):
+  File "C:\PROJECTS DEV\HH CORE\admin pannel HH\envhh\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\PROJECTS DEV\HH CORE\admin pannel HH\envhh\Lib\site-packages\django\utils\deprecation.py", line 119, in __call__
+    response = self.process_request(request)
+  File "C:\PROJECTS DEV\HH CORE\admin pannel HH\envhh\Lib\site-packages\django\middleware\common.py", line 48, in process_request
+    host = request.get_host()
+  File "C:\PROJECTS DEV\HH CORE\admin pannel HH\envhh\Lib\site-packages\django\http\request.py", line 203, in get_host
+    raise DisallowedHost(msg)
+django.core.exceptions.DisallowedHost: Invalid HTTP_HOST header: '192.168.0.112:8000'. You may need to add '192.168.0.112' to ALLOWED_HOSTS.
+INFO 2026-07-16 17:42:32,724 services SMTP EMAIL SENT TO developmentrohan5@gmail.com
+INFO 2026-07-16 17:44:40,769 services SMTP EMAIL SENT TO swethavenu56@gmail.com
+ERROR 2026-07-23 11:10:24,367 log Internal Server Error: /api/v1/bookings
+Traceback (most recent call last):
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\utils\deprecation.py", line 131, in __call__
+    response = self.process_response(request, response)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\middleware\common.py", line 108, in process_response
+    return self.response_redirect_class(self.get_full_path_with_slash(request))
+                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\middleware\common.py", line 87, in get_full_path_with_slash
+    raise RuntimeError(
+    ...<9 lines>...
+    )
+RuntimeError: You called this URL via POST, but the URL doesn't end in a slash and you have APPEND_SLASH set. Django can't redirect to the slash URL while maintaining POST data. Change your form to point to 127.0.0.1:8000/api/v1/bookings/ (note the trailing slash), or set APPEND_SLASH=False in your Django settings.
+ERROR 2026-07-23 11:10:24,372 basehttp "POST /api/v1/bookings HTTP/1.1" 500 74795
+INFO 2026-07-24 13:23:37,567 services SMTP EMAIL SENT TO ownera_fw@test.com
+INFO 2026-07-24 13:23:46,527 services SMTP EMAIL SENT TO ownerb_fw@test.com
+INFO 2026-07-24 14:44:11,893 services SMTP EMAIL SENT TO siddhuuppula@gmail.com
+ERROR 2026-07-24 16:53:24,724 log Internal Server Error: /api/v1/hostels/
+Traceback (most recent call last):
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\psycopg\cursor.py", line 117, in execute
+    raise ex.with_traceback(None)
+psycopg.OperationalError: consuming input failed: server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework\viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework\mixins.py", line 46, in list
+    return Response(serializer.data)
+                    ^^^^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework\serializers.py", line 797, in data
+    ret = super().data
+          ^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework\serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+                 ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework\serializers.py", line 716, in to_representation
+    self.child.to_representation(item) for item in iterable
+                                                   ^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\models\query.py", line 400, in __iter__
+    self._fetch_all()
+    ~~~~~~~~~~~~~~~^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\models\query.py", line 1928, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\models\query.py", line 91, in __iter__
+    results = compiler.execute_sql(
+        chunked_fetch=self.chunked_fetch, chunk_size=self.chunk_size
+    )
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\models\sql\compiler.py", line 1574, in execute_sql
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\backends\utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\psycopg\cursor.py", line 117, in execute
+    raise ex.with_traceback(None)
+django.db.utils.OperationalError: consuming input failed: server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+ERROR 2026-07-24 16:53:24,788 basehttp "GET /api/v1/hostels/ HTTP/1.1" 500 187374
+INFO 2026-07-24 23:51:29,320 services SMTP EMAIL SENT TO developmentrohan5@gmail.com
+INFO 2026-07-26 00:47:02,670 services SMTP EMAIL SENT TO rudraarupa22@gmail.com
+INFO 2026-07-26 01:06:00,778 services SMTP EMAIL SENT TO jahnaviwfy@gmail.com
+INFO 2026-07-26 01:17:33,864 services SMTP EMAIL SENT TO aarupalabs22@gmail.com
+ERROR 2026-07-26 01:18:35,824 log Internal Server Error: /api/v1/dashboard/stats/
+Traceback (most recent call last):
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\backends\postgresql\base.py", line 332, in get_new_connection
+    connection = self.Database.connect(**conn_params)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\psycopg\connection.py", line 130, in connect
+    raise new_ex.with_traceback(None)
+psycopg.OperationalError: connection failed: connection to server at "13.200.110.68", port 5432 failed: FATAL:  (EMAXCONNSESSION) max clients reached in session mode - max clients are limited to pool_size: 15
+Multiple connection attempts failed. All failures were:
+- host: 'aws-1-ap-south-1.pooler.supabase.com', port: 5432, hostaddr: '3.111.225.200': connection failed: connection to server at "3.111.225.200", port 5432 failed: FATAL:  (EMAXCONNSESSION) max clients reached in session mode - max clients are limited to pool_size: 15
+- host: 'aws-1-ap-south-1.pooler.supabase.com', port: 5432, hostaddr: '3.109.171.244': connection failed: connection to server at "3.109.171.244", port 5432 failed: FATAL:  (EMAXCONNSESSION) max clients reached in session mode - max clients are limited to pool_size: 15
+- host: 'aws-1-ap-south-1.pooler.supabase.com', port: 5432, hostaddr: '13.200.110.68': connection failed: connection to server at "13.200.110.68", port 5432 failed: FATAL:  (EMAXCONNSESSION) max clients reached in session mode - max clients are limited to pool_size: 15
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework\views.py", line 503, in dispatch
+    self.initial(request, *args, **kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework\views.py", line 420, in initial
+    self.perform_authentication(request)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework\views.py", line 330, in perform_authentication
+    request.user
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework\request.py", line 232, in user
+    self._authenticate()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework\request.py", line 385, in _authenticate
+    user_auth_tuple = authenticator.authenticate(self)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework_simplejwt\authentication.py", line 51, in authenticate
+    return self.get_user(validated_token), validated_token
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework_simplejwt\authentication.py", line 132, in get_user
+    user = self.user_model.objects.get(**{api_settings.USER_ID_FIELD: user_id})
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\models\query.py", line 645, in get
+    num = len(clone)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\models\query.py", line 382, in __len__
+    self._fetch_all()
+    ~~~~~~~~~~~~~~~^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\models\query.py", line 1928, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\models\query.py", line 91, in __iter__
+    results = compiler.execute_sql(
+        chunked_fetch=self.chunked_fetch, chunk_size=self.chunk_size
+    )
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\models\sql\compiler.py", line 1572, in execute_sql
+    cursor = self.connection.cursor()
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\backends\base\base.py", line 320, in cursor
+    return self._cursor()
+           ~~~~~~~~~~~~^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\backends\base\base.py", line 296, in _cursor
+    self.ensure_connection()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\backends\base\base.py", line 278, in ensure_connection
+    with self.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\backends\postgresql\base.py", line 332, in get_new_connection
+    connection = self.Database.connect(**conn_params)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\psycopg\connection.py", line 130, in connect
+    raise new_ex.with_traceback(None)
+django.db.utils.OperationalError: connection failed: connection to server at "13.200.110.68", port 5432 failed: FATAL:  (EMAXCONNSESSION) max clients reached in session mode - max clients are limited to pool_size: 15
+Multiple connection attempts failed. All failures were:
+- host: 'aws-1-ap-south-1.pooler.supabase.com', port: 5432, hostaddr: '3.111.225.200': connection failed: connection to server at "3.111.225.200", port 5432 failed: FATAL:  (EMAXCONNSESSION) max clients reached in session mode - max clients are limited to pool_size: 15
+- host: 'aws-1-ap-south-1.pooler.supabase.com', port: 5432, hostaddr: '3.109.171.244': connection failed: connection to server at "3.109.171.244", port 5432 failed: FATAL:  (EMAXCONNSESSION) max clients reached in session mode - max clients are limited to pool_size: 15
+- host: 'aws-1-ap-south-1.pooler.supabase.com', port: 5432, hostaddr: '13.200.110.68': connection failed: connection to server at "13.200.110.68", port 5432 failed: FATAL:  (EMAXCONNSESSION) max clients reached in session mode - max clients are limited to pool_size: 15
+ERROR 2026-07-26 01:18:35,827 log Internal Server Error: /api/v1/dashboard/activity/
+Traceback (most recent call last):
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\backends\postgresql\base.py", line 332, in get_new_connection
+    connection = self.Database.connect(**conn_params)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\psycopg\connection.py", line 130, in connect
+    raise new_ex.with_traceback(None)
+psycopg.OperationalError: connection failed: connection to server at "13.200.110.68", port 5432 failed: FATAL:  (EMAXCONNSESSION) max clients reached in session mode - max clients are limited to pool_size: 15
+Multiple connection attempts failed. All failures were:
+- host: 'aws-1-ap-south-1.pooler.supabase.com', port: 5432, hostaddr: '3.111.225.200': connection failed: connection to server at "3.111.225.200", port 5432 failed: FATAL:  (EMAXCONNSESSION) max clients reached in session mode - max clients are limited to pool_size: 15
+- host: 'aws-1-ap-south-1.pooler.supabase.com', port: 5432, hostaddr: '3.109.171.244': connection failed: connection to server at "3.109.171.244", port 5432 failed: FATAL:  (EMAXCONNSESSION) max clients reached in session mode - max clients are limited to pool_size: 15
+- host: 'aws-1-ap-south-1.pooler.supabase.com', port: 5432, hostaddr: '13.200.110.68': connection failed: connection to server at "13.200.110.68", port 5432 failed: FATAL:  (EMAXCONNSESSION) max clients reached in session mode - max clients are limited to pool_size: 15
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework\views.py", line 503, in dispatch
+    self.initial(request, *args, **kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework\views.py", line 420, in initial
+    self.perform_authentication(request)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework\views.py", line 330, in perform_authentication
+    request.user
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework\request.py", line 232, in user
+    self._authenticate()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework\request.py", line 385, in _authenticate
+    user_auth_tuple = authenticator.authenticate(self)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework_simplejwt\authentication.py", line 51, in authenticate
+    return self.get_user(validated_token), validated_token
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\rest_framework_simplejwt\authentication.py", line 132, in get_user
+    user = self.user_model.objects.get(**{api_settings.USER_ID_FIELD: user_id})
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\models\query.py", line 645, in get
+    num = len(clone)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\models\query.py", line 382, in __len__
+    self._fetch_all()
+    ~~~~~~~~~~~~~~~^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\models\query.py", line 1928, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\models\query.py", line 91, in __iter__
+    results = compiler.execute_sql(
+        chunked_fetch=self.chunked_fetch, chunk_size=self.chunk_size
+    )
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\models\sql\compiler.py", line 1572, in execute_sql
+    cursor = self.connection.cursor()
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\backends\base\base.py", line 320, in cursor
+    return self._cursor()
+           ~~~~~~~~~~~~^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\backends\base\base.py", line 296, in _cursor
+    self.ensure_connection()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\backends\base\base.py", line 278, in ensure_connection
+    with self.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\django\db\backends\postgresql\base.py", line 332, in get_new_connection
+    connection = self.Database.connect(**conn_params)
+  File "C:\Users\darla\AppData\Roaming\Python\Python314\site-packages\psycopg\connection.py", line 130, in connect
+    raise new_ex.with_traceback(None)
+django.db.utils.OperationalError: connection failed: connection to server at "13.200.110.68", port 5432 failed: FATAL:  (EMAXCONNSESSION) max clients reached in session mode - max clients are limited to pool_size: 15
+Multiple connection attempts failed. All failures were:
+- host: 'aws-1-ap-south-1.pooler.supabase.com', port: 5432, hostaddr: '3.111.225.200': connection failed: connection to server at "3.111.225.200", port 5432 failed: FATAL:  (EMAXCONNSESSION) max clients reached in session mode - max clients are limited to pool_size: 15
+- host: 'aws-1-ap-south-1.pooler.supabase.com', port: 5432, hostaddr: '3.109.171.244': connection failed: connection to server at "3.109.171.244", port 5432 failed: FATAL:  (EMAXCONNSESSION) max clients reached in session mode - max clients are limited to pool_size: 15
+- host: 'aws-1-ap-south-1.pooler.supabase.com', port: 5432, hostaddr: '13.200.110.68': connection failed: connection to server at "13.200.110.68", port 5432 failed: FATAL:  (EMAXCONNSESSION) max clients reached in session mode - max clients are limited to pool_size: 15
+ERROR 2026-07-26 01:18:35,866 basehttp "GET /api/v1/dashboard/stats/ HTTP/1.1" 500 262605
+ERROR 2026-07-26 01:18:35,887 basehttp "GET /api/v1/dashboard/activity/ HTTP/1.1" 500 262695
+INFO 2026-07-27 12:16:07,791 services SMTP EMAIL SENT TO rohaninspire2@gmail.com
+ERROR 2026-07-27 12:17:54,710 log Internal Server Error: /api/v1/auth/send-otp/
+ERROR 2026-07-27 12:17:54,712 basehttp "POST /api/v1/auth/send-otp/ HTTP/1.1" 500 2380
+INFO 2026-07-27 12:22:20,540 services SMTP EMAIL SENT TO malladiravindrababu6@gmail.com
+INFO 2026-07-27 13:54:36,486 services SMTP EMAIL SENT TO rohaninspire2@gmail.com
+INFO 2026-07-27 14:48:06,254 services SMTP EMAIL SENT TO siddhuuppula@gmail.com
+INFO 2026-07-27 15:03:27,449 services SMTP EMAIL SENT TO studyr325@gmail.com
+INFO 2026-07-27 15:05:56,944 services SMTP EMAIL SENT TO 22q91a66e0@mrce.com
+INFO 2026-07-27 15:07:04,717 services SMTP EMAIL SENT TO 22q91a66e0@mrce.com
+INFO 2026-07-27 15:08:32,472 services SMTP EMAIL SENT TO developmentrohan5@gmail.com
+INFO 2026-07-27 15:51:08,240 services SMTP EMAIL SENT TO aditkamad053@gmail.com

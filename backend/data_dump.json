@@ -1,0 +1,141 @@
+[
+{
+  "model": "admin.logentry",
+  "pk": 1,
+  "fields": {
+    "action_time": "2026-06-27T14:31:50.816Z",
+    "user": "8f0abe14-6435-439f-8cee-1b463cf7c09a",
+    "content_type": 9,
+    "object_id": "575314bd-88d1-4dab-8af4-e0ed3cc2c876",
+    "object_repr": "venky",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 2,
+  "fields": {
+    "action_time": "2026-06-27T14:34:12.194Z",
+    "user": "8f0abe14-6435-439f-8cee-1b463cf7c09a",
+    "content_type": 10,
+    "object_id": "404c3136-0908-4033-b70e-fd279de07389",
+    "object_repr": "venky (hyderabad)",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "sessions.session",
+  "pk": "dyjnyrfgsuzd0v85brya0epzsbum9z9g",
+  "fields": {
+    "session_data": ".eJxVjLkOwjAMQP8lM41yOEc7svMNlRPbtIBaqceE-HdUqQPM73irHvdt6PeVl34k1aksBgtbaCL40IBvpcmVubEFoq-SqmlRXX6zgvXJ09HSA6f7rOs8bctY9KHok676NhO_rqf7NxhwHVSnSpaSgUxySVwgya2EEiyJtOSQkQXFkQ3FBQAkByyG2EcIlKjWqD5fRblC0w:1wdU29:SIRLrq-s_YjZ5J2-7IANMN__Czkdj1kqFbA0I3RuKYI",
+    "expire_date": "2026-07-11T14:29:25.370Z"
+  }
+},
+{
+  "model": "owners.owner",
+  "pk": "1c15d664-8f19-485e-bf0b-2b53fdc1547a",
+  "fields": {
+    "password": "!LeqdstGA0vJbDiat3eYdcHoobFsFyeVl7Emd1jUz",
+    "last_login": null,
+    "is_superuser": true,
+    "email": "admin@example.com",
+    "phone_number": "adminpass",
+    "display_name": "Admin",
+    "is_verified": true,
+    "is_active": true,
+    "is_staff": true,
+    "profile_photo": "",
+    "role": "owner",
+    "signup_source": "admin_panel",
+    "created_at": "2026-06-27T14:19:27.667Z",
+    "updated_at": "2026-06-27T14:19:27.667Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "owners.owner",
+  "pk": "575314bd-88d1-4dab-8af4-e0ed3cc2c876",
+  "fields": {
+    "password": "",
+    "last_login": "2026-06-10T14:31:47Z",
+    "is_superuser": false,
+    "email": "venky@gmail.com",
+    "phone_number": "68415852825",
+    "display_name": "venky",
+    "is_verified": false,
+    "is_active": true,
+    "is_staff": false,
+    "profile_photo": "",
+    "role": "owner",
+    "signup_source": "admin_panel",
+    "created_at": "2026-06-27T14:31:50.804Z",
+    "updated_at": "2026-06-27T14:31:50.804Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "owners.owner",
+  "pk": "8f0abe14-6435-439f-8cee-1b463cf7c09a",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$gsbYwInYcmV9i9Rz15CeQx$NPLjlpts2uC51aYLE79v5pZwo2YRx2fPiV6X7zLjq/w=",
+    "last_login": "2026-06-27T14:29:25.350Z",
+    "is_superuser": true,
+    "email": "rohandharlapally22@gmail.com",
+    "phone_number": "adminpassword123",
+    "display_name": "Rohan Owner",
+    "is_verified": true,
+    "is_active": true,
+    "is_staff": true,
+    "profile_photo": "",
+    "role": "owner",
+    "signup_source": "admin_panel",
+    "created_at": "2026-06-27T14:22:55.022Z",
+    "updated_at": "2026-06-27T14:28:54.203Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "hostels.hostel",
+  "pk": "404c3136-0908-4033-b70e-fd279de07389",
+  "fields": {
+    "owner": "575314bd-88d1-4dab-8af4-e0ed3cc2c876",
+    "name": "venky",
+    "owner_name": "venkatesh",
+    "contact_number": "8412363639",
+    "email": "venky@gmail.com",
+    "address": "edhi dha venky hstl",
+    "city": "hyderabad",
+    "state": "telangana",
+    "pincode": "855366",
+    "landmark": null,
+    "latitude": null,
+    "longitude": null,
+    "google_maps_url": null,
+    "gender_type": "boys",
+    "total_floors": 1,
+    "total_rooms": 0,
+    "total_beds": 0,
+    "occupancy_types": [
+      "ac",
+      "non-ac"
+    ],
+    "description": "",
+    "rules": "",
+    "check_in_policy": null,
+    "check_out_policy": null,
+    "amenities": [
+      "ac",
+      "non-ac"
+    ],
+    "is_active": true,
+    "is_verified": false,
+    "created_at": "2026-06-27T14:34:12.188Z",
+    "updated_at": "2026-06-27T14:34:12.188Z"
+  }
+}
+]

@@ -1,40 +1,51 @@
-from rest_framework import viewsets, views, status
+from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Sum
+from rest_framework.views import APIView
+from django.utils import timezone
 from .models import Payment
-from .serializers import PaymentSerializer
+from .serializers import PaymentSerializer, PaymentCreateSerializer
+from apps.core.querysets import TenantScopedQuerysetMixin
+from apps.core.utils import get_tenant_scoped_object_or_404
 
-class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    Owners can view payments. Usually payments are created via external hooks (Stripe/Razorpay) 
-    or by the user.
-    """
+class PaymentListView(TenantScopedQuerysetMixin, generics.ListAPIView):
     serializer_class = PaymentSerializer
     permission_classes = [IsAuthenticated]
+    queryset = Payment.objects.all()
 
     def get_queryset(self):
-        # Only return payments for hostels owned by the current user
-        return Payment.objects.filter(hostel__owner=self.request.user)
+        # TenantScopedQuerysetMixin handles hostel__owner scoping via OWNER_LOOKUP.
+        qs = super().get_queryset()
+        status_param = self.request.query_params.get('status')
+        if status_param:
+            qs = qs.filter(status=status_param)
+        return qs
 
-
-class PaymentSummaryView(views.APIView):
+class PaymentCreateView(generics.CreateAPIView):
+    serializer_class = PaymentCreateSerializer
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, *args, **kwargs):
-        payments = Payment.objects.filter(hostel__owner=request.user)
+class PaymentMarkPaidView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        payment = get_tenant_scoped_object_or_404(Payment, pk, request)
+
+        partial_amount = request.data.get('amount_paid')
         
-        total_revenue = payments.filter(status='completed').aggregate(Sum('amount'))['amount__sum'] or 0
-        pending_amount = payments.filter(status='pending').aggregate(Sum('amount'))['amount__sum'] or 0
-        completed_count = payments.filter(status='completed').count()
-        pending_count = payments.filter(status='pending').count()
-        
-        return Response({
-            "success": True,
-            "data": {
-                "total_revenue": total_revenue,
-                "pending_amount": pending_amount,
-                "completed_count": completed_count,
-                "pending_count": pending_count
-            }
-        })
+        if partial_amount is not None:
+            payment.amount_paid = partial_amount
+            if float(payment.amount_paid) >= float(payment.amount_due):
+                payment.status = 'paid'
+            else:
+                payment.status = 'partial'
+        else:
+            payment.amount_paid = payment.amount_due
+            payment.status = 'paid'
+
+        payment.paid_date = timezone.now().date()
+        payment.marked_by = request.user
+        payment.save(update_fields=['amount_paid', 'status', 'paid_date', 'marked_by', 'updated_at'])
+
+        serializer = PaymentSerializer(payment)
+        return Response({"success": True, "data": serializer.data})
