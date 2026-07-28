@@ -6,13 +6,19 @@ from apps.core.querysets import TenantScopedQuerysetMixin
 
 class RoomViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     serializer_class = RoomSerializer
-    permission_classes = [permissions.IsAuthenticated, IsOwner]
     queryset = Room.objects.all()
 
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated(), IsOwner()]
+
     def get_queryset(self):
-        # TenantScopedQuerysetMixin restricts to rooms owned by request.user.
-        # Additionally filter by hostel_id when coming from a nested route.
-        qs = super().get_queryset()
+        if self.action in ['list', 'retrieve']:
+            qs = Room.objects.all()
+        else:
+            qs = super().get_queryset()
+            
         hostel_id = self.kwargs.get('hostel_id')
         if hostel_id:
             qs = qs.filter(hostel_id=hostel_id)

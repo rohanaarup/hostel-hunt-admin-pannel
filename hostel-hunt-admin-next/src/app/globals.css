@@ -1,0 +1,359 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ─── Design Token System ─────────────────────────────────────────────────── */
+/* Centralized token system - all colors via CSS custom properties             */
+/* Font pairing: Plus Jakarta Sans (display) + Inter (body)                   */
+
+@theme {
+  /* PRIMARY — Auburn */
+  --color-auburn-50:  #F9E6E6;
+  --color-auburn-100: #F0C9C9;
+  --color-auburn-200: #E5ABAB;
+  --color-auburn-300: #C97A7A;
+  --color-auburn-400: #B85555;
+  --color-auburn-500: #A52A2A; /* BASE / PRIMARY */
+  --color-auburn-600: #8C2424;
+  --color-auburn-700: #7B1F1F;
+  --color-auburn-800: #5C1717;
+  --color-auburn-900: #4A1212;
+
+  /* SECONDARY — Warm Ivory */
+  --color-ivory-50:  #FDFBF8;
+  --color-ivory-100: #F7EFEA; /* BASE bg */
+  --color-ivory-200: #EFE3D6;
+  --color-ivory-300: #E8DDD1;
+  --color-ivory-500: #C4B7A6;
+  --color-ivory-700: #6B5D4F;
+  --color-ivory-900: #2E2723;
+
+  /* TERTIARY — Deep Emerald */
+  --color-emerald-50:  #E8F5F2;
+  --color-emerald-100: #A8D5CA;
+  --color-emerald-300: #5FA394;
+  --color-emerald-500: #0A6A5A; /* SUCCESS COLOR */
+  --color-emerald-700: #06463B;
+
+  /* INK — Text colors */
+  --color-ink-50:  #F7EFEA;
+  --color-ink-100: #EFE3D6;
+  --color-ink-300: #C4B7A6;
+  --color-ink-500: #8A7265;
+  --color-ink-700: #5A3D34;
+  --color-ink-900: #1E1B1B; /* BASE text */
+
+  /* SEMANTIC — derived from tokens above */
+  --color-primary:     var(--color-auburn-500);
+  --color-primary-hover:   var(--color-auburn-600);
+  --color-primary-light:    var(--color-auburn-100);
+  --color-primary-dark:     var(--color-auburn-300);
+
+  --color-background:   #FDFBF8;
+  --color-surface:      #F7EFEA;
+  --color-surface-elevated: #FFFFFF;
+
+  --color-border:       #E8DDD1;
+  --color-border-strong: #C4B7A6;
+
+  --color-text-primary:  #1E1B1B;
+  --color-text-secondary: #5A3D34;
+  --color-text-muted:    #8A7265;
+  --color-text-inverse:  #FDFBF8;
+
+  --color-success:  #0A6A5A;
+  --color-success-light: #E8F5F2;
+  --color-error:    #A52A2A;
+  --color-error-light:   #F9E6E6;
+  --color-warning:  #B8843A;
+  --color-warning-light: #FDF3E3;
+}
+
+/* ─── Dark Mode Semantic Tokens ───────────────────────────────────────────── */
+.dark {
+  --color-background:  #1E1B1B;
+  --color-surface:     #2E2723;
+  --color-surface-elevated: #3A312B;
+
+  --color-border:       #6B5D4F;
+  --color-border-strong: #8A7265;
+
+  --color-text-primary:  #FDFBF8;
+  --color-text-secondary: #C4B7A6;
+  --color-text-muted:    #8A7265;
+  --color-text-inverse:  #1E1B1B;
+
+  --color-success:  #5FA394;
+  --color-success-light: #06463B;
+  --color-error:    #C97A7A;
+  --color-error-light:   #5C1717;
+  --color-warning:  #D4A574;
+  --color-warning-light: #3D2A1A;
+}
+
+/* ─── Base Styles ──────────────────────────────────────────────────────────── */
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-auburn-500);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-auburn-600);
+  }
+
+  /* Text selection */
+  ::selection {
+    background: var(--color-auburn-200);
+    color: var(--color-auburn-900);
+  }
+
+  /* Focus ring */
+  :focus-visible {
+    outline: 2px solid var(--color-auburn-500);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+/* ─── Utility Classes ─────────────────────────────────────────────────────── */
+@layer utilities {
+  /* Glass card — glassmorphism surface */
+  .glass {
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    background: rgba(253, 251, 248, 0.7);
+    border: 1px solid rgba(232, 221, 209, 0.5);
+  }
+  .dark .glass {
+    background: rgba(30, 27, 27, 0.75);
+    border: 1px solid rgba(107, 93, 79, 0.4);
+  }
+
+  /* Glow effects */
+  .glow-primary {
+    box-shadow: 0 0 32px rgba(165, 42, 42, 0.2),
+                0 0 64px rgba(165, 42, 42, 0.1);
+  }
+  .glow-sm {
+    box-shadow: 0 0 16px rgba(165, 42, 42, 0.15);
+  }
+
+  /* Card hover lift */
+  .card-lift {
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.3s ease;
+  }
+  .card-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(30, 27, 27, 0.12);
+  }
+  .dark .card-lift:hover {
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Button press effect */
+  .btn-press:active {
+    transform: scale(0.97);
+  }
+
+  /* Nav active state */
+  .nav-active {
+    background: linear-gradient(135deg, rgba(165, 42, 42, 0.12), rgba(201, 122, 122, 0.08));
+    border-left: 2px solid var(--color-auburn-500);
+  }
+
+  /* Gradient text */
+  .text-gradient {
+    background: linear-gradient(135deg, var(--color-auburn-500), var(--color-auburn-300));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Shimmer loading */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--color-ivory-100) 0%,
+      var(--color-ivory-50) 50%,
+      var(--color-ivory-100) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.8s ease infinite;
+  }
+
+  /* Orb background blobs */
+  .orb {
+    position: absolute;
+    border-radius: 9999px;
+    pointer-events: none;
+    filter: blur(80px);
+    opacity: 0.4;
+  }
+
+  .orb-auburn {
+    background: radial-gradient(circle, var(--color-auburn-300), transparent 70%);
+  }
+
+  .orb-emerald {
+    background: radial-gradient(circle, var(--color-emerald-300), transparent 70%);
+  }
+}
+
+/* ─── Keyframe Animations ──────────────────────────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-12px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(165, 42, 42, 0.2); }
+  50%       { box-shadow: 0 0 40px rgba(165, 42, 42, 0.35); }
+}
+
+@keyframes rotate-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
+}
+
+/* ─── Animation Utility Classes ───────────────────────────────────────────── */
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease forwards;
+}
+
+.animate-shimmer {
+  animation: shimmer 1.8s ease infinite;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+.animate-rotate-slow {
+  animation: rotate-slow 30s linear infinite;
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 4s ease infinite;
+}
+
+/* ─── Stagger delay utilities ──────────────────────────────────────────────── */
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+.delay-600 { animation-delay: 600ms; }
+.delay-700 { animation-delay: 700ms; }
+.delay-800 { animation-delay: 800ms; }
+
+/* ─── select styles ──────────────────────────────────────────────────────── */
+select option {
+  background: var(--color-ink-900);
+  color: var(--color-ivory-50);
+}
+
+/* ─── Font utility classes ─────────────────────────────────────────────────── */
+.font-display {
+  font-family: var(--font-display), 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: -0.02em;
+}
+.font-body {
+  font-family: var(--font-body), 'Inter', sans-serif;
+}
+
+/* ─── Auth landing container ──────────────────────────────────────────────── */
+.auth-bg-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.25;
+  filter: blur(6px) saturate(1.1);
+  pointer-events: none;
+}
+.dark .auth-bg-video {
+  opacity: 0.18;
+}
+
+.auth-bg-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at top left, rgba(165, 42, 42, 0.18), transparent 55%),
+    radial-gradient(ellipse at bottom right, rgba(10, 106, 90, 0.12), transparent 55%),
+    linear-gradient(180deg, rgba(253, 251, 248, 0.6) 0%, rgba(253, 251, 248, 0.85) 100%);
+  pointer-events: none;
+}
+.dark .auth-bg-overlay {
+  background:
+    radial-gradient(ellipse at top left, rgba(201, 122, 122, 0.14), transparent 55%),
+    radial-gradient(ellipse at bottom right, rgba(95, 163, 148, 0.10), transparent 55%),
+    linear-gradient(180deg, rgba(30, 27, 27, 0.7) 0%, rgba(30, 27, 27, 0.88) 100%);
+}
+
+/* Floating orb animation for hero */
+.hero-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(60px);
+  opacity: 0.5;
+  pointer-events: none;
+  will-change: transform;
+}
+
+/* Smooth section reveal initial state (GSAP overrides via ScrollTrigger) */
+.reveal-init {
+  opacity: 0;
+  transform: translateY(30px);
+}
