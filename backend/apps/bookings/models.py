@@ -4,10 +4,14 @@ from django.conf import settings
 import django.utils.timezone
 from apps.hostels.models import Hostel
 from apps.rooms.models import Room
-from apps.core.models import TenantScopedModel
+from apps.core.models import TenantScopedModel, UserScopedModel
 
-class Booking(TenantScopedModel):
+class Booking(TenantScopedModel, UserScopedModel):
+    # Dual-scope: the hostel owner sees their hostel's bookings
+    # (OWNER_LOOKUP); the student who made the booking sees their own
+    # (USER_LOOKUP). See apps/core/tenancy/models.py.
     OWNER_LOOKUP = "hostel__owner"
+    USER_LOOKUP = "student"
 
     PAYMENT_MODE_CHOICES = (
         ('offline', 'Offline'),
@@ -70,11 +74,12 @@ class Booking(TenantScopedModel):
         return f"{self.student_name or 'Guest'} - {self.hostel.name} ({self.status})"
 
 
-class Wishlist(models.Model):
+class Wishlist(UserScopedModel):
     """
     Stores a student user's saved/wishlisted hostels.
     Each row = one user ↔ one hostel pair (unique_together enforces no duplicates).
     """
+    USER_LOOKUP = "user"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(

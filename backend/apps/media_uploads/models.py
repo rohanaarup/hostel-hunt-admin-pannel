@@ -2,6 +2,7 @@ import uuid
 from django.db import models
 from apps.hostels.models import Hostel
 from apps.rooms.models import Room
+from apps.core.models import TenantScopedModel
 
 CATEGORY_CHOICES = (
     ('hostel', 'Hostel'),
@@ -10,7 +11,12 @@ CATEGORY_CHOICES = (
     ('video', 'Video'),
 )
 
-class MediaItem(models.Model):
+class MediaItem(TenantScopedModel):
+    # Reachable via either FK (both are independently nullable — media can
+    # be attached directly to a hostel, or to one of its rooms). The
+    # tuple form OR-combines both paths — see apps/core/tenancy/_lookups.py.
+    OWNER_LOOKUP = ("hostel__owner", "room__hostel__owner")
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     
     # Optional relationships - media might be uploaded before attaching to a specific room

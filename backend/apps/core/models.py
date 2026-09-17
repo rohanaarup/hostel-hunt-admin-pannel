@@ -1,14 +1,13 @@
-from django.db import models
-
-
-class TenantScopedModel(models.Model):
-    """
-    Abstract base for any model whose records belong to a specific Owner,
-    directly or transitively. Subclasses MUST set OWNER_LOOKUP to the ORM
-    path (as a string, using __ traversal) from this model back to Owner.
-    This adds no fields and requires no migration on its own.
-    """
-    OWNER_LOOKUP: str = None
-
-    class Meta:
-        abstract = True
+"""
+Back-compat re-export shim. The real implementation lives in
+apps/core/tenancy/ — see that package for the canonical scoping
+infrastructure (TenantScopedModel, UserScopedModel, GlobalModel).
+Existing `from apps.core.models import TenantScopedModel` imports across
+hostels/rooms/bookings/residents/notices/payments keep working unchanged;
+new code should import from apps.core.tenancy.models directly.
+"""
+from apps.core.tenancy.models import (  # noqa: F401
+    TenantScopedModel,
+    UserScopedModel,
+    GlobalModel,
+)

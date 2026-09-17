@@ -6,7 +6,7 @@ class CoreConfig(AppConfig):
     name = 'apps.core'
 
     def ready(self):
-        # Register the system check that verifies every TenantScopedModel
-        # subclass has declared OWNER_LOOKUP. This fires at server startup
-        # via Django's check framework.
-        import apps.core.checks  # noqa: F401
+        # Register the tenancy system checks (OWNER_LOOKUP/USER_LOOKUP
+        # declared + every business-app model explicitly classified).
+        # Fires at server startup via Django's check framework.
+        import apps.core.tenancy.checks  # noqa: F401

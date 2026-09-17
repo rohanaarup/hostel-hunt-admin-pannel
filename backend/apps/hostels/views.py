@@ -6,7 +6,8 @@ from django.db.models import Count, Min, Max, Sum, OuterRef, Subquery
 from .models import Hostel
 from .serializers import HostelSerializer, HostelListSerializer
 from apps.media_uploads.models import MediaItem
-from utils.permissions import IsOwner
+from apps.core.tenancy.permissions import IsTenantOwner
+from apps.core.tenancy.querysets import tenant_scope_q
 
 
 class PublicHostelSerializer(HostelSerializer):
@@ -42,7 +43,7 @@ class HostelViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['list', 'retrieve', 'localities']:
             return [AllowAny()]
-        return [IsAuthenticated(), IsOwner()]
+        return [IsAuthenticated(), IsTenantOwner()]
 
     def get_serializer_class(self):
         if not self.request.user.is_authenticated:
@@ -93,7 +94,11 @@ class HostelViewSet(viewsets.ModelViewSet):
             return qs
 
         # For authenticated owners (and all other actions), return only their hostels
-        return Hostel.objects.filter(owner=self.request.user).prefetch_related('rooms', 'media')
+        if not self.request.user.is_authenticated:
+            return Hostel.objects.none()
+        return Hostel.objects.filter(
+            tenant_scope_q(Hostel, self.request.user)
+        ).prefetch_related('rooms', 'media')
 
     def perform_create(self, serializer):
         # Auto-set the owner to the current user

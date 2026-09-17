@@ -18,14 +18,14 @@ NOTE: The old offline-payment model (amount_due/amount_paid/mode) has been
 import uuid
 from django.db import models
 from apps.bookings.models import Booking
-from apps.core.models import TenantScopedModel
+from apps.core.models import TenantScopedModel, UserScopedModel
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Payment
 # ─────────────────────────────────────────────────────────────────────────────
 
-class Payment(TenantScopedModel):
+class Payment(TenantScopedModel, UserScopedModel):
     """
     One Razorpay *order* created when a student initiates online payment.
 
@@ -35,9 +35,14 @@ class Payment(TenantScopedModel):
       SUCCESS  → payment captured and verified (signature check passed)
       FAILED   → all attempts failed or the order expired
       REFUNDED → successful payment later refunded by the hostel owner
+
+    Dual-scope: the hostel owner sees payments for their hostel's bookings
+    (OWNER_LOOKUP); the student who made the booking sees their own
+    (USER_LOOKUP). See apps/core/tenancy/models.py.
     """
 
     OWNER_LOOKUP = "booking__hostel__owner"
+    USER_LOOKUP = "booking__student"
 
     class Status(models.TextChoices):
         CREATED  = 'CREATED',  'Created'
@@ -91,7 +96,7 @@ class Payment(TenantScopedModel):
 # PaymentAttempt
 # ─────────────────────────────────────────────────────────────────────────────
 
-class PaymentAttempt(models.Model):
+class PaymentAttempt(TenantScopedModel, UserScopedModel):
     """
     One row per payment *method* tried within a Payment.
 
@@ -100,7 +105,15 @@ class PaymentAttempt(models.Model):
 
     razorpay_payment_id is set only once Razorpay confirms / fails the charge.
     razorpay_signature  is set only on SUCCESS.
+
+    Not directly exposed by any view today — only ever touched via
+    payment.attempts off an already-scoped Payment. Classified here (with
+    the same dual-scope shape as Payment, one hop further out) so it's
+    covered by the startup check the moment a direct view is ever added.
     """
+
+    OWNER_LOOKUP = "payment__booking__hostel__owner"
+    USER_LOOKUP = "payment__booking__student"
 
     class Method(models.TextChoices):
         UPI_GPAY    = 'UPI_GPAY',    'Google Pay'

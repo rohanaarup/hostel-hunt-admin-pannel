@@ -5,7 +5,10 @@ from apps.hostels.models import Hostel
 from apps.core.models import TenantScopedModel
 
 class Notice(TenantScopedModel):
-    OWNER_LOOKUP = "posted_by"
+    # The real tenant relationship is via hostel, not posted_by — see
+    # apps/notices/views.py for the additional null-hostel ("global
+    # notice") fallback this alone doesn't cover.
+    OWNER_LOOKUP = "hostel__owner"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, db_column='notice_id')
     hostel = models.ForeignKey(Hostel, on_delete=models.CASCADE, null=True, blank=True, related_name='notices')

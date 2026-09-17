@@ -1,4 +1,4 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, generics
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -6,7 +6,30 @@ from django.utils import timezone
 from .models import Booking
 from .serializers import BookingSerializer, BookingCreateSerializer
 from apps.core.querysets import TenantScopedQuerysetMixin
+from apps.core.tenancy.querysets import UserScopedQuerysetMixin
 from apps.core.utils import get_tenant_scoped_object_or_404
+
+
+class MyBookingListView(UserScopedQuerysetMixin, generics.ListAPIView):
+    """
+    GET /api/v1/bookings/my/ — the authenticated student's own bookings.
+
+    BookingViewSet's list/retrieve are owner (tenant) scoped by design —
+    a student calling those gets an empty/404 result even for their own
+    data, which isn't a leak but was a missing feature (see design doc
+    Step 2). This is the student-facing counterpart, scoped by
+    Booking.USER_LOOKUP ("student") instead of OWNER_LOOKUP.
+    """
+    serializer_class = BookingSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = Booking.objects.select_related('hostel', 'room')
+
+
+class MyBookingDetailView(UserScopedQuerysetMixin, generics.RetrieveAPIView):
+    """GET /api/v1/bookings/my/<uuid:pk>/ — one of the student's own bookings."""
+    serializer_class = BookingSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = Booking.objects.select_related('hostel', 'room')
 
 
 class BookingViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
@@ -41,6 +64,19 @@ class BookingViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         if self.action == 'create':
             return BookingCreateSerializer
         return BookingSerializer
+
+    def update(self, request, *args, **kwargs):
+        # 'patch' stays in http_method_names for the custom actions below
+        # (approve/reject/verify/mark_paid), but the generic detail-route
+        # PATCH/PUT (partial_update/update) must stay closed — otherwise
+        # any writable BookingSerializer field (status, amount, hostel,
+        # ...) could be set directly, bypassing the approve/verify flow
+        # entirely and letting a booking be reparented onto a hostel the
+        # requester doesn't own.
+        from rest_framework.exceptions import MethodNotAllowed
+        raise MethodNotAllowed(request.method)
+
+    partial_update = update
 
     def get_permissions(self):
         if self.action == 'create':

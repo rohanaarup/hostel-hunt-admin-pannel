@@ -38,7 +38,7 @@ from apps.core.querysets import TenantScopedQuerysetMixin
 from apps.core.utils import get_tenant_scoped_object_or_404
 
 from .models import Payment, PaymentAttempt
-from .permissions import IsPaymentOwner, IsHostelOwnerOfPayment
+from apps.core.tenancy.permissions import IsTenantOwner, IsResourceUser
 from .serializers import PaymentSerializer, AdminPaymentSerializer
 from .services import razorpay_client
 
@@ -322,7 +322,7 @@ class InitiateUpiIntentView(APIView):
     url_launcher.  Flutter should push PaymentConfirmingScreen immediately
     after launching the URL, then poll PaymentStatusPollView.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsResourceUser]
 
     def post(self, request):
         payment_id = request.data.get('payment_id')
@@ -342,6 +342,10 @@ class InitiateUpiIntentView(APIView):
             ).get(id=payment_id, booking__student=request.user)
         except Payment.DoesNotExist:
             return Response({'error': 'Payment not found.'}, status=status.HTTP_404_NOT_FOUND)
+        # Redundant with the filter above by construction today, but a
+        # separate defense-in-depth check that survives a future refactor
+        # accidentally widening that query.
+        self.check_object_permissions(request, payment)
 
         if payment.status == Payment.Status.SUCCESS:
             return Response({'error': 'Payment already successful.'}, status=status.HTTP_409_CONFLICT)
@@ -402,7 +406,7 @@ class InitiateCardCheckoutView(APIView):
     method.  After the SDK callback (success/failure), Flutter calls
     VerifyPaymentView to confirm on the server.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsResourceUser]
 
     def post(self, request):
         payment_id = request.data.get('payment_id')
@@ -413,6 +417,7 @@ class InitiateCardCheckoutView(APIView):
             payment = Payment.objects.get(id=payment_id, booking__student=request.user)
         except Payment.DoesNotExist:
             return Response({'error': 'Payment not found.'}, status=status.HTTP_404_NOT_FOUND)
+        self.check_object_permissions(request, payment)
 
         if payment.status == Payment.Status.SUCCESS:
             return Response({'error': 'Payment already successful.'}, status=status.HTTP_409_CONFLICT)
@@ -447,13 +452,14 @@ class PaymentStatusPollView(APIView):
     Flutter calls this every few seconds after returning from the UPI app
     until status resolves to SUCCESS or FAILED.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsResourceUser]
 
     def get(self, request, payment_id):
         try:
             payment = Payment.objects.get(id=payment_id, booking__student=request.user)
         except Payment.DoesNotExist:
             return Response({'error': 'Payment not found.'}, status=status.HTTP_404_NOT_FOUND)
+        self.check_object_permissions(request, payment)
 
         return Response({
             'payment_id':        str(payment.id),
@@ -482,7 +488,7 @@ class VerifyPaymentView(APIView):
 
     On success: atomically marks Payment → SUCCESS, Booking → paid, etc.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsResourceUser]
 
     def post(self, request):
         payment_id          = request.data.get('payment_id')
@@ -501,6 +507,7 @@ class VerifyPaymentView(APIView):
             ).get(id=payment_id, booking__student=request.user)
         except Payment.DoesNotExist:
             return Response({'error': 'Payment not found.'}, status=status.HTTP_404_NOT_FOUND)
+        self.check_object_permissions(request, payment)
 
         # Idempotency
         if payment.status == Payment.Status.SUCCESS:
@@ -707,17 +714,22 @@ class RefundView(APIView):
 
     Hostel owner initiates a refund for a captured payment.
     Tenant-scoped via get_tenant_scoped_object_or_404 — owner can only
-    refund payments on their own hostels.
+    refund payments on their own hostels. IsTenantOwner is then checked
+    explicitly (APIView doesn't call check_object_permissions on its own
+    the way a generic view's get_object() would) as defense-in-depth: a
+    request that somehow bypassed the scoped fetch above would still be
+    rejected here.
 
     Body: {"amount": <decimal INR>}  — optional; omit for full refund.
 
     Calls Razorpay Refunds API, then sets Payment.status = REFUNDED.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsTenantOwner]
 
     def post(self, request, payment_id):
         # Tenant-scoped — returns 404 if payment belongs to a different owner
         payment = get_tenant_scoped_object_or_404(Payment, payment_id, request)
+        self.check_object_permissions(request, payment)
 
         if payment.status != Payment.Status.SUCCESS:
             return Response(

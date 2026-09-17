@@ -1,8 +1,8 @@
 from rest_framework import viewsets, permissions
 from .models import Room
 from .serializers import RoomSerializer
-from utils.permissions import IsOwner
-from apps.core.querysets import TenantScopedQuerysetMixin
+from apps.core.tenancy.permissions import IsTenantOwner
+from apps.core.tenancy.querysets import TenantScopedQuerysetMixin
 
 class RoomViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     serializer_class = RoomSerializer
@@ -11,7 +11,7 @@ class RoomViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
             return [permissions.AllowAny()]
-        return [permissions.IsAuthenticated(), IsOwner()]
+        return [permissions.IsAuthenticated(), IsTenantOwner()]
 
     def get_queryset(self):
         if self.action in ['list', 'retrieve']:
@@ -34,3 +34,15 @@ class RoomViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         else:
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("You do not own this hostel.")
+
+    def perform_update(self, serializer):
+        # `hostel` is a writable field on RoomSerializer. get_queryset()
+        # already guarantees the room being updated belongs to the
+        # requester, but without this check a PATCH could still reparent
+        # it onto a *different*, unowned hostel — moving/planting a room
+        # into another tenant's listing. Same rule as perform_create.
+        hostel = serializer.validated_data.get('hostel')
+        if hostel and hostel.owner != self.request.user:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("You do not own this hostel.")
+        serializer.save()

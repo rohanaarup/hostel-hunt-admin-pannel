@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
 from apps.bookings.models import Booking, Wishlist
+from apps.core.tenancy.querysets import user_scope_q
+from apps.core.tenancy.utils import get_scoped_object_or_404
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -136,7 +138,7 @@ class WishlistView(APIView):
     def get(self, request):
         items = (
             Wishlist.objects
-            .filter(user=request.user)
+            .filter(user_scope_q(Wishlist, request.user))
             .select_related('hostel')
             .order_by('-created_at')
         )
@@ -176,12 +178,9 @@ class WishlistDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
     def delete(self, request, pk):
-        try:
-            item = Wishlist.objects.get(pk=pk, user=request.user)
-            item.delete()
-            return Response({"deleted": True})
-        except Wishlist.DoesNotExist:
-            return Response({"error": "Not found"}, status=404)
+        item = get_scoped_object_or_404(Wishlist, pk, request, kind="user")
+        item.delete()
+        return Response({"deleted": True})
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -213,12 +212,24 @@ class DashboardStatsView(APIView):
         if total_beds > 0:
             occupancy_rate = int((total_residents / total_beds) * 100)
 
-        payments = Payment.objects.filter(hostel__owner=user)
-        revenue_collected = payments.exclude(status='pending').aggregate(Sum('amount_paid'))['amount_paid__sum'] or 0
-        pending_qs = payments.filter(status__in=['pending', 'partial', 'overdue'])
-        amt_due = pending_qs.aggregate(Sum('amount_due'))['amount_due__sum'] or 0
-        amt_paid = pending_qs.aggregate(Sum('amount_paid'))['amount_paid__sum'] or 0
-        revenue_pending = amt_due - amt_paid
+        # Payment has no direct `hostel` FK (only `booking`) and no
+        # amount_due/amount_paid fields — those belonged to an older
+        # offline-payment schema that was deliberately removed (see
+        # apps/payments/models.py's module docstring). Current schema:
+        # online payments are tracked on Payment (amount, status=SUCCESS),
+        # offline payments directly on Booking (amount, payment_mode=
+        # 'offline', status='paid'). Revenue below combines both.
+        online_collected = Payment.objects.filter(
+            booking__hostel__owner=user, status=Payment.Status.SUCCESS,
+        ).aggregate(Sum('amount'))['amount__sum'] or 0
+        offline_collected = Booking.objects.filter(
+            hostel__owner=user, payment_mode='offline', status='paid',
+        ).aggregate(Sum('amount'))['amount__sum'] or 0
+        revenue_collected = online_collected + offline_collected
+
+        revenue_pending = Booking.objects.filter(
+            hostel__owner=user, status__in=['pending', 'confirmed'],
+        ).aggregate(Sum('amount'))['amount__sum'] or 0
 
         pending_bookings = Booking.objects.filter(hostel__owner=user, status='pending').count()
 
@@ -263,17 +274,20 @@ class DashboardActivityView(APIView):
                 "meta": {"booking_id": str(b.id)}
             })
 
-        recent_payments = Payment.objects.filter(hostel__owner=user).order_by('-created_at')[:5]
+        recent_payments = (
+            Payment.objects.filter(booking__hostel__owner=user, status=Payment.Status.SUCCESS)
+            .select_related('booking')
+            .order_by('-created_at')[:5]
+        )
         for p in recent_payments:
-            if p.status == 'paid':
-                activities.append({
-                    "activity_id": f"p_{p.id}",
-                    "type": "payment_received",
-                    "title": "Payment Received",
-                    "description": f"Received {p.amount_paid} from {p.resident_name}.",
-                    "timestamp": p.created_at,
-                    "meta": {"payment_id": str(p.id)}
-                })
+            activities.append({
+                "activity_id": f"p_{p.id}",
+                "type": "payment_received",
+                "title": "Payment Received",
+                "description": f"Received {p.amount} from {p.booking.student_name or 'a student'}.",
+                "timestamp": p.created_at,
+                "meta": {"payment_id": str(p.id)}
+            })
 
         activities.sort(key=lambda x: x['timestamp'], reverse=True)
         activities = activities[:10]
