@@ -31,6 +31,14 @@ class Booking(TenantScopedModel):
     room_number = models.CharField(max_length=20, null=True, blank=True)
     bed_number = models.CharField(max_length=20, null=True, blank=True)
 
+    # Student user link (set when booking is created from the Flutter student app)
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='student_bookings',
+    )
+
     # Guest info
     student_name = models.CharField(max_length=100, default='', blank=True)
     student_phone = models.CharField(max_length=15, default='', blank=True)
@@ -60,3 +68,31 @@ class Booking(TenantScopedModel):
 
     def __str__(self):
         return f"{self.student_name or 'Guest'} - {self.hostel.name} ({self.status})"
+
+
+class Wishlist(models.Model):
+    """
+    Stores a student user's saved/wishlisted hostels.
+    Each row = one user ↔ one hostel pair (unique_together enforces no duplicates).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='wishlist_items',
+    )
+    hostel = models.ForeignKey(
+        Hostel,
+        on_delete=models.CASCADE,
+        related_name='wishlisted_by',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'wishlist'
+        unique_together = ('user', 'hostel')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user} → {self.hostel.name}"

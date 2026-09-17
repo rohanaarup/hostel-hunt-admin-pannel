@@ -5,6 +5,7 @@ from django.core.mail import send_mail
 from django.utils import timezone
 from django.conf import settings
 
+from apps.core.async_utils import run_in_background
 from .models import OTPRecord
 
 
@@ -87,7 +88,12 @@ class OTPService:
             is_used=False,
         )
 
-        cls._send_email(identifier, otp_code)
+        # Dispatch off-thread — the OTP record is already committed above, so
+        # the request doesn't need to wait on the SMTP round-trip. A failed
+        # send is logged (both inside _send_email and by run_in_background's
+        # safety net) rather than surfaced to this request, since by the
+        # time it fails the response may already be on its way to the client.
+        run_in_background(cls._send_email, identifier, otp_code)
 
     @staticmethod
     def verify(identifier: str, otp_code: str, purpose: str = 'registration') -> None:

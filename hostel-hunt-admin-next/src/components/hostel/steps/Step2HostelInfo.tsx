@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Input, Textarea, Select } from '@/components/ui/Input';
 import FormField, { inputClass, textareaClass } from '@/components/ui/FormField';
 import type { HostelEnrollmentState, HostelGenderType, OccupancyType } from '@/types';
 
@@ -61,33 +62,33 @@ export default function Step2HostelInfo({ data, onChange, errors }: Props) {
       {/* Numbers */}
       <div className="grid grid-cols-3 gap-4">
         <FormField label="Total Floors" required error={errors.total_floors}>
-          <input
+          <Input
             type="number"
             min="1"
             value={data.total_floors}
             onChange={(e) => onChange('total_floors', e.target.value)}
             placeholder="5"
-            className={inputClass(!!errors.total_floors)}
+            hasError={!!errors.total_floors}
           />
         </FormField>
         <FormField label="Total Rooms" required error={errors.total_rooms}>
-          <input
+          <Input
             type="number"
             min="1"
             value={data.total_rooms}
             onChange={(e) => onChange('total_rooms', e.target.value)}
             placeholder="30"
-            className={inputClass(!!errors.total_rooms)}
+            hasError={!!errors.total_rooms}
           />
         </FormField>
         <FormField label="Total Beds" required error={errors.total_beds}>
-          <input
+          <Input
             type="number"
             min="1"
             value={data.total_beds}
             onChange={(e) => onChange('total_beds', e.target.value)}
             placeholder="60"
-            className={inputClass(!!errors.total_beds)}
+            hasError={!!errors.total_beds}
           />
         </FormField>
       </div>
@@ -114,42 +115,42 @@ export default function Step2HostelInfo({ data, onChange, errors }: Props) {
 
       {/* Description */}
       <FormField label="Description" required error={errors.description}>
-        <textarea
+        <Textarea
           value={data.description}
           onChange={(e) => onChange('description', e.target.value)}
           rows={4}
           placeholder="Describe your hostel – location advantages, atmosphere, nearby amenities..."
-          className={textareaClass(!!errors.description)}
+          hasError={!!errors.description}
         />
       </FormField>
 
       {/* Rules */}
       <FormField label="House Rules" error={errors.rules}>
-        <textarea
+        <Textarea
           value={data.rules}
           onChange={(e) => onChange('rules', e.target.value)}
           rows={3}
           placeholder="No loud music after 10 PM, no guests allowed, etc."
-          className={textareaClass()}
+          
         />
       </FormField>
 
       {/* Policies */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FormField label="Check-in Policy" error={errors.check_in_policy}>
-          <input
+          <Input
             value={data.check_in_policy}
             onChange={(e) => onChange('check_in_policy', e.target.value)}
             placeholder="Check-in from 11 AM"
-            className={inputClass()}
+            
           />
         </FormField>
         <FormField label="Check-out Policy" error={errors.check_out_policy}>
-          <input
+          <Input
             value={data.check_out_policy}
             onChange={(e) => onChange('check_out_policy', e.target.value)}
             placeholder="Check-out by 10 AM"
-            className={inputClass()}
+            
           />
         </FormField>
       </div>

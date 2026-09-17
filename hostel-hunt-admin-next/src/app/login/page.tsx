@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { Input, Textarea, Select } from '@/components/ui/Input';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AuthLayout from '@/components/auth/AuthLayout';
@@ -82,7 +83,7 @@ export default function LoginPage() {
   };
 
   const inputBase = (hasError: boolean) =>
-    `w-full bg-ivory-50 dark:bg-ivory-900 border rounded-[10px] px-4 py-3 text-ink-900 dark:text-ivory-50 placeholder-ink-700 dark:placeholder-ivory-500 outline-none transition-all duration-150 font-medium text-sm ${
+    `w-full min-h-[48px] bg-ivory-50 dark:bg-ivory-900 border rounded-[10px] px-4 py-3 text-ink-900 dark:text-ivory-50 placeholder-ink-700 dark:placeholder-ivory-500 outline-none transition-all duration-150 font-medium text-sm ${
       hasError
         ? 'border-error/60 ring-2 ring-error/20'
         : 'border-ivory-300 dark:border-ivory-700 focus:border-auburn-500 dark:focus:border-auburn-300 focus:ring-[3px] focus:ring-auburn-500/20 dark:focus:ring-auburn-300/20'
@@ -90,7 +91,7 @@ export default function LoginPage() {
 
   return (
     <AuthLayout heroTitle={'Manage your hostel\nwith confidence'}>
-      <div className="bg-ivory-100 dark:bg-ivory-900/80 rounded-2xl border border-ivory-300 dark:border-ivory-700 p-8 shadow-2xl relative overflow-hidden glass-card">
+      <div className="glass rounded-2xl border border-ivory-300/60 dark:border-ivory-700/50 p-8 shadow-2xl relative overflow-hidden glow-primary animate-fade-in-up">
         <div className="absolute -top-32 -right-32 w-64 h-64 bg-auburn-500/5 dark:bg-auburn-300/5 rounded-full blur-[80px] pointer-events-none" />
 
         <div className="mb-7 relative z-10">
@@ -130,7 +131,7 @@ export default function LoginPage() {
             <label className="block text-[12px] font-semibold text-ink-700 dark:text-ivory-500 mb-1.5">
               {identifierType === 'email' ? 'Email address' : 'Phone number'}
             </label>
-            <input
+            <Input
               type={identifierType === 'email' ? 'email' : 'tel'}
               value={identifier}
               onChange={e => setIdentifier(e.target.value)}
@@ -155,7 +156,7 @@ export default function LoginPage() {
               </Link>
             </div>
             <div className="relative">
-              <input
+              <Input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
@@ -204,14 +205,14 @@ export default function LoginPage() {
                 </svg>
               )}
             </div>
-            <input type="checkbox" className="hidden" checked={rememberMe} onChange={() => {}} />
+            <Input type="checkbox" className="hidden" checked={rememberMe} onChange={() => {}} />
             <span className="text-[12px] text-ink-700 dark:text-ivory-500 group-hover:text-ink-900 dark:group-hover:text-ivory-50 transition-colors font-medium">Remember me for 30 days</span>
           </label>
 
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-auburn-500 hover:bg-auburn-700 dark:bg-auburn-300 dark:hover:bg-auburn-100 text-ivory-50 dark:text-ink-900 font-semibold py-3 rounded-[10px] transition-all duration-200 auburn-glow disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2"
+            className="w-full min-h-[48px] bg-auburn-500 hover:bg-auburn-700 dark:bg-auburn-300 dark:hover:bg-auburn-100 text-ivory-50 dark:text-ink-900 font-semibold py-3 rounded-[10px] transition-all duration-200 auburn-glow disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2"
           >
             {isSubmitting ? (
               <>

@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from '@/components/common/DashboardLayout';
-import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Modal from '@/components/ui/Modal';
 import HostelEnrollmentWizard from '@/components/hostel/HostelEnrollmentWizard';
@@ -15,6 +15,8 @@ import ChartCard from '@/components/ui/ChartCard';
 import StatusBadge from '@/components/ui/StatusBadge';
 import Icon from '@/components/ui/Icon';
 import { Donut, SimpleBar } from '@/components/charts/ChartBundle';
+import BookingDensityMap from '@/components/charts/BookingDensityMap';
+import gsap from 'gsap';
 
 function timeAgo(iso: string) {
   if (!iso) return '—';
@@ -27,68 +29,108 @@ function timeAgo(iso: string) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-const BookingRow: React.FC<{ booking: Booking; onAction: (id: string, action: 'approve' | 'reject') => void }> = ({
-  booking, onAction,
+const BookingRow: React.FC<{ booking: Booking; onAction: (id: string, action: 'approve' | 'reject') => void; acting: boolean }> = ({
+  booking, onAction, acting,
 }) => {
   const initials = (booking.student_name || 'Guest').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   return (
-    <div className="flex items-center gap-4 px-5 py-4 hover:bg-ivory-100/50 dark:hover:bg-ivory-50/[0.04] transition-colors">
-      <div className="w-10 h-10 rounded-full bg-auburn-500/10 dark:bg-auburn-300/10 border border-auburn-500/20 dark:border-auburn-300/20 flex items-center justify-center text-xs font-bold text-auburn-500 dark:text-auburn-300 flex-shrink-0">
-        {initials}
+    <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-5 py-4 transition-all duration-200 hover:bg-[var(--color-border)]/30 group">
+      <div className="flex items-center gap-3 w-full sm:w-auto">
+        <div
+          className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+          style={{
+            background: 'var(--color-primary-light)',
+            color: 'var(--color-primary)',
+            border: '1px solid var(--color-primary)/20',
+          }}
+        >
+          {initials}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[14px] font-semibold truncate" style={{ color: 'var(--color-text-primary)' }}>
+            {booking.student_name || 'Unknown'}
+          </p>
+          <p className="text-[12px] truncate" style={{ color: 'var(--color-text-muted)' }}>
+            {(booking as any).room_display || (booking as any).room_name || booking.room || 'N/A'}
+            {booking.bed_number ? ` · Bed ${booking.bed_number}` : ''}
+          </p>
+        </div>
       </div>
 
-      <div className="flex-1 min-w-0">
-        <p className="text-ink-900 dark:text-ivory-50 text-[14px] font-semibold truncate">{booking.student_name || 'Unknown'}</p>
-        <p className="text-ink-700 dark:text-ivory-500 text-[12px] truncate">
-          {(booking as any).room_display || (booking as any).room_name || booking.room || 'N/A'}
-          {booking.bed_number ? ` · Bed ${booking.bed_number}` : ''}
-        </p>
-      </div>
-
-      <div className="text-right hidden sm:block">
-        <p className="text-ink-700 dark:text-ivory-500 text-[11px]">
-          {new Date(booking.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-        </p>
-        <div className="mt-1">
+      <div className="flex items-center justify-between sm:justify-end flex-1 w-full sm:w-auto mt-2 sm:mt-0 pt-3 sm:pt-0 border-t border-[var(--color-border)] sm:border-0">
+        <div className="flex items-center gap-2 sm:mr-4">
+          <p className="text-[11px] hidden sm:block" style={{ color: 'var(--color-text-muted)' }}>
+            {new Date(booking.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+          </p>
           <StatusBadge status={booking.status} />
         </div>
-      </div>
 
-      {booking.status === 'pending' && (
-        <div className="flex gap-1.5 flex-shrink-0">
-          <button
-            onClick={() => onAction(booking.id, 'approve')}
-            className="w-8 h-8 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-md flex items-center justify-center text-emerald-500 dark:text-emerald-300 transition-colors"
-            title="Approve"
-            aria-label="Approve booking"
-          >
-            <Icon name="check" className="w-3.5 h-3.5" strokeWidth={2.5} />
-          </button>
-          <button
-            onClick={() => onAction(booking.id, 'reject')}
-            className="w-8 h-8 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-md flex items-center justify-center text-red-500 dark:text-red-300 transition-colors"
-            title="Reject"
-            aria-label="Reject booking"
-          >
-            <Icon name="x" className="w-3.5 h-3.5" strokeWidth={2.5} />
-          </button>
-        </div>
-      )}
+        {booking.status === 'pending' && (
+          <div className="flex gap-1.5 flex-shrink-0">
+            <button
+              onClick={() => onAction(booking.id, 'approve')}
+              disabled={acting}
+              className="w-8 h-8 rounded-md flex items-center justify-center transition-all disabled:opacity-50"
+              style={{
+                background: 'var(--color-success-light)',
+                color: 'var(--color-success)',
+                border: '1px solid color-mix(in srgb, var(--color-success) 30%, transparent)',
+              }}
+              title="Approve"
+            >
+              <Icon name="check" className="w-3.5 h-3.5" strokeWidth={2.5} />
+            </button>
+            <button
+              onClick={() => onAction(booking.id, 'reject')}
+              disabled={acting}
+              className="w-8 h-8 rounded-md flex items-center justify-center transition-all disabled:opacity-50"
+              style={{
+                background: 'var(--color-error-light)',
+                color: 'var(--color-error)',
+                border: '1px solid color-mix(in srgb, var(--color-error) 30%, transparent)',
+              }}
+              title="Reject"
+            >
+              <Icon name="x" className="w-3.5 h-3.5" strokeWidth={2.5} />
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
 export default function DashboardPage() {
-  const { theme } = useTheme();
   const { isFirstTimeOwner, authUser } = useAuth();
   const router = useRouter();
 
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [activity, setActivity] = useState<ActivityItem[]>([]);
-  const [bookings, setBookings] = useState<Booking[]>([]);
   const [showWizard, setShowWizard] = useState(false);
   const [actingId, setActingId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const headerRef = useRef<HTMLElement>(null);
+  const statGridRef = useRef<HTMLDivElement>(null);
+  const chartsRef = useRef<HTMLDivElement>(null);
+
+  // TanStack Query fetching
+  const { data: stats } = useQuery<DashboardStats>({
+    queryKey: ['dashboard', 'stats'],
+    queryFn: () => hostelService.getDashboardStats().then(r => r.data)
+  });
+
+  const { data: activity = [] as ActivityItem[] } = useQuery<ActivityItem[]>({
+    queryKey: ['dashboard', 'activity'],
+    queryFn: () => hostelService.getRecentActivity().then(r => r.data)
+  });
+
+  const { data: bookings = [] as Booking[] } = useQuery<Booking[]>({
+    queryKey: ['bookings'],
+    queryFn: () => bookingService.getBookings().then(r => r.data)
+  });
+
+  // Since we load quickly from cache, we can safely derive loading state.
+  // Actually wait, let's keep it simple: if stats isn't loaded, it's loading.
+  const loading = !stats;
 
   useEffect(() => {
     if (isFirstTimeOwner) {
@@ -97,42 +139,50 @@ export default function DashboardPage() {
     }
   }, [isFirstTimeOwner]);
 
+  // GSAP entrance animations after loading
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [statsRes, activityRes, bookingsRes] = await Promise.all([
-          hostelService.getDashboardStats().catch(() => null),
-          hostelService.getRecentActivity().catch(() => null),
-          bookingService.getBookings().catch(() => null),
-        ]);
-
-        if (statsRes?.data) setStats(statsRes.data);
-        if (activityRes?.data) setActivity(activityRes.data);
-        if (bookingsRes?.data) setBookings(bookingsRes.data);
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
-
-  const cardBg = theme === 'dark' ? 'bg-ivory-900' : 'bg-ivory-50';
-  const cardBorder = theme === 'dark' ? 'border-ivory-700' : 'border-ivory-300';
+    if (!loading) {
+      const ctx = gsap.context(() => {
+        if (headerRef.current) {
+          gsap.fromTo(headerRef.current,
+            { opacity: 0, y: 20 },
+            { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }
+          );
+        }
+        if (statGridRef.current) {
+          gsap.fromTo(statGridRef.current.children,
+            { opacity: 0, y: 24, scale: 0.97 },
+            { opacity: 1, y: 0, scale: 1, duration: 0.4, stagger: 0.07, ease: 'power2.out', delay: 0.2 }
+          );
+        }
+        if (chartsRef.current) {
+          gsap.fromTo(chartsRef.current.children,
+            { opacity: 0, y: 20 },
+            { opacity: 1, y: 0, duration: 0.45, stagger: 0.1, ease: 'power2.out', delay: 0.5 }
+          );
+        }
+      });
+      return () => ctx.revert();
+    }
+  }, [loading]);
 
   const pendingBookings = bookings.filter(b => b.status === 'pending');
 
-  // Chart data: derived from real data, empty arrays when nothing exists
   const occupancyData = useMemo(() => {
-    const a = stats?.available_rooms ?? 0;
-    const o = stats?.occupied_rooms ?? 0;
+    const rate = stats?.occupancy_rate ?? 0;
+    const residents = stats?.total_residents ?? 0;
+    if (rate === 0 || residents === 0) {
+      return [
+        { name: 'Available', value: 0 },
+        { name: 'Occupied', value: 0 }
+      ];
+    }
+    const total = Math.round((residents / rate) * 100);
     return [
-      { name: 'Available', value: a },
-      { name: 'Occupied',  value: o },
+      { name: 'Available', value: total - residents },
+      { name: 'Occupied', value: residents }
     ];
-  }, [stats?.available_rooms, stats?.occupied_rooms]);
+  }, [stats?.occupancy_rate, stats?.total_residents]);
 
   const bookingStatusData = useMemo(() => {
     const groups: Record<string, number> = { pending: 0, approved: 0, confirmed: 0, paid: 0, rejected: 0, cancelled: 0 };
@@ -162,15 +212,13 @@ export default function DashboardPage() {
     setActingId(id);
     try {
       if (action === 'approve') {
-        const { bookingService: bs } = await import('@/services/api');
-        await bs.approveBooking(id);
+        await bookingService.approveBooking(id);
       } else {
-        const { bookingService: bs } = await import('@/services/api');
-        await bs.rejectBooking(id);
+        await bookingService.rejectBooking(id);
       }
-      // refresh bookings only
-      const res = await bookingService.getBookings();
-      if (res?.data) setBookings(res.data);
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'activity'] });
     } catch (err) {
       console.error('Quick action failed', err);
       alert('Failed to update booking. Please try again.');
@@ -179,28 +227,31 @@ export default function DashboardPage() {
     }
   };
 
-  // Stat card config — fully token-aligned, zero hex
-  const statCards: { title: string; value: number | string; badge: string; tone: StatTone; icon: any; delay: number; prefix?: string }[] = [
+  const statCards: { title: string; value: number | string; badge: string; tone: StatTone; icon: any; prefix?: string; suffix?: string }[] = [
     {
-      title: 'Registered Hostel',
-      value: stats?.registered_hostels ? 1 : 0,
-      badge: stats?.registered_hostels ? 'Active' : 'Not set up',
-      tone: stats?.registered_hostels ? 'success' : 'warning',
+      title: 'Registered Hostels',
+      value: stats?.total_hostels ?? 0,
+      badge: (stats?.total_hostels ?? 0) > 0 ? 'Active' : 'Not set up',
+      tone: (stats?.total_hostels ?? 0) > 0 ? 'success' : 'warning',
       icon: 'hostel',
-      delay: 0,
     },
-    { title: 'Total Rooms',       value: stats?.total_rooms ?? 0,            badge: 'All rooms',     tone: 'info',    icon: 'rooms',     delay: 60 },
-    { title: 'Available Rooms',   value: stats?.available_rooms ?? 0,        badge: 'Vacant',        tone: 'accent',  icon: 'key',       delay: 120 },
-    { title: 'Occupied Rooms',    value: stats?.occupied_rooms ?? 0,         badge: 'In use',        tone: 'primary', icon: 'bed',       delay: 180 },
-    { title: 'Pending Requests',  value: stats?.pending_booking_requests ?? 0, badge: 'Needs action', tone: 'warning', icon: 'inbox',     delay: 240 },
-    { title: 'Booked Users',      value: stats?.booked_residents ?? 0,       badge: 'Total guests',  tone: 'info',    icon: 'residents', delay: 300 },
-    { title: 'Monthly Revenue',   value: stats?.monthly_revenue ?? 0,        badge: 'This month',    tone: 'success', icon: 'money',     delay: 360, prefix: '₹' },
-    { title: 'Pending Payments',  value: stats?.pending_payments ?? 0,       badge: 'Outstanding',   tone: 'error',   icon: 'wallet',    delay: 420, prefix: '₹' },
+    { title: 'Total Residents',  value: stats?.total_residents ?? 0,          badge: 'All guests',   tone: 'info',    icon: 'residents' },
+    { title: 'Occupancy Rate',   value: stats?.occupancy_rate ?? 0,           badge: 'In use',       tone: 'primary', icon: 'bed', suffix: '%' },
+    { title: 'Pending Requests', value: stats?.pending_bookings ?? 0,         badge: 'Needs action', tone: 'warning', icon: 'inbox' },
+    { title: 'Revenue Collected',value: stats?.revenue_collected ?? 0,        badge: 'Total',        tone: 'success', icon: 'money', prefix: '₹' },
+    { title: 'Revenue Pending',  value: stats?.revenue_pending ?? 0,          badge: 'Outstanding',  tone: 'error',   icon: 'wallet', prefix: '₹' },
   ];
 
-  const hasOccupancyData = (stats?.available_rooms ?? 0) + (stats?.occupied_rooms ?? 0) > 0;
+  const hasOccupancyData     = occupancyData.some(d => d.value > 0);
   const hasBookingStatusData = bookingStatusData.some(d => d.value > 0);
-  const hasPaymentModeData  = paymentModeData.some(d => d.value > 0);
+  const hasPaymentModeData   = paymentModeData.some(d => d.value > 0);
+
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good morning';
+    if (h < 17) return 'Good afternoon';
+    return 'Good evening';
+  })();
 
   return (
     <>
@@ -210,20 +261,32 @@ export default function DashboardPage() {
 
       <DashboardLayout title="Dashboard">
         <div className="w-full space-y-8">
+
           {/* Header */}
-          <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 animate-fade-in-up">
+          <header ref={headerRef} className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 opacity-0">
             <div>
-              <h1 className="text-[28px] font-bold tracking-tight text-ink-900 dark:text-ivory-50">
-                Welcome back, {authUser?.display_name || 'Admin'} 👋
+              <p className="text-sm font-semibold mb-1" style={{ color: 'var(--color-primary)' }}>
+                {greeting} 👋
+              </p>
+              <h1
+                className="text-[28px] font-extrabold tracking-tight leading-tight"
+                style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text-primary)' }}
+              >
+                {authUser?.display_name || 'Admin'} Dashboard
               </h1>
-              <p className="mt-1 text-sm font-medium text-ink-700 dark:text-ivory-400">
+              <p className="mt-1 text-sm font-medium" style={{ color: 'var(--color-text-muted)' }}>
                 Here's what's happening at your hostel today
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <button
                 onClick={() => setShowWizard(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-[10px] text-sm font-semibold border border-auburn-500/30 dark:border-auburn-300/30 bg-auburn-500/10 dark:bg-auburn-300/10 text-auburn-500 dark:text-auburn-300 hover:bg-auburn-500/20 dark:hover:bg-auburn-300/20 transition-colors"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-[10px] text-sm font-semibold transition-all hover:opacity-90 min-h-[44px] sm:min-h-0"
+                style={{
+                  background: 'var(--color-primary)',
+                  color: 'var(--color-text-inverse)',
+                  boxShadow: '0 4px 14px color-mix(in srgb, var(--color-primary) 30%, transparent)',
+                }}
               >
                 <Icon name="plus" className="w-4 h-4" />
                 Add Hostel
@@ -232,7 +295,7 @@ export default function DashboardPage() {
           </header>
 
           {/* Stat cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div ref={statGridRef} className="grid grid-cols-2 lg:grid-cols-3 gap-4">
             {statCards.map(s => (
               <StatCard
                 key={s.title}
@@ -243,13 +306,12 @@ export default function DashboardPage() {
                 tone={s.tone}
                 icon={s.icon}
                 loading={loading}
-                delay={s.delay}
               />
             ))}
           </div>
 
           {/* Charts row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div ref={chartsRef} className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <ChartCard
               title="Room Occupancy"
               description="Available vs occupied rooms"
@@ -295,50 +357,81 @@ export default function DashboardPage() {
             </ChartCard>
           </div>
 
+          {/* Booking Density Heatmap (Nivo) */}
+          <div className="animate-fade-in-up mt-6" style={{ animationDelay: '300ms' }}>
+            <ChartCard title="Booking Volume" description="Daily booking request density over the past year">
+              {bookings.length > 0 ? (
+                <BookingDensityMap bookings={bookings} />
+              ) : (
+                <div className="h-[220px] flex items-center justify-center">
+                  <p className="text-sm font-medium" style={{ color: 'var(--color-text-muted)' }}>No bookings yet</p>
+                </div>
+              )}
+            </ChartCard>
+          </div>
+
           {/* Lists row */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 animate-fade-in-up mt-6" style={{ animationDelay: '400ms' }}>
             <div className="xl:col-span-2 space-y-6">
-              <div className="animate-fade-in-up" style={{ animationDelay: '480ms' }}>
+              <div>
                 <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-[17px] font-bold flex items-center gap-2">
+                  <h2 className="text-[17px] font-bold flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text-primary)' }}>
                     Booking Requests
                     {pendingBookings.length > 0 && (
-                      <span className="bg-amber-500/15 text-amber-500 dark:text-amber-300 border border-amber-500/30 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                      <span
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                        style={{
+                          background: 'var(--color-warning-light)',
+                          color: 'var(--color-warning)',
+                          border: '1px solid color-mix(in srgb, var(--color-warning) 30%, transparent)',
+                        }}
+                      >
                         {pendingBookings.length} pending
                       </span>
                     )}
                   </h2>
                   <button
                     onClick={() => router.push('/bookings')}
-                    className="text-auburn-500 hover:text-auburn-700 dark:text-auburn-300 dark:hover:text-auburn-100 text-sm font-semibold transition-colors flex items-center gap-1"
+                    className="text-sm font-semibold transition-colors flex items-center gap-1 hover:opacity-70"
+                    style={{ color: 'var(--color-primary)' }}
                   >
                     View all
                     <Icon name="chevron-right" className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
-                <div className={`${cardBg} rounded-2xl border ${cardBorder} overflow-hidden`}>
+                <div
+                  className="rounded-2xl overflow-hidden"
+                  style={{
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                  }}
+                >
                   {loading ? (
                     <div className="p-6 space-y-3">
                       {[...Array(3)].map((_, i) => (
-                        <div key={i} className="h-16 bg-ivory-200/60 dark:bg-ivory-800/60 rounded-xl animate-pulse" />
+                        <div key={i} className="h-16 rounded-xl animate-pulse" style={{ background: 'var(--color-border)' }} />
                       ))}
                     </div>
                   ) : pendingBookings.length === 0 ? (
-                    <div className="py-12 text-center">
-                      <div className="w-12 h-12 rounded-full bg-ivory-200/60 dark:bg-ivory-800/60 flex items-center justify-center mx-auto mb-3 text-ink-500 dark:text-ivory-400">
+                    <div className="py-14 text-center">
+                      <div
+                        className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
+                        style={{ background: 'var(--color-border)', color: 'var(--color-text-muted)' }}
+                      >
                         <Icon name="inbox" className="w-6 h-6" />
                       </div>
-                      <p className="text-[13px] font-bold text-ink-900 dark:text-ivory-50 mb-1">No pending booking requests</p>
-                      <p className="text-[12px] text-ink-700 dark:text-ivory-500">You'll see new requests here as they come in.</p>
+                      <p className="text-[13px] font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>No pending requests</p>
+                      <p className="text-[12px]" style={{ color: 'var(--color-text-muted)' }}>New requests will appear here as they come in.</p>
                     </div>
                   ) : (
-                    <div className="divide-y divide-ivory-200 dark:divide-ivory-700">
+                    <div className="divide-y" style={{ borderColor: 'var(--color-border)' }}>
                       {pendingBookings.slice(0, 4).map(booking => (
                         <BookingRow
                           key={booking.id}
                           booking={booking}
                           onAction={handleQuickAction}
+                          acting={actingId === booking.id}
                         />
                       ))}
                     </div>
@@ -347,70 +440,88 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="animate-fade-in-up" style={{ animationDelay: '540ms' }}>
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-[17px] font-bold">Recent Activity</h2>
-              </div>
-
-              <div className={`${cardBg} rounded-2xl border ${cardBorder} p-4`}>
-                {loading ? (
-                  <div className="space-y-3">
-                    {[...Array(5)].map((_, i) => (
-                      <div key={i} className="flex gap-3">
-                        <div className="w-9 h-9 bg-ivory-200/60 dark:bg-ivory-800/60 rounded-full animate-pulse flex-shrink-0" />
-                        <div className="flex-1 space-y-1.5">
-                          <div className="h-3 bg-ivory-200/60 dark:bg-ivory-800/60 rounded animate-pulse w-3/4" />
-                          <div className="h-2.5 bg-ivory-200/60 dark:bg-ivory-800/60 rounded animate-pulse w-full" />
+            {/* Activity + NoticeBoard */}
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-[17px] font-bold mb-4" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text-primary)' }}>
+                  Recent Activity
+                </h2>
+                <div
+                  className="rounded-2xl p-4"
+                  style={{
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                  }}
+                >
+                  {loading ? (
+                    <div className="space-y-3">
+                      {[...Array(4)].map((_, i) => (
+                        <div key={i} className="flex gap-3">
+                          <div className="w-9 h-9 rounded-full animate-pulse flex-shrink-0" style={{ background: 'var(--color-border)' }} />
+                          <div className="flex-1 space-y-1.5">
+                            <div className="h-3 rounded animate-pulse w-3/4" style={{ background: 'var(--color-border)' }} />
+                            <div className="h-2.5 rounded animate-pulse w-full" style={{ background: 'var(--color-border)' }} />
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : activity.length === 0 ? (
-                  <div className="py-10 text-center">
-                    <div className="w-10 h-10 rounded-full bg-ivory-200/60 dark:bg-ivory-800/60 flex items-center justify-center mx-auto mb-3 text-ink-500 dark:text-ivory-400">
-                      <Icon name="sparkles" className="w-5 h-5" />
+                      ))}
                     </div>
-                    <p className="text-[12px] font-semibold text-ink-700 dark:text-ivory-500">No recent activity yet</p>
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    {activity.map((item, i) => {
-                      const toneMap: Record<string, { tone: StatTone; icon: any }> = {
-                        booking_request:  { tone: 'info',    icon: 'bookings' },
-                        booking_approved: { tone: 'success', icon: 'check' },
-                        booking_rejected: { tone: 'error',   icon: 'x' },
-                        payment_received: { tone: 'success', icon: 'money' },
-                        hostel_updated:   { tone: 'accent',  icon: 'hostel' },
-                        room_updated:     { tone: 'info',    icon: 'rooms' },
-                      };
-                      const cfg = toneMap[item.type] || { tone: 'neutral', icon: 'sparkles' };
-                      const toneBg: Record<StatTone, string> = {
-                        primary: 'bg-auburn-500/10 text-auburn-500 dark:text-auburn-300',
-                        success: 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-300',
-                        error:   'bg-red-500/10 text-red-500 dark:text-red-300',
-                        warning: 'bg-amber-500/10 text-amber-500 dark:text-amber-300',
-                        info:    'bg-blue-500/10 text-blue-500 dark:text-blue-300',
-                        accent:  'bg-auburn-300/10 text-auburn-300 dark:text-auburn-200',
-                        neutral: 'bg-ivory-300/40 dark:bg-ivory-700/40 text-ink-700 dark:text-ivory-300',
-                      };
-                      return (
-                        <div
-                          key={item.activity_id}
-                          className={`flex gap-3 py-3 ${i < activity.length - 1 ? 'border-b border-ivory-200 dark:border-ivory-700' : ''}`}
-                        >
-                          <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${toneBg[cfg.tone]}`}>
-                            <Icon name={cfg.icon} className="w-4 h-4" />
+                  ) : activity.length === 0 ? (
+                    <div className="py-10 text-center">
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-3"
+                        style={{ background: 'var(--color-border)', color: 'var(--color-text-muted)' }}
+                      >
+                        <Icon name="sparkles" className="w-5 h-5" />
+                      </div>
+                      <p className="text-[12px] font-semibold" style={{ color: 'var(--color-text-muted)' }}>No recent activity yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {activity.map((item, i) => {
+                        const toneMap: Record<string, { tone: StatTone; icon: any }> = {
+                          booking_request:  { tone: 'info',    icon: 'bookings' },
+                          booking_approved: { tone: 'success', icon: 'check' },
+                          booking_rejected: { tone: 'error',   icon: 'x' },
+                          payment_received: { tone: 'success', icon: 'money' },
+                          hostel_updated:   { tone: 'accent',  icon: 'hostel' },
+                          room_updated:     { tone: 'info',    icon: 'rooms' },
+                        };
+                        const cfg = toneMap[item.type] || { tone: 'neutral' as StatTone, icon: 'sparkles' };
+                        const toneBg: Record<StatTone, string> = {
+                          primary: 'bg-auburn-500/10 text-auburn-500 dark:text-auburn-300',
+                          success: 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-300',
+                          error:   'bg-red-500/10 text-red-500 dark:text-red-300',
+                          warning: 'bg-amber-500/10 text-amber-500 dark:text-amber-300',
+                          info:    'bg-blue-500/10 text-blue-500 dark:text-blue-300',
+                          accent:  'bg-auburn-300/10 text-auburn-300 dark:text-auburn-200',
+                          neutral: 'bg-ivory-300/40 dark:bg-ivory-700/40 text-ink-700 dark:text-ivory-300',
+                        };
+                        return (
+                          <div
+                            key={item.activity_id}
+                            className={`flex gap-3 py-3 ${i < activity.length - 1 ? 'border-b' : ''}`}
+                            style={{ borderColor: 'var(--color-border)' }}
+                          >
+                            <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${toneBg[cfg.tone]}`}>
+                              <Icon name={cfg.icon} className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[13px] font-semibold leading-tight" style={{ color: 'var(--color-text-primary)' }}>
+                                {item.title}
+                              </p>
+                              <p className="text-[11px] mt-0.5 truncate" style={{ color: 'var(--color-text-muted)' }}>
+                                {item.description}
+                              </p>
+                              <p className="text-[10px] mt-1 font-medium opacity-60" style={{ color: 'var(--color-text-muted)' }}>
+                                {timeAgo(item.timestamp)}
+                              </p>
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-ink-900 dark:text-ivory-50 text-[13px] font-semibold leading-tight">{item.title}</p>
-                            <p className="text-ink-700 dark:text-ivory-400 text-[11px] mt-0.5 truncate">{item.description}</p>
-                            <p className="text-ink-700/60 dark:text-ivory-500/60 text-[10px] mt-1 font-medium">{timeAgo(item.timestamp)}</p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <NoticeBoard />

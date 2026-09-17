@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useRef } from 'react';
+import { Input, Textarea, Select } from '@/components/ui/Input';
 import axios from 'axios';
 import type { HostelEnrollmentState, MediaItem, MediaCategory } from '@/types';
 
@@ -200,7 +201,7 @@ export default function Step4MediaUpload({ data, onChange }: Props) {
         <span className="text-xs text-ink-700 dark:text-ivory-500 font-medium">
           {activeCategory === 'video' ? 'MP4, MOV, AVI up to 100MB' : 'JPG, PNG, WEBP up to 10MB each'}
         </span>
-        <input
+        <Input
           ref={fileInputRef}
           type="file"
           multiple

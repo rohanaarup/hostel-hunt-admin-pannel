@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { Input, Textarea, Select } from '@/components/ui/Input';
 import FormField, { inputClass, selectClass } from '@/components/ui/FormField';
 import type { HostelEnrollmentState, RoomDraft, SharingType } from '@/types';
 
@@ -137,24 +138,24 @@ export default function Step5RoomConfig({ data, onChange }: Props) {
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
             <FormField label="Number of Floors" required>
-              <input type="number" min="1" max="20" value={numFloors} onChange={(e) => setNumFloors(e.target.value)} className={inputClass()} />
+              <Input type="number" min="1" max="20" value={numFloors} onChange={(e) => setNumFloors(e.target.value)}  />
             </FormField>
             <FormField label="Rooms per Floor" required>
-              <input type="number" min="1" max="50" value={roomsPerFloor} onChange={(e) => setRoomsPerFloor(e.target.value)} className={inputClass()} />
+              <Input type="number" min="1" max="50" value={roomsPerFloor} onChange={(e) => setRoomsPerFloor(e.target.value)}  />
             </FormField>
             <FormField label="Beds per Room" required>
-              <input type="number" min="1" max="10" value={bedsPerRoom} onChange={(e) => setBedsPerRoom(e.target.value)} className={inputClass()} />
+              <Input type="number" min="1" max="10" value={bedsPerRoom} onChange={(e) => setBedsPerRoom(e.target.value)}  />
             </FormField>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <FormField label="Default Sharing Type" required>
-              <select value={defaultSharing} onChange={(e) => setDefaultSharing(e.target.value as SharingType)} className={selectClass()}>
+              <Select value={defaultSharing} onChange={(e) => setDefaultSharing(e.target.value as SharingType)} >
                 {SHARING_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
+              </Select>
             </FormField>
             <FormField label="Default Price/Month (₹)" required>
-              <input type="number" min="0" value={defaultPrice} onChange={(e) => setDefaultPrice(e.target.value)} className={inputClass()} />
+              <Input type="number" min="0" value={defaultPrice} onChange={(e) => setDefaultPrice(e.target.value)}  />
             </FormField>
           </div>
 
@@ -193,58 +194,60 @@ export default function Step5RoomConfig({ data, onChange }: Props) {
         )}
 
         {rooms.map((room) => (
-          <div key={room._draft_id} className="flex flex-wrap items-center gap-3 bg-white dark:bg-ivory-900 border border-ivory-200 dark:border-ivory-700 p-3 rounded-[12px] shadow-sm">
-            <div className="w-16">
+          <div key={room._draft_id} className="grid grid-cols-2 md:flex md:flex-wrap md:items-center gap-3 bg-white dark:bg-ivory-900 border border-ivory-200 dark:border-ivory-700 p-4 md:p-3 rounded-[12px] shadow-sm">
+            <div className="w-full md:w-16">
               <label className="block text-[10px] font-semibold text-ink-500 mb-1 uppercase tracking-wider">Floor</label>
-              <input type="number" value={room.floor_number} onChange={(e) => updateRoom(room._draft_id, 'floor_number', e.target.value)} className={`${inputClass()} !py-1.5 !px-2 text-sm`} />
+              <Input type="number" value={room.floor_number} onChange={(e) => updateRoom(room._draft_id, 'floor_number', e.target.value)} className="!py-1.5 !px-2 text-sm md:text-sm min-h-[44px] md:min-h-0" />
             </div>
-            <div className="w-24">
+            <div className="w-full md:w-24">
               <label className="block text-[10px] font-semibold text-ink-500 mb-1 uppercase tracking-wider">Room No</label>
-              <input value={room.room_number} onChange={(e) => updateRoomFields(room._draft_id, { room_number: e.target.value, room_name: `Room ${e.target.value}` })} className={`${inputClass()} !py-1.5 !px-2 text-sm`} />
+              <Input value={room.room_number} onChange={(e) => updateRoomFields(room._draft_id, { room_number: e.target.value, room_name: `Room ${e.target.value}` })} className="!py-1.5 !px-2 text-sm min-h-[44px] md:min-h-0" />
             </div>
-            <div className="w-28 flex-shrink-0">
+            <div className="w-full md:w-28 flex-shrink-0">
               <label className="block text-[10px] font-semibold text-ink-500 mb-1 uppercase tracking-wider">Type</label>
-              <select value={room.sharing_type} onChange={(e) => updateRoom(room._draft_id, 'sharing_type', e.target.value)} className={`${selectClass()} !py-1.5 !px-2 text-sm`}>
+              <Select value={room.sharing_type} onChange={(e) => updateRoom(room._draft_id, 'sharing_type', e.target.value)} className={`${selectClass()} !py-1.5 !px-2 text-sm min-h-[44px] md:min-h-0`}>
                 <option value="">Select</option>
                 {SHARING_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
+              </Select>
             </div>
-            <div className="w-20">
+            <div className="w-full md:w-20">
               <label className="block text-[10px] font-semibold text-ink-500 mb-1 uppercase tracking-wider">Beds</label>
-              <input type="number" value={room.bed_count} onChange={(e) => {
+              <Input type="number" value={room.bed_count} onChange={(e) => {
                 updateRoomFields(room._draft_id, {
                   bed_count: e.target.value,
                   capacity: e.target.value,
                   available_beds: e.target.value
                 });
-              }} className={`${inputClass()} !py-1.5 !px-2 text-sm`} />
+              }} className="!py-1.5 !px-2 text-sm min-h-[44px] md:min-h-0" />
             </div>
-            <div className="w-28">
+            <div className="col-span-2 md:col-span-1 w-full md:w-28">
               <label className="block text-[10px] font-semibold text-ink-500 mb-1 uppercase tracking-wider">Price (₹)</label>
-              <input type="number" value={room.price_per_month} onChange={(e) => updateRoom(room._draft_id, 'price_per_month', e.target.value)} className={`${inputClass()} !py-1.5 !px-2 text-sm`} />
+              <Input type="number" value={room.price_per_month} onChange={(e) => updateRoom(room._draft_id, 'price_per_month', e.target.value)} className="!py-1.5 !px-2 text-sm min-h-[44px] md:min-h-0" />
             </div>
-            <div className="flex gap-2 ml-auto items-end h-[38px] pb-1">
-              <button 
-                type="button" 
-                onClick={() => updateRoom(room._draft_id, 'is_ac', !room.is_ac)}
-                className={`text-xs px-2 py-1 rounded border ${room.is_ac ? 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300' : 'text-ink-500 border-ivory-300'}`}
-              >
-                AC
-              </button>
-              <button 
-                type="button" 
-                onClick={() => updateRoom(room._draft_id, 'has_attached_bathroom', !room.has_attached_bathroom)}
-                className={`text-xs px-2 py-1 rounded border ${room.has_attached_bathroom ? 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300' : 'text-ink-500 border-ivory-300'}`}
-              >
-                Bath
-              </button>
+            <div className="col-span-2 md:col-span-1 flex items-center justify-between md:justify-start gap-2 md:ml-auto pt-2 md:pt-0 md:pb-1 border-t md:border-0 border-ivory-200 dark:border-ivory-700 w-full md:w-auto">
+              <div className="flex gap-2">
+                <button 
+                  type="button" 
+                  onClick={() => updateRoom(room._draft_id, 'is_ac', !room.is_ac)}
+                  className={`text-xs px-3 py-2 md:px-2 md:py-1 rounded border min-h-[40px] md:min-h-0 ${room.is_ac ? 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300' : 'text-ink-500 border-ivory-300'}`}
+                >
+                  AC
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => updateRoom(room._draft_id, 'has_attached_bathroom', !room.has_attached_bathroom)}
+                  className={`text-xs px-3 py-2 md:px-2 md:py-1 rounded border min-h-[40px] md:min-h-0 ${room.has_attached_bathroom ? 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300' : 'text-ink-500 border-ivory-300'}`}
+                >
+                  Bath
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={() => removeRoom(room._draft_id)}
-                className="w-7 h-7 flex items-center justify-center text-ink-500 hover:text-red-500 hover:bg-red-50 ml-2 rounded transition-colors"
+                className="w-10 h-10 md:w-7 md:h-7 flex items-center justify-center text-ink-500 hover:text-red-500 hover:bg-red-50 rounded transition-colors bg-ivory-100 dark:bg-ivory-800 md:bg-transparent"
                 title="Remove room"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
               </button>

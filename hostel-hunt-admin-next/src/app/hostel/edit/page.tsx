@@ -1,29 +1,28 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/common/DashboardLayout';
-import { useTheme } from '@/contexts/ThemeContext';
 import Step1BasicDetails from '@/components/hostel/steps/Step1BasicDetails';
 import Step2HostelInfo from '@/components/hostel/steps/Step2HostelInfo';
 import Step3Amenities from '@/components/hostel/steps/Step3Amenities';
 import Step4MediaUpload from '@/components/hostel/steps/Step4MediaUpload';
 import Step5RoomConfig from '@/components/hostel/steps/Step5RoomConfig';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import Icon from '@/components/ui/Icon';
 import { INITIAL_ENROLLMENT_STATE } from '@/types';
 import type { HostelEnrollmentState } from '@/types';
 import { hostelService } from '@/services/api';
+import gsap from 'gsap';
 
 const SECTIONS = [
-  { id: 'basic', label: 'Basic Details', icon: '📍', step: 0 },
-  { id: 'info', label: 'Hostel Info', icon: '🏨', step: 1 },
-  { id: 'amenities', label: 'Amenities', icon: '✅', step: 2 },
-  { id: 'media', label: 'Media', icon: '📸', step: 3 },
-  { id: 'rooms', label: 'Rooms', icon: '🛏', step: 4 },
+  { id: 'basic',     label: 'Basic Details', icon: 'map-pin' as const, step: 0 },
+  { id: 'info',      label: 'Hostel Info',   icon: 'building' as const, step: 1 },
+  { id: 'amenities', label: 'Amenities',     icon: 'sparkles' as const, step: 2 },
+  { id: 'media',     label: 'Media',         icon: 'image' as const, step: 3 },
+  { id: 'rooms',     label: 'Rooms',         icon: 'bed' as const, step: 4 },
 ];
 
 export default function EditHostelPage() {
-  const { theme } = useTheme();
-
   const [data, setData] = useState<any>(INITIAL_ENROLLMENT_STATE);
   const [savedData, setSavedData] = useState<any>(INITIAL_ENROLLMENT_STATE);
   const [errors, setErrors] = useState<Partial<Record<keyof HostelEnrollmentState, string>>>({});
@@ -33,7 +32,7 @@ export default function EditHostelPage() {
   const [showSaved, setShowSaved] = useState(false);
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchHostel = async () => {
       try {
         const res = await hostelService.getHostels();
@@ -60,10 +59,6 @@ export default function EditHostelPage() {
 
   const isDirty = JSON.stringify(data) !== JSON.stringify(savedData);
 
-  const cardBg = theme === 'dark' ? 'bg-ivory-900' : 'bg-ivory-100';
-  const cardBorder = theme === 'dark' ? 'border-ivory-700' : 'border-ivory-300';
-  const textSub = theme === 'dark' ? 'text-ivory-500' : 'text-ink-700';
-
   const handleChange = (key: keyof HostelEnrollmentState, value: unknown) => {
     setData((prev: any) => {
       const newValue = typeof value === 'function' ? (value as Function)(prev[key]) : value;
@@ -76,21 +71,14 @@ export default function EditHostelPage() {
     setIsSaving(true);
     try {
       const payload: any = { ...data };
-
       payload.total_floors = Number(payload.total_floors) || 0;
       payload.total_rooms = Number(payload.total_rooms) || 0;
       payload.total_beds = Number(payload.total_beds) || 0;
-
       payload.occupancy_types = Array.isArray(payload.occupancy_types) ? payload.occupancy_types : [];
       payload.amenities = Array.isArray(payload.amenities) ? payload.amenities : [];
-
       payload.latitude = payload.latitude ? String(payload.latitude) : null;
       payload.longitude = payload.longitude ? String(payload.longitude) : null;
-
-      payload.media_ids = payload.media
-        ? payload.media.map((m: any) => m.id).filter(Boolean)
-        : [];
-
+      payload.media_ids = payload.media ? payload.media.map((m: any) => m.id).filter(Boolean) : [];
       payload.rooms_data = payload.rooms
         ? payload.rooms
             .filter((r: any) => r.room_name && r.sharing_type)
@@ -101,28 +89,21 @@ export default function EditHostelPage() {
               available_beds: Number(r.available_beds) || 0,
             }))
         : [];
+      delete payload.media; delete payload.rooms; delete payload.owner; delete payload.owner_id;
 
-      delete payload.media;
-      delete payload.rooms;
-      delete payload.owner;
-      delete payload.owner_id;
-
-      if (data.hostel_id) {
-        await hostelService.updateHostel(data.hostel_id, payload);
-      } else {
+      if (data.hostel_id) await hostelService.updateHostel(data.hostel_id, payload);
+      else {
         const created = await hostelService.createHostel(payload);
         setData((prev: any) => ({...prev, hostel_id: created.hostel_id || created.data?.hostel_id}));
       }
 
-      // Refetch to get updated IDs (e.g. room_ids) from the backend
       const res = await hostelService.getHostels();
       const hostels = Array.isArray(res) ? res : res.data || res.results;
       if (hostels && hostels.length > 0) {
         const fetched = hostels[0];
         if (fetched.rooms) {
           fetched.rooms = fetched.rooms.map((r: any) => ({
-            ...r,
-            _draft_id: r._draft_id || r.room_id || Math.random().toString(36).slice(2, 10)
+            ...r, _draft_id: r._draft_id || r.room_id || Math.random().toString(36).slice(2, 10)
           }));
         }
         setData({ ...INITIAL_ENROLLMENT_STATE, ...fetched });
@@ -130,7 +111,6 @@ export default function EditHostelPage() {
       } else {
         setSavedData(data);
       }
-
       setShowSaved(true);
       setTimeout(() => setShowSaved(false), 3000);
     } catch (err) {
@@ -146,6 +126,17 @@ export default function EditHostelPage() {
     setShowDiscardDialog(false);
   };
 
+  // Switch animation
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (contentRef.current) {
+      gsap.fromTo(contentRef.current,
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out' }
+      );
+    }
+  }, [activeSection]);
+
   return (
     <DashboardLayout title="Edit Hostel">
       <ConfirmDialog
@@ -159,92 +150,118 @@ export default function EditHostelPage() {
         onCancel={() => setShowDiscardDialog(false)}
       />
 
-      <div className="w-full animate-fade-in-up">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div className="w-full max-w-[1200px] mx-auto animate-fade-in-up space-y-8">
+        
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-ink-900 dark:text-ivory-50">Edit Hostel Details</h1>
-            <p className={`${textSub} mt-1 text-sm font-medium`}>
-              {loading ? 'Loading...' : data.name ? `${data.name} · Details` : 'No hostel configured yet'}
+            <h1 className="text-[28px] font-extrabold tracking-tight" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text-primary)' }}>
+              Edit Hostel Profile
+            </h1>
+            <p className="mt-1 font-medium" style={{ color: 'var(--color-text-muted)' }}>
+              {loading ? 'Loading...' : data.name ? `${data.name} · Settings` : 'Complete setup to activate your hostel'}
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 w-full sm:w-auto">
             {isDirty && (
-              <span className="flex items-center gap-1.5 text-amber-400 text-xs font-semibold bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-full">
-                <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                Unsaved changes
+              <span
+                className="hidden sm:flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full"
+                style={{
+                  background: 'var(--color-warning-light)',
+                  color: 'var(--color-warning)',
+                  border: '1px solid color-mix(in srgb, var(--color-warning) 30%, transparent)'
+                }}
+              >
+                <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--color-warning)' }} />
+                Unsaved
               </span>
             )}
             {isDirty && (
               <button
                 onClick={() => setShowDiscardDialog(true)}
-                className="px-4 py-2 border border-ivory-300 hover:border-ivory-400 dark:border-ivory-700 dark:hover:border-ivory-600 text-ink-700 hover:text-ink-900 dark:text-ivory-500 dark:hover:text-ivory-50 rounded-[10px] text-sm font-medium transition-all"
+                className="flex-1 sm:flex-none px-4 py-2.5 rounded-[10px] text-sm font-semibold transition-all hover:opacity-80"
+                style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
               >
                 Discard
               </button>
             )}
             <button
               onClick={handleSave}
-              disabled={isSaving}
-              className={`flex items-center gap-2 px-5 py-2 rounded-[10px] text-sm font-semibold transition-all ${
-                !isSaving
-                  ? 'bg-auburn-500 hover:bg-auburn-700 dark:bg-auburn-300 dark:hover:bg-auburn-100 text-ivory-50 dark:text-ink-900 auburn-glow'
-                  : 'bg-ivory-300 text-ivory-500 dark:bg-ivory-700 dark:text-ivory-500 cursor-not-allowed'
-              }`}
+              disabled={isSaving || !isDirty}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-[10px] text-sm font-semibold transition-all hover:opacity-90 disabled:opacity-50"
+              style={{
+                background: 'var(--color-primary)',
+                color: 'var(--color-text-inverse)',
+                boxShadow: isDirty && !isSaving ? '0 4px 14px color-mix(in srgb, var(--color-primary) 30%, transparent)' : 'none',
+              }}
             >
               {isSaving ? (
-                <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg> Saving...</>
+                <><Icon name="refresh" className="w-4 h-4 animate-spin" /> Saving...</>
               ) : showSaved ? (
-                <><svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg> Saved!</>
+                <><Icon name="check" className="w-4 h-4" /> Saved!</>
               ) : (
-                <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                </svg> Save Changes</>
+                <><Icon name="check" className="w-4 h-4" /> Save Changes</>
               )}
             </button>
           </div>
         </div>
 
-        <div className="flex gap-6">
-          <div className="hidden lg:flex flex-col gap-1 w-52 flex-shrink-0">
-            {SECTIONS.map((s, i) => (
-              <button
-                key={s.id}
-                onClick={() => setActiveSection(i)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-[10px] text-sm font-semibold text-left transition-all ${
-                  activeSection === i
-                    ? 'bg-auburn-500/10 dark:bg-auburn-300/10 border border-auburn-500/30 dark:border-auburn-300/30 text-auburn-500 dark:text-auburn-300'
-                    : 'text-ink-700 dark:text-ivory-500 hover:text-ink-900 dark:hover:text-ivory-50 hover:bg-ivory-50/50 dark:hover:bg-ivory-50/10'
-                }`}
-              >
-                <span className="text-base">{s.icon}</span>
-                {s.label}
-              </button>
-            ))}
-          </div>
+        <div className="flex flex-col md:flex-row gap-6 lg:gap-8">
+          
+          {/* Sidebar Nav */}
+          <div className="w-full md:w-56 lg:w-64 flex-shrink-0">
+            {/* Desktop Nav */}
+            <div className="hidden md:flex flex-col gap-1.5 sticky top-24">
+              {SECTIONS.map((s, i) => {
+                const isActive = activeSection === i;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => setActiveSection(i)}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-[14px] font-semibold text-left transition-all"
+                    style={
+                      isActive
+                        ? { background: 'var(--color-primary-light)', color: 'var(--color-primary)' }
+                        : { color: 'var(--color-text-muted)' }
+                    }
+                  >
+                    <Icon name={s.icon} className="w-[18px] h-[18px]" />
+                    {s.label}
+                  </button>
+                );
+              })}
+            </div>
 
-          <div className="lg:hidden w-full mb-4">
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {SECTIONS.map((s, i) => (
-                <button key={s.id} onClick={() => setActiveSection(i)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-[10px] text-xs font-semibold whitespace-nowrap flex-shrink-0 transition-all border ${
-                    activeSection === i
-                      ? 'border-auburn-500 bg-auburn-500/10 text-auburn-500 dark:border-auburn-300 dark:bg-auburn-300/10 dark:text-auburn-300'
-                      : 'border-ivory-300 text-ink-700 dark:border-ivory-700 dark:text-ivory-500'
-                  }`}>
-                  {s.icon} {s.label}
-                </button>
-              ))}
+            {/* Mobile Nav */}
+            <div className="md:hidden flex gap-2 overflow-x-auto pb-2">
+              {SECTIONS.map((s, i) => {
+                const isActive = activeSection === i;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => setActiveSection(i)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap flex-shrink-0 transition-all border"
+                    style={
+                      isActive
+                        ? { background: 'var(--color-primary-light)', borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }
+                        : { background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }
+                    }
+                  >
+                    <Icon name={s.icon} className="w-3.5 h-3.5" />
+                    {s.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          <div className={`flex-1 ${cardBg} border ${cardBorder} rounded-2xl p-6 lg:p-8 min-w-0`}>
+          {/* Form Content */}
+          <div
+            ref={contentRef}
+            className="flex-1 rounded-2xl p-6 lg:p-8 min-w-0"
+            style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+          >
             {activeSection === 0 && <Step1BasicDetails data={data} onChange={handleChange} errors={errors} />}
             {activeSection === 1 && <Step2HostelInfo data={data} onChange={handleChange} errors={errors} />}
             {activeSection === 2 && <Step3Amenities data={data} onChange={handleChange} />}

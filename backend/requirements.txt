@@ -22,3 +22,5 @@ requests
 
 gunicorn==23.0.0
 
+# Razorpay Payment Gateway
+razorpay>=1.4

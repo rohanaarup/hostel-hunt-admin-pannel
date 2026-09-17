@@ -248,14 +248,12 @@ export interface ActivityItem {
 // ─── Dashboard Stats ──────────────────────────────────────────────────────────
 
 export interface DashboardStats {
-  registered_hostels: boolean;
-  total_rooms: number;
-  available_rooms: number;
-  occupied_rooms: number;
-  pending_booking_requests: number;
-  booked_residents: number;
-  monthly_revenue: number;
-  pending_payments: number;
+  total_hostels: number;
+  total_residents: number;
+  occupancy_rate: number;
+  revenue_collected: number;
+  revenue_pending: number;
+  pending_bookings: number;
 }
 
 // ─── Hostel Enrollment Wizard State ──────────────────────────────────────────

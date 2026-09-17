@@ -1,21 +1,18 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Input, Textarea, Select } from '@/components/ui/Input';
+import { useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/common/DashboardLayout';
-import { useTheme } from '@/contexts/ThemeContext';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import StatusBadge from '@/components/ui/StatusBadge';
+import Icon from '@/components/ui/Icon';
 import type { Booking } from '@/types';
 import { bookingService } from '@/services/api';
+import gsap from 'gsap';
 
-const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
-  pending:   { label: 'Pending',   cls: 'bg-amber-500/10 text-amber-400 border-amber-500/30' },
-  confirmed: { label: 'Confirmed', cls: 'bg-green-500/10 text-green-400 border-green-500/30' },
-  approved:  { label: 'Approved',  cls: 'bg-green-500/10 text-green-400 border-green-500/30' },
-  paid:      { label: 'Paid',      cls: 'bg-blue-500/10 text-blue-400 border-blue-500/30' },
-  rejected:  { label: 'Rejected',  cls: 'bg-red-500/10 text-red-400 border-red-500/30' },
-  cancelled: { label: 'Cancelled', cls: 'bg-gray-500/10 text-gray-400 border-gray-500/30' },
-};
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 function timeAgo(iso: string) {
   if (!iso) return '-';
@@ -34,101 +31,130 @@ function formatDate(d: string | null | undefined) {
   return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function initials(name: string) {
+function getInitials(name: string) {
   return (name || 'G').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 }
 
-const InfoRow: React.FC<{ label: string; value: React.ReactNode; highlight?: boolean }> = ({ label, value, highlight }) => (
-  <div>
-    <p className="text-[10px] font-bold uppercase tracking-wider text-ink-600 dark:text-ivory-500 mb-0.5">{label}</p>
-    <p className={`text-[13px] font-semibold ${highlight ? 'text-auburn-500 dark:text-auburn-300' : 'text-ink-900 dark:text-ivory-50'}`}>
-      {value || '—'}
-    </p>
-  </div>
-);
+// ─── Booking Card ────────────────────────────────────────────────────────────
 
 interface CardProps {
   booking: Booking;
-  tab: string;
   onAction: (id: string, action: 'approve' | 'reject' | 'verify' | 'mark-paid') => void;
 }
 
-const BookingCard: React.FC<CardProps> = ({ booking, tab, onAction }) => {
+const BookingCard: React.FC<CardProps> = ({ booking, onAction }) => {
   const status = booking.status as string;
-  const statusCfg = STATUS_CONFIG[status] || STATUS_CONFIG.cancelled;
-
-  const roomLabel = (booking as any).room_display || (booking as any).room_name || '—';
-  const floorLabel = (booking as any).floor_number ? `Floor ${(booking as any).floor_number}` : null;
-  const roomNum = (booking as any).room_number;
-  const bedLabel = booking.bed_number ? booking.bed_number : '—';
-  const hostelName = (booking as any).hostel_name || '—';
-
   const isOffline = booking.payment_mode === 'offline';
   const isPending = status === 'pending';
   const canAct = status !== 'paid' && status !== 'rejected' && status !== 'cancelled';
+  const roomLabel = (booking as any).room_display || (booking as any).room_name || '—';
+  const hostelName = (booking as any).hostel_name || '—';
 
   return (
-    <div className="bg-ivory-50 dark:bg-ivory-900 border border-ivory-200 dark:border-ivory-700 rounded-2xl p-5 shadow-sm flex flex-col gap-4 hover:border-auburn-500/30 dark:hover:border-auburn-300/30 hover:shadow-md transition-all duration-200">
-
+    <div
+      className="rounded-2xl p-5 flex flex-col gap-4 transition-all duration-200 hover:shadow-md group"
+      style={{
+        background: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
+      }}
+      onMouseEnter={e => gsap.to(e.currentTarget, { y: -2, duration: 0.2, ease: 'power2.out' })}
+      onMouseLeave={e => gsap.to(e.currentTarget, { y: 0, duration: 0.2, ease: 'power2.out' })}
+    >
+      {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-full bg-auburn-500/15 dark:bg-auburn-300/15 border border-auburn-500/20 flex items-center justify-center text-sm font-bold text-auburn-500 dark:text-auburn-300 flex-shrink-0">
-            {initials(booking.student_name)}
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+            style={{
+              background: 'var(--color-primary-light)',
+              color: 'var(--color-primary)',
+              border: '1px solid color-mix(in srgb, var(--color-primary) 20%, transparent)',
+            }}
+          >
+            {getInitials(booking.student_name)}
           </div>
           <div className="min-w-0">
-            <p className="text-[15px] font-bold text-ink-900 dark:text-ivory-50 truncate">
+            <p className="text-[15px] font-bold truncate" style={{ color: 'var(--color-text-primary)' }}>
               {booking.student_name || 'Guest'}
             </p>
-            <p className="text-[12px] text-ink-600 dark:text-ivory-400 font-medium truncate">
+            <p className="text-[12px] font-medium truncate" style={{ color: 'var(--color-text-muted)' }}>
               {booking.student_phone || 'No phone'}
             </p>
           </div>
         </div>
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-[6px] text-[10px] font-bold border capitalize flex-shrink-0 ${statusCfg.cls}`}>
-          {statusCfg.label}
+        <StatusBadge status={status} />
+      </div>
+
+      {/* Hostel chip */}
+      <div
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
+        style={{ background: 'var(--color-background)' }}
+      >
+        <Icon name="hostel" className="w-3.5 h-3.5 flex-shrink-0" />
+        <span className="text-[12px] font-semibold truncate" style={{ color: 'var(--color-text-secondary)' }}>
+          {hostelName}
         </span>
       </div>
 
-      <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-ivory-100 dark:bg-ivory-800 rounded-lg">
-        <svg className="w-3.5 h-3.5 text-ink-500 dark:text-ivory-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-        </svg>
-        <span className="text-[12px] font-semibold text-ink-700 dark:text-ivory-300 truncate">{hostelName}</span>
-      </div>
-
+      {/* Info grid */}
       <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-        <InfoRow label="Room" value={roomLabel} />
-        <InfoRow label="Bed" value={bedLabel} />
-        {floorLabel && <InfoRow label="Floor" value={floorLabel} />}
-        {roomNum && <InfoRow label="Room No." value={roomNum} />}
-        <InfoRow label="Check-in" value={formatDate((booking as any).check_in_date)} />
-        <InfoRow label="Payment" value={
-          <span className={`capitalize ${isOffline ? 'text-amber-500 dark:text-amber-300' : 'text-blue-400'}`}>
-            {booking.payment_mode}
-          </span>
-        } />
-        <InfoRow label="Rent" value={booking.amount ? `₹${Number(booking.amount).toLocaleString('en-IN')}` : '—'} highlight={!!booking.amount} />
-        <InfoRow label="Requested" value={timeAgo(booking.created_at)} />
+        {[
+          { label: 'Room', value: roomLabel },
+          { label: 'Bed', value: booking.bed_number || '—' },
+          { label: 'Check-in', value: formatDate((booking as any).check_in_date) },
+          {
+            label: 'Payment',
+            value: <span style={{ color: isOffline ? 'var(--color-warning)' : 'var(--color-primary)' }} className="capitalize">{booking.payment_mode}</span>,
+          },
+          {
+            label: 'Rent',
+            value: booking.amount ? (
+              <span style={{ color: 'var(--color-primary)', fontWeight: 700 }}>
+                ₹{Number(booking.amount).toLocaleString('en-IN')}
+              </span>
+            ) : '—',
+          },
+          { label: 'Requested', value: timeAgo(booking.created_at) },
+        ].map(({ label, value }) => (
+          <div key={label}>
+            <p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: 'var(--color-text-muted)' }}>
+              {label}
+            </p>
+            <p className="text-[13px] font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+              {value || '—'}
+            </p>
+          </div>
+        ))}
       </div>
 
+      {/* Notes */}
       {(booking as any).notes && (
-        <p className="text-[12px] text-ink-600 dark:text-ivory-400 italic bg-ivory-100 dark:bg-ivory-800 rounded-lg px-3 py-2">
-          "{(booking as any).notes}"
+        <p
+          className="text-[12px] italic rounded-lg px-3 py-2"
+          style={{
+            color: 'var(--color-text-muted)',
+            background: 'var(--color-background)',
+          }}
+        >
+          &ldquo;{(booking as any).notes}&rdquo;
         </p>
       )}
 
-      {status === 'paid' && (booking as any).marked_paid_at && (
-        <p className="text-[11px] text-blue-400 font-medium">
-          ✓ Marked paid {timeAgo((booking as any).marked_paid_at)}
-        </p>
-      )}
-
+      {/* Actions */}
       {canAct && (
-        <div className="flex items-center gap-2 mt-auto pt-3 border-t border-ivory-200 dark:border-ivory-700">
+        <div
+          className="flex items-center gap-2 mt-auto pt-3 border-t"
+          style={{ borderColor: 'var(--color-border)' }}
+        >
           {isOffline && (
             <button
               onClick={() => onAction(booking.id, 'mark-paid')}
-              className="flex-1 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 text-[12px] font-bold py-2 rounded-[8px] transition-all"
+              className="flex-1 text-[12px] font-bold py-2 rounded-[8px] transition-all hover:opacity-80"
+              style={{
+                background: 'var(--color-success-light)',
+                color: 'var(--color-success)',
+                border: '1px solid color-mix(in srgb, var(--color-success) 30%, transparent)',
+              }}
             >
               Mark Paid
             </button>
@@ -136,7 +162,12 @@ const BookingCard: React.FC<CardProps> = ({ booking, tab, onAction }) => {
           {!isOffline && isPending && (
             <button
               onClick={() => onAction(booking.id, 'verify')}
-              className="flex-1 bg-auburn-500/10 hover:bg-auburn-500/20 border border-auburn-500/30 text-auburn-500 dark:text-auburn-300 text-[12px] font-bold py-2 rounded-[8px] transition-all"
+              className="flex-1 text-[12px] font-bold py-2 rounded-[8px] transition-all hover:opacity-80"
+              style={{
+                background: 'var(--color-primary-light)',
+                color: 'var(--color-primary)',
+                border: '1px solid color-mix(in srgb, var(--color-primary) 30%, transparent)',
+              }}
             >
               Verify Payment
             </button>
@@ -144,7 +175,12 @@ const BookingCard: React.FC<CardProps> = ({ booking, tab, onAction }) => {
           {isPending && isOffline && (
             <button
               onClick={() => onAction(booking.id, 'approve')}
-              className="flex-1 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 text-green-400 text-[12px] font-bold py-2 rounded-[8px] transition-all"
+              className="flex-1 text-[12px] font-bold py-2 rounded-[8px] transition-all hover:opacity-80"
+              style={{
+                background: 'var(--color-success-light)',
+                color: 'var(--color-success)',
+                border: '1px solid color-mix(in srgb, var(--color-success) 30%, transparent)',
+              }}
             >
               Accept
             </button>
@@ -152,7 +188,12 @@ const BookingCard: React.FC<CardProps> = ({ booking, tab, onAction }) => {
           {isPending && (
             <button
               onClick={() => onAction(booking.id, 'reject')}
-              className="flex-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-[12px] font-bold py-2 rounded-[8px] transition-all"
+              className="flex-1 text-[12px] font-bold py-2 rounded-[8px] transition-all hover:opacity-80"
+              style={{
+                background: 'var(--color-error-light)',
+                color: 'var(--color-error)',
+                border: '1px solid color-mix(in srgb, var(--color-error) 30%, transparent)',
+              }}
             >
               Reject
             </button>
@@ -163,59 +204,70 @@ const BookingCard: React.FC<CardProps> = ({ booking, tab, onAction }) => {
   );
 };
 
+// ─── Empty State ──────────────────────────────────────────────────────────────
+
 const EmptyState: React.FC<{ tab: string }> = ({ tab }) => {
-  const messages: Record<string, { icon: string; title: string; body: string }> = {
-    'offline-requests': { icon: '📋', title: 'No pending requests', body: 'Offline booking requests from the app will appear here.' },
-    'offline-confirmed': { icon: '✅', title: 'No confirmed bookings', body: 'Confirmed offline bookings will appear here.' },
-    'online-requests': { icon: '🌐', title: 'No online requests', body: 'Online booking requests awaiting verification will appear here.' },
-    'online-payments': { icon: '💳', title: 'No payments received', body: 'Verified online payments will appear here once students pay.' },
+  const messages: Record<string, { icon: any; title: string; body: string }> = {
+    'offline-requests': { icon: 'inbox',    title: 'No pending requests',   body: 'Offline booking requests from students will appear here.' },
+    'offline-confirmed':{ icon: 'check',    title: 'No confirmed bookings', body: 'Accepted offline bookings will appear here.' },
+    'online-requests':  { icon: 'building', title: 'No online requests',    body: 'Online bookings awaiting verification will appear here.' },
+    'online-payments':  { icon: 'money',    title: 'No payments received',  body: 'Verified online payment transactions will appear here.' },
   };
-  const m = messages[tab] || { icon: '📋', title: 'No bookings', body: 'Bookings will appear here.' };
+  const m = messages[tab] || { icon: 'inbox', title: 'No bookings', body: 'Bookings will appear here.' };
   return (
-    <div className="py-20 text-center bg-ivory-50 dark:bg-ivory-900 border border-ivory-200 dark:border-ivory-700 rounded-2xl">
-      <div className="text-5xl mb-4">{m.icon}</div>
-      <p className="text-[15px] font-bold text-ink-900 dark:text-ivory-50 mb-1">{m.title}</p>
-      <p className="text-[13px] text-ink-600 dark:text-ivory-400 max-w-sm mx-auto">{m.body}</p>
+    <div
+      className="py-20 text-center rounded-2xl"
+      style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+    >
+      <div
+        className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+        style={{ background: 'var(--color-border)', color: 'var(--color-text-muted)' }}
+      >
+        <Icon name={m.icon} className="w-8 h-8" />
+      </div>
+      <p className="text-[15px] font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>{m.title}</p>
+      <p className="text-[13px] max-w-sm mx-auto" style={{ color: 'var(--color-text-muted)' }}>{m.body}</p>
     </div>
   );
 };
 
+// ─── Main Bookings Page ───────────────────────────────────────────────────────
+
 function BookingsContent() {
-  const { theme } = useTheme();
   const searchParams = useSearchParams();
-  const router = useRouter();
   const defaultTab = searchParams.get('tab') || 'offline-requests';
   const [currentTab, setCurrentTab] = useState(defaultTab);
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [actionTarget, setActionTarget] = useState<{ id: string; action: 'approve' | 'reject' | 'verify' | 'mark-paid' } | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
 
-  const fetchBookings = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const res = await bookingService.getBookings();
-      const list = res?.data || res || [];
-      setBookings(Array.isArray(list) ? list : []);
-    } catch (error) {
-      console.error('Failed to fetch bookings:', error);
-    } finally {
-      setIsLoading(false);
+  const { data: bookings = [] as Booking[], isLoading } = useQuery<Booking[]>({
+    queryKey: ['bookings'],
+    queryFn: () => bookingService.getBookings().then(r => Array.isArray(r?.data) ? r.data : Array.isArray(r) ? r : [])
+  });
+
+  // Stagger cards on tab switch
+  useEffect(() => {
+    if (!isLoading && gridRef.current) {
+      const cards = gridRef.current.querySelectorAll('.booking-card');
+      gsap.fromTo(cards,
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.35, stagger: 0.06, ease: 'power2.out' }
+      );
     }
-  }, []);
+  }, [currentTab, isLoading]);
 
-  useEffect(() => { fetchBookings(); }, [fetchBookings]);
-
-  const offlineRequests = bookings.filter(b => b.payment_mode === 'offline' && b.status === 'pending');
+  const offlineRequests  = bookings.filter(b => b.payment_mode === 'offline' && b.status === 'pending');
   const offlineConfirmed = bookings.filter(b => b.payment_mode === 'offline' && ['confirmed', 'approved', 'paid'].includes(b.status as string));
-  const onlineRequests  = bookings.filter(b => b.payment_mode === 'online' && ['pending', 'approved'].includes(b.status as string));
-  const onlinePayments  = bookings.filter(b => b.payment_mode === 'online' && b.status as string === 'paid');
+  const onlineRequests   = bookings.filter(b => b.payment_mode === 'online' && ['pending', 'approved'].includes(b.status as string));
+  const onlinePayments   = bookings.filter(b => b.payment_mode === 'online' && b.status as string === 'paid');
 
   const tabData: Record<string, Booking[]> = {
-    'offline-requests': offlineRequests,
+    'offline-requests':  offlineRequests,
     'offline-confirmed': offlineConfirmed,
-    'online-requests': onlineRequests,
-    'online-payments': onlinePayments,
+    'online-requests':   onlineRequests,
+    'online-payments':   onlinePayments,
   };
 
   const tabs = [
@@ -226,7 +278,7 @@ function BookingsContent() {
   ];
 
   const HEADER: Record<string, { title: string; desc: string }> = {
-    'offline-requests':  { title: 'Offline Booking Requests', desc: 'Pending requests that selected offline payment' },
+    'offline-requests':  { title: 'Offline Booking Requests', desc: 'Pending requests from students who selected offline payment' },
     'offline-confirmed': { title: 'Confirmed Bookings',        desc: 'Accepted and confirmed offline bookings' },
     'online-requests':   { title: 'Online Booking Requests',   desc: 'Online bookings awaiting payment verification' },
     'online-payments':   { title: 'Payments Received',         desc: 'Verified online payment transactions' },
@@ -245,36 +297,39 @@ function BookingsContent() {
 
   const handleAction = async () => {
     if (!actionTarget) return;
+    const { id, action } = actionTarget;
     try {
-      if (actionTarget.action === 'approve')   await bookingService.approveBooking(actionTarget.id);
-      if (actionTarget.action === 'reject')    await bookingService.rejectBooking(actionTarget.id);
-      if (actionTarget.action === 'verify')    await bookingService.verifyPayment(actionTarget.id);
-      if (actionTarget.action === 'mark-paid') await bookingService.markBookingPaid(actionTarget.id);
-      await fetchBookings();
-    } catch (err) {
-      console.error('Action failed:', err);
-      alert('Failed to update booking. Please try again.');
+      if (action === 'approve') await bookingService.approveBooking(id);
+      else if (action === 'reject') await bookingService.rejectBooking(id);
+      else if (action === 'verify') await bookingService.verifyPayment(id);
+      else if (action === 'mark-paid') await bookingService.markBookingPaid(id);
+      
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'activity'] });
+    } catch (error) {
+      console.error(`Failed to ${action} booking:`, error);
+      alert(`Failed to update booking status. Please try again.`);
     } finally {
       setActionTarget(null);
     }
   };
 
   const DIALOGS: Record<string, { title: string; message: string; label: string; variant: 'info' | 'danger' }> = {
-    approve:     { title: 'Confirm booking?',      message: 'This will confirm the booking request.',         label: 'Confirm',    variant: 'info' },
-    reject:      { title: 'Reject booking?',        message: 'This will reject the booking request.',          label: 'Reject',     variant: 'danger' },
-    verify:      { title: 'Verify Payment?',        message: 'This will verify the online payment.',           label: 'Verify',     variant: 'info' },
-    'mark-paid': { title: 'Mark as Paid?',          message: 'This will mark this booking as paid.',           label: 'Mark Paid',  variant: 'info' },
+    approve:     { title: 'Confirm booking?',  message: 'This will confirm the booking request.',   label: 'Confirm',   variant: 'info' },
+    reject:      { title: 'Reject booking?',   message: 'This will reject the booking request.',    label: 'Reject',    variant: 'danger' },
+    verify:      { title: 'Verify Payment?',   message: 'This will verify the online payment.',     label: 'Verify',    variant: 'info' },
+    'mark-paid': { title: 'Mark as Paid?',     message: 'This will mark this booking as paid.',     label: 'Mark Paid', variant: 'info' },
   };
 
   const dialogCfg = actionTarget ? DIALOGS[actionTarget.action] : null;
   const headerInfo = HEADER[currentTab];
-  const isDark = theme === 'dark';
 
-  const stats = [
-    { label: 'Pending',   value: bookings.filter(b => b.status === 'pending').length,   color: 'text-amber-400',   bg: 'bg-amber-500/10' },
-    { label: 'Confirmed', value: bookings.filter(b => b.status === 'confirmed').length, color: 'text-green-400',   bg: 'bg-green-500/10' },
-    { label: 'Paid',      value: bookings.filter(b => (b.status as string) === 'paid').length, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-    { label: 'Total',     value: bookings.length,                                        color: 'text-auburn-500 dark:text-auburn-300', bg: 'bg-auburn-500/10' },
+  const summaryStats = [
+    { label: 'Pending',   value: bookings.filter(b => b.status === 'pending').length,                  color: 'var(--color-warning)' },
+    { label: 'Confirmed', value: bookings.filter(b => b.status === 'confirmed').length,                 color: 'var(--color-success)' },
+    { label: 'Paid',      value: bookings.filter(b => (b.status as string) === 'paid').length,         color: 'var(--color-primary)' },
+    { label: 'Total',     value: bookings.length,                                                      color: 'var(--color-text-primary)' },
   ];
 
   return (
@@ -291,86 +346,129 @@ function BookingsContent() {
         />
       )}
 
-      <div className="w-full animate-fade-in-up space-y-6">
-
-        <div>
-          <h1 className="text-2xl font-bold text-ink-900 dark:text-ivory-50">{headerInfo.title}</h1>
-          <p className="mt-1 text-sm font-medium text-ink-600 dark:text-ivory-400">{headerInfo.desc}</p>
+      <div className="w-full space-y-6">
+        {/* Page header */}
+        <div className="animate-fade-in-up">
+          <h1
+            className="text-2xl font-extrabold tracking-tight"
+            style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text-primary)' }}
+          >
+            {headerInfo.title}
+          </h1>
+          <p className="mt-1 text-sm font-medium" style={{ color: 'var(--color-text-muted)' }}>
+            {headerInfo.desc}
+          </p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {stats.map(s => (
-            <div key={s.label} className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${isDark ? 'bg-ivory-900 border-ivory-700' : 'bg-ivory-50 border-ivory-200'}`}>
-              <div className={`w-8 h-8 ${s.bg} rounded-lg flex items-center justify-center`}>
-                <span className={`text-[15px] font-black ${s.color}`}>{s.value}</span>
+        {/* Summary chips */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-fade-in-up" style={{ animationDelay: '60ms' }}>
+          {summaryStats.map(s => (
+            <div
+              key={s.label}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl"
+              style={{
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-border)',
+              }}
+            >
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-base"
+                style={{ background: `color-mix(in srgb, ${s.color} 12%, transparent)`, color: s.color }}
+              >
+                {s.value}
               </div>
-              <span className="text-[12px] font-semibold text-ink-600 dark:text-ivory-400">{s.label}</span>
+              <span className="text-[12px] font-semibold" style={{ color: 'var(--color-text-muted)' }}>{s.label}</span>
             </div>
           ))}
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className={`flex items-center p-1 rounded-xl border ${isDark ? 'bg-ivory-950 border-ivory-700' : 'bg-ivory-50 border-ivory-200'} overflow-x-auto`}>
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => { setCurrentTab(tab.id); setSearchQuery(''); }}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
-                  currentTab === tab.id
-                    ? 'bg-auburn-500 text-white shadow-sm'
-                    : 'text-ink-700 dark:text-ivory-300 hover:bg-ivory-200 dark:hover:bg-ivory-800'
-                }`}
-              >
-                {tab.label}
-                <span className={`px-2 py-0.5 rounded-full text-[11px] ${
-                  currentTab === tab.id ? 'bg-white/20 text-white' : 'bg-ivory-200 dark:bg-ivory-800 text-ink-600 dark:text-ivory-400'
-                }`}>
-                  {tab.count}
-                </span>
-              </button>
-            ))}
+        {/* Tabs + search */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 animate-fade-in-up" style={{ animationDelay: '120ms' }}>
+          {/* Tab bar */}
+          <div
+            className="flex items-center p-1 rounded-xl overflow-x-auto flex-shrink-0"
+            style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+          >
+            {tabs.map(tab => {
+              const isActive = currentTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => { setCurrentTab(tab.id); setSearchQuery(''); }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap"
+                  style={
+                    isActive
+                      ? { background: 'var(--color-primary)', color: 'var(--color-text-inverse)' }
+                      : { color: 'var(--color-text-muted)' }
+                  }
+                >
+                  {tab.label}
+                  <span
+                    className="px-2 py-0.5 rounded-full text-[11px] font-bold"
+                    style={
+                      isActive
+                        ? { background: 'rgba(255,255,255,0.2)', color: 'inherit' }
+                        : { background: 'var(--color-border)', color: 'var(--color-text-muted)' }
+                    }
+                  >
+                    {tab.count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
-          <div className="relative flex-1 min-w-0 sm:max-w-xs">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-500 dark:text-ivory-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
+          {/* Search */}
+          <div className="relative flex-1 min-w-0">
+            <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" />
+            <Input
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Search name, room, hostel…"
-              className={`w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm font-medium outline-none transition-all ${
-                isDark
-                  ? 'bg-ivory-900 border-ivory-700 text-ivory-50 placeholder-ivory-500 focus:border-auburn-300'
-                  : 'bg-ivory-50 border-ivory-200 text-ink-900 placeholder-ink-500 focus:border-auburn-500'
-              }`}
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm font-medium outline-none transition-all"
+              style={{
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-border)',
+                color: 'var(--color-text-primary)',
+              }}
             />
           </div>
 
           <button
-            onClick={fetchBookings}
+            onClick={() => queryClient.invalidateQueries({ queryKey: ['bookings'] })}
             disabled={isLoading}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all border-ivory-200 dark:border-ivory-700 text-ink-700 dark:text-ivory-300 hover:bg-ivory-100 dark:hover:bg-ivory-800 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
+            style={{
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              color: 'var(--color-text-secondary)',
+            }}
           >
-            <svg className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
+            <Icon name="refresh" className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
         </div>
 
+        {/* Cards grid */}
         {isLoading ? (
-          <div className="py-20 text-center">
-            <div className="w-8 h-8 border-2 border-auburn-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-sm font-medium text-ink-600 dark:text-ivory-400">Loading bookings…</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[...Array(6)].map((_, i) => (
+              <div
+                key={i}
+                className="h-64 rounded-2xl animate-pulse"
+                style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+              />
+            ))}
           </div>
         ) : filtered.length === 0 ? (
           <EmptyState tab={currentTab} />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div ref={gridRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filtered.map(b => (
-              <BookingCard key={b.id} booking={b} tab={currentTab} onAction={(id, action) => setActionTarget({ id, action })} />
+              <div key={b.id} className="booking-card">
+                <BookingCard booking={b} onAction={(id, action) => setActionTarget({ id, action })} />
+              </div>
             ))}
           </div>
         )}
@@ -382,8 +480,8 @@ function BookingsContent() {
 export default function BookingsPage() {
   return (
     <React.Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-ivory-50 dark:bg-ivory-950">
-        <div className="w-8 h-8 border-2 border-auburn-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--color-background)' }}>
+        <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--color-primary)' }} />
       </div>
     }>
       <BookingsContent />

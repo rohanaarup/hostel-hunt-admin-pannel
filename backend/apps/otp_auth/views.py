@@ -2,6 +2,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
+from rest_framework.throttling import ScopedRateThrottle
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from datetime import timedelta
@@ -15,6 +16,8 @@ User = get_user_model()
 
 class SendOTPView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'otp'
 
     def post(self, request):
         serializer = SendOTPSerializer(data=request.data)
@@ -50,6 +53,8 @@ class SendOTPView(APIView):
 
 class VerifyOTPView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'otp'
 
     def post(self, request):
         serializer = VerifyOTPSerializer(data=request.data)

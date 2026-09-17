@@ -140,8 +140,8 @@ interface SimpleBarProps {
 export function SimpleBar({ data, xKey, series, height = 220 }: SimpleBarProps) {
   const palette = useChartPalette();
   const { theme } = useTheme();
-  const axis = theme === 'dark' ? '#C4B7A6' : '#5A3D34';
-  const grid = theme === 'dark' ? '#3A312B' : '#EFE3D6';
+  const axis = 'var(--color-text-secondary)';
+  const grid = 'var(--color-border)';
 
   return (
     <ResponsiveContainer width="100%" height={height}>
@@ -172,8 +172,8 @@ export function SimpleLine({ data, xKey, yKey, height = 240, yLabel }: SimpleLin
   const palette = useChartPalette();
   const stroke = palette[0];
   const { theme } = useTheme();
-  const axis = theme === 'dark' ? '#C4B7A6' : '#5A3D34';
-  const grid = theme === 'dark' ? '#3A312B' : '#EFE3D6';
+  const axis = 'var(--color-text-secondary)';
+  const grid = 'var(--color-border)';
 
   return (
     <ResponsiveContainer width="100%" height={height}>
@@ -187,8 +187,8 @@ export function SimpleLine({ data, xKey, yKey, height = 240, yLabel }: SimpleLin
           dataKey={yKey}
           stroke={stroke}
           strokeWidth={3}
-          dot={{ r: 4, strokeWidth: 2, fill: '#fff', stroke }}
-          activeDot={{ r: 6, strokeWidth: 2, fill: stroke, stroke: '#fff' }}
+          dot={{ r: 4, strokeWidth: 2, fill: 'var(--color-surface)', stroke }}
+          activeDot={{ r: 6, strokeWidth: 2, fill: stroke, stroke: 'var(--color-surface)' }}
         />
       </LineChart>
     </ResponsiveContainer>

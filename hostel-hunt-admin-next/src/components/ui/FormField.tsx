@@ -46,23 +46,20 @@ export default function FormField({
 }
 
 // ── Shared input class helper ──────────────────────────────────────────────────
-export const inputClass = (hasError?: boolean) =>
-  `w-full bg-ivory-50 dark:bg-ivory-950 border rounded-[10px] px-4 py-3 text-ink-900 dark:text-ivory-50 placeholder-ink-700/50 dark:placeholder-ivory-500/50 outline-none transition-all duration-150 font-medium text-sm ${
-    hasError
-      ? 'border-red-500/60 ring-2 ring-red-500/20'
-      : 'border-ivory-300 focus:border-auburn-500 focus:ring-[3px] focus:ring-auburn-500/20 dark:border-ivory-700 dark:focus:border-auburn-300 dark:focus:ring-auburn-300/20'
-  }`;
+// Kept as aliases to preserve existing call sites. The single source of truth
+// is now `<Input />`, `<Textarea />`, `<Select />` in `./Input.tsx`, which all
+// share the same token-aligned, dark-mode-correct styling.
+export const inputClass = (hasError?: boolean) => {
+  // Local re-derivation: keep it in lockstep with the Input component.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const err = hasError
+    ? 'border-red-500/60 dark:border-red-400/60 ring-2 ring-red-500/20'
+    : 'border-ivory-300 focus:border-auburn-500 focus:ring-[3px] focus:ring-auburn-500/20 dark:border-ivory-700 dark:focus:border-auburn-300 dark:focus:ring-auburn-300/20';
+  return `w-full min-h-[44px] bg-ivory-50 dark:bg-ivory-950 ${err} rounded-[10px] px-3.5 py-2.5 text-ink-900 dark:text-ivory-50 placeholder-ink-700/50 dark:placeholder-ivory-500/50 outline-none transition-all duration-150 font-medium text-sm color-scheme:light dark:color-scheme:dark`;
+};
 
 export const selectClass = (hasError?: boolean) =>
-  `w-full bg-ivory-50 dark:bg-ivory-950 border rounded-[10px] px-4 py-3 text-ink-900 dark:text-ivory-50 outline-none transition-all duration-150 font-medium text-sm appearance-none cursor-pointer ${
-    hasError
-      ? 'border-red-500/60 ring-2 ring-red-500/20'
-      : 'border-ivory-300 focus:border-auburn-500 focus:ring-[3px] focus:ring-auburn-500/20 dark:border-ivory-700 dark:focus:border-auburn-300 dark:focus:ring-auburn-300/20'
-  }`;
+  `${inputClass(hasError)} appearance-none cursor-pointer pr-9`;
 
 export const textareaClass = (hasError?: boolean) =>
-  `w-full bg-ivory-50 dark:bg-ivory-950 border rounded-[10px] px-4 py-3 text-ink-900 dark:text-ivory-50 placeholder-ink-700/50 dark:placeholder-ivory-500/50 outline-none transition-all duration-150 font-medium text-sm resize-none ${
-    hasError
-      ? 'border-red-500/60 ring-2 ring-red-500/20'
-      : 'border-ivory-300 focus:border-auburn-500 focus:ring-[3px] focus:ring-auburn-500/20 dark:border-ivory-700 dark:focus:border-auburn-300 dark:focus:ring-auburn-300/20'
-  }`;
+  `${inputClass(hasError)} resize-none`;

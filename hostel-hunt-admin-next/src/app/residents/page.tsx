@@ -1,56 +1,69 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Input, Textarea, Select } from '@/components/ui/Input';
 import DashboardLayout from '@/components/common/DashboardLayout';
-import { useTheme } from '@/contexts/ThemeContext';
 import Modal from '@/components/ui/Modal';
+import StatusBadge from '@/components/ui/StatusBadge';
+import Icon from '@/components/ui/Icon';
 import type { Resident } from '@/types';
 import { residentService, hostelService } from '@/services/api';
+import gsap from 'gsap';
 
-const STATUS_STYLES: Record<string, string> = {
-  active: 'bg-green-500/10 text-green-400 border-green-500/20',
-  vacated: 'bg-ivory-300 dark:bg-ivory-700 text-ink-700 dark:text-ivory-500 border-ivory-400 dark:border-ivory-600',
-  notice_given: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-};
+function formatDate(d: string | null | undefined) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function getInitials(name: string) {
+  return (name || 'R').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+}
 
 export default function ResidentsPage() {
-  const { theme } = useTheme();
-  const [residents, setResidents] = useState<Resident[]>([]);
-  const [hostels, setHostels] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'vacated' | 'notice_given'>('all');
+  const gridRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState({
     name: '', phone: '', hostel: '', room: '', bed_number: '',
     id_proof_type: 'Aadhaar', id_proof_number: '',
     emergency_contact_name: '', emergency_contact_phone: '',
-    move_in_date: ''
+    move_in_date: '',
   });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const queryClient = useQueryClient();
 
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      const [resRes, hostRes] = await Promise.all([
-        residentService.getResidents(),
-        hostelService.getHostels()
-      ]);
-      setResidents(resRes?.data || resRes || []);
-      setHostels(hostRes?.data || hostRes || []);
-    } catch (error) {
-      console.error('Failed to fetch data', error);
-    } finally {
-      setIsLoading(false);
+  const { data: residents = [] as Resident[], isLoading: isResidentsLoading } = useQuery<Resident[]>({
+    queryKey: ['residents'],
+    queryFn: () => residentService.getResidents()
+      .then(r => Array.isArray(r?.data) ? r.data : Array.isArray(r) ? r : [])
+  });
+
+  const { data: hostels = [] as any[], isLoading: isHostelsLoading } = useQuery<any[]>({
+    queryKey: ['hostels'],
+    queryFn: () => hostelService.getHostels()
+      .then(r => Array.isArray(r?.data) ? r.data : Array.isArray(r) ? r : [])
+  });
+
+  const isLoading = isResidentsLoading || isHostelsLoading;
+
+  useEffect(() => {
+    if (!isLoading && gridRef.current) {
+      const cards = gridRef.current.querySelectorAll('.resident-card');
+      gsap.fromTo(cards,
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.35, stagger: 0.06, ease: 'power2.out' }
+      );
     }
-  };
+  }, [isLoading, statusFilter]);
 
   const handleMarkVacated = async (id: string) => {
     try {
       await residentService.markResidentVacated(id);
-      fetchData();
+      queryClient.invalidateQueries({ queryKey: ['residents'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
     } catch (error) {
       console.error('Failed to mark vacated', error);
       alert('Failed to update resident status');
@@ -61,154 +74,292 @@ export default function ResidentsPage() {
     e.preventDefault();
     try {
       await residentService.createResident(formData);
+      queryClient.invalidateQueries({ queryKey: ['residents'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
       setShowAddModal(false);
-      fetchData();
     } catch (error) {
       console.error('Failed to create resident', error);
       alert('Failed to create resident record');
     }
   };
 
-  const cardBg = theme === 'dark' ? 'bg-ivory-900' : 'bg-ivory-100';
-  const cardBorder = theme === 'dark' ? 'border-ivory-700' : 'border-ivory-300';
-  const textSub = theme === 'dark' ? 'text-ivory-500' : 'text-ink-700';
-  const rowHover = theme === 'dark' ? 'hover:bg-ivory-50/5' : 'hover:bg-ivory-50';
+  const q = searchQuery.toLowerCase();
+  const filtered = residents.filter(r => {
+    const matchesSearch = !q || r.name.toLowerCase().includes(q) || r.phone.includes(q);
+    const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const activeCount = residents.filter(r => r.status === 'active').length;
+  const vacatedCount = residents.filter(r => r.status === 'vacated').length;
+  const noticeCount = residents.filter(r => r.status === 'notice_given').length;
+
+  const statusFilters = [
+    { id: 'all' as const,         label: 'All',         count: residents.length },
+    { id: 'active' as const,      label: 'Active',      count: activeCount },
+    { id: 'notice_given' as const, label: 'Notice Given', count: noticeCount },
+    { id: 'vacated' as const,     label: 'Vacated',     count: vacatedCount },
+  ];
 
   return (
     <DashboardLayout title="Residents">
-      <div className="w-full animate-fade-in-up space-y-6">
-        <div className="flex justify-between items-end">
+      <div className="w-full space-y-6 animate-fade-in-up">
+
+        {/* Page header */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-ink-900 dark:text-ivory-50">Residents</h1>
-            <p className={`${textSub} mt-1 text-sm font-medium`}>Manage all hostel residents</p>
+            <h1
+              className="text-2xl font-extrabold tracking-tight"
+              style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text-primary)' }}
+            >
+              Residents Directory
+            </h1>
+            <p className="mt-1 text-sm font-medium" style={{ color: 'var(--color-text-muted)' }}>
+              {residents.length} total · {activeCount} active
+            </p>
           </div>
           <button
             onClick={() => setShowAddModal(true)}
-            className="bg-auburn-500 text-white dark:bg-auburn-300 dark:text-ink-900 px-4 py-2 rounded-[10px] text-sm font-semibold hover:opacity-90 transition-opacity">
-            + Add Resident
+            className="flex items-center gap-2 px-4 py-2.5 rounded-[10px] text-sm font-semibold transition-all hover:opacity-90"
+            style={{ background: 'var(--color-primary)', color: 'var(--color-text-inverse)' }}
+          >
+            <Icon name="plus" className="w-4 h-4" />
+            Add Resident
           </button>
         </div>
 
-        <div className={`${cardBg} border ${cardBorder} rounded-2xl overflow-hidden`}>
-          {isLoading ? (
-            <div className="py-16 text-center text-ink-700 dark:text-ivory-500 font-medium text-sm animate-pulse">
-              Loading residents...
-            </div>
-          ) : residents.length === 0 ? (
-            <div className="py-16 text-center">
-              <div className="text-4xl mb-3">👥</div>
-              <p className={`${textSub} font-medium`}>No residents found</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className={`text-[10px] uppercase tracking-wider font-bold ${textSub} border-b border-ivory-300 dark:border-ivory-700`}>
-                    <th className="px-5 py-3">Resident</th>
-                    <th className="px-5 py-3">Hostel / Room</th>
-                    <th className="px-5 py-3 hidden md:table-cell">Move-in Date</th>
-                    <th className="px-5 py-3">Status</th>
-                    <th className="px-5 py-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {residents.map(res => (
-                    <tr key={res.id} className={`border-b border-ivory-300 dark:border-ivory-700 last:border-0 ${rowHover} transition-colors`}>
-                      <td className="px-5 py-4">
-                        <p className="text-ink-900 dark:text-ivory-50 text-sm font-semibold">{res.name}</p>
-                        <p className={`${textSub} text-xs`}>{res.phone}</p>
-                      </td>
-                      <td className="px-5 py-4">
-                        <p className="text-ink-900 dark:text-ivory-50 text-sm font-semibold">{res.room || 'N/A'}</p>
-                        <p className={`${textSub} text-xs`}>{res.hostel}</p>
-                      </td>
-                      <td className={`px-5 py-4 ${textSub} text-xs hidden md:table-cell`}>
-                        {res.move_in_date ? new Date(res.move_in_date).toLocaleDateString() : '—'}
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-[6px] text-[10px] font-bold border capitalize ${STATUS_STYLES[res.status] || STATUS_STYLES.vacated}`}>
-                          {res.status.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4 text-right">
-                        {res.status === 'active' && (
-                          <button
-                            onClick={() => handleMarkVacated(res.id)}
-                            className="text-xs font-bold text-red-500 hover:text-red-700 transition-colors"
-                          >
-                            Mark Vacated
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div
+            className="flex items-center p-1 rounded-xl overflow-x-auto flex-shrink-0"
+            style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+          >
+            {statusFilters.map(f => (
+              <button
+                key={f.id}
+                onClick={() => setStatusFilter(f.id)}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap"
+                style={
+                  statusFilter === f.id
+                    ? { background: 'var(--color-primary)', color: 'var(--color-text-inverse)' }
+                    : { color: 'var(--color-text-muted)' }
+                }
+              >
+                {f.label}
+                <span
+                  className="px-2 py-0.5 rounded-full text-[11px] font-bold"
+                  style={
+                    statusFilter === f.id
+                      ? { background: 'rgba(255,255,255,0.2)', color: 'inherit' }
+                      : { background: 'var(--color-border)', color: 'var(--color-text-muted)' }
+                  }
+                >
+                  {f.count}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div className="relative flex-1">
+            <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-text-muted)' } as any} />
+            <Input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search by name or phone…"
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm font-medium outline-none transition-all"
+              style={{
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-border)',
+                color: 'var(--color-text-primary)',
+              }}
+            />
+          </div>
         </div>
+
+        {/* Grid / Loading / Empty */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="h-48 rounded-2xl animate-pulse" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }} />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div
+            className="py-20 text-center rounded-2xl"
+            style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+          >
+            <div
+              className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+              style={{ background: 'var(--color-border)', color: 'var(--color-text-muted)' }}
+            >
+              <Icon name="residents" className="w-8 h-8" />
+            </div>
+            <p className="text-[15px] font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>
+              {searchQuery ? 'No results found' : 'No residents yet'}
+            </p>
+            <p className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>
+              {searchQuery ? 'Try a different search term.' : 'Add your first resident to get started.'}
+            </p>
+          </div>
+        ) : (
+          <div ref={gridRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {filtered.map(res => (
+              <div
+                key={res.id}
+                className="resident-card rounded-2xl p-5 flex flex-col gap-3 transition-all duration-200 hover:shadow-md"
+                style={{
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border)',
+                }}
+                onMouseEnter={e => gsap.to(e.currentTarget, { y: -3, duration: 0.2, ease: 'power2.out' })}
+                onMouseLeave={e => gsap.to(e.currentTarget, { y: 0, duration: 0.2, ease: 'power2.out' })}
+              >
+                {/* Avatar + name */}
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
+                    style={{
+                      background: res.status === 'active' ? 'var(--color-success-light)' : 'var(--color-border)',
+                      color: res.status === 'active' ? 'var(--color-success)' : 'var(--color-text-muted)',
+                    }}
+                  >
+                    {getInitials(res.name)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[14px] font-bold truncate" style={{ color: 'var(--color-text-primary)' }}>
+                      {res.name}
+                    </p>
+                    <p className="text-[11px] truncate" style={{ color: 'var(--color-text-muted)' }}>
+                      {res.phone}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Status badge */}
+                <StatusBadge status={res.status} />
+
+                {/* Info */}
+                <div className="space-y-1.5 pt-2 border-t" style={{ borderColor: 'var(--color-border)' }}>
+                  <div className="flex items-center gap-2">
+                    <Icon name="bed" className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="text-[12px] font-medium" style={{ color: 'var(--color-text-muted)' }}>
+                      Bed: <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{res.bed_number || '—'}</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Icon name="calendar" className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="text-[12px] font-medium" style={{ color: 'var(--color-text-muted)' }}>
+                      Moved in: <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{formatDate(res.move_in_date)}</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Action */}
+                {res.status === 'active' && (
+                  <button
+                    onClick={() => handleMarkVacated(res.id)}
+                    className="mt-auto w-full text-xs font-bold py-2 rounded-[8px] transition-all hover:opacity-80"
+                    style={{
+                      background: 'var(--color-error-light)',
+                      color: 'var(--color-error)',
+                      border: '1px solid color-mix(in srgb, var(--color-error) 25%, transparent)',
+                    }}
+                  >
+                    Mark Vacated
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
+      {/* Add Resident Modal */}
       <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)}>
-        <div className="bg-ivory-100 dark:bg-ivory-900 border border-ivory-300 dark:border-ivory-700 p-6 rounded-2xl w-[90vw] max-w-lg">
-          <h2 className="text-xl font-bold text-ink-900 dark:text-ivory-50 mb-4">Add Resident</h2>
+        <div
+          className="p-6 rounded-2xl w-[90vw] max-w-lg max-h-[90vh] overflow-y-auto"
+          style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+        >
+          <h2 className="text-xl font-bold mb-4" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text-primary)' }}>
+            Add Resident
+          </h2>
           <form onSubmit={handleAddSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-ink-700 dark:text-ivory-500 mb-1">Name</label>
-              <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full p-2 rounded-lg border border-ivory-300 dark:border-ivory-700 bg-transparent text-sm" />
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { label: 'Name', key: 'name', type: 'text', required: true },
+                { label: 'Phone', key: 'phone', type: 'text', required: true },
+              ].map(f => (
+                <div key={f.key}>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--color-text-muted)' }}>{f.label}</label>
+                  <Input required={f.required} type={f.type}
+                    value={(formData as any)[f.key]}
+                    onChange={e => setFormData({ ...formData, [f.key]: e.target.value })}
+                    className="w-full p-2.5 rounded-lg text-sm outline-none"
+                    style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--color-text-muted)' }}>Hostel</label>
+                <Select required value={formData.hostel} onChange={e => setFormData({ ...formData, hostel: e.target.value })}
+                  className="w-full p-2.5 rounded-lg text-sm outline-none"
+                  style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+                >
+                  <option value="">Select</option>
+                  {hostels.map(h => <option key={h.hostel_id || h.id} value={h.hostel_id || h.id}>{h.name}</option>)}
+                </Select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--color-text-muted)' }}>Room ID</label>
+                <Input type="text" value={formData.room} onChange={e => setFormData({ ...formData, room: e.target.value })}
+                  placeholder="Optional"
+                  className="w-full p-2.5 rounded-lg text-sm outline-none"
+                  style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--color-text-muted)' }}>Bed #</label>
+                <Input required type="text" value={formData.bed_number} onChange={e => setFormData({ ...formData, bed_number: e.target.value })}
+                  className="w-full p-2.5 rounded-lg text-sm outline-none"
+                  style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { label: 'ID Proof Type', key: 'id_proof_type' },
+                { label: 'ID Proof Number', key: 'id_proof_number' },
+                { label: 'Emergency Contact Name', key: 'emergency_contact_name' },
+                { label: 'Emergency Contact Phone', key: 'emergency_contact_phone' },
+              ].map(f => (
+                <div key={f.key}>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--color-text-muted)' }}>{f.label}</label>
+                  <Input required type="text" value={(formData as any)[f.key]} onChange={e => setFormData({ ...formData, [f.key]: e.target.value })}
+                    className="w-full p-2.5 rounded-lg text-sm outline-none"
+                    style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+                  />
+                </div>
+              ))}
             </div>
             <div>
-              <label className="block text-xs font-semibold text-ink-700 dark:text-ivory-500 mb-1">Phone</label>
-              <input required type="text" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full p-2 rounded-lg border border-ivory-300 dark:border-ivory-700 bg-transparent text-sm" />
+              <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--color-text-muted)' }}>Move-in Date</label>
+              <Input required type="date" value={formData.move_in_date} onChange={e => setFormData({ ...formData, move_in_date: e.target.value })}
+                className="w-full p-2.5 rounded-lg text-sm outline-none"
+                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+              />
             </div>
-          </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-ink-700 dark:text-ivory-500 mb-1">Hostel</label>
-              <select required value={formData.hostel} onChange={e => setFormData({...formData, hostel: e.target.value})} className="w-full p-2 rounded-lg border border-ivory-300 dark:border-ivory-700 bg-transparent text-sm">
-                <option value="">Select Hostel</option>
-                {hostels.map(h => <option key={h.hostel_id || h.id} value={h.hostel_id || h.id}>{h.name}</option>)}
-              </select>
+            <div className="pt-4 flex justify-end gap-3">
+              <button type="button" onClick={() => setShowAddModal(false)}
+                className="px-4 py-2 text-sm font-semibold" style={{ color: 'var(--color-text-muted)' }}
+              >Cancel</button>
+              <button type="submit"
+                className="px-4 py-2 text-sm font-semibold rounded-[8px] hover:opacity-90 transition-all"
+                style={{ background: 'var(--color-primary)', color: 'var(--color-text-inverse)' }}
+              >Save Resident</button>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-ink-700 dark:text-ivory-500 mb-1">Room ID</label>
-              <input type="text" value={formData.room} onChange={e => setFormData({...formData, room: e.target.value})} className="w-full p-2 rounded-lg border border-ivory-300 dark:border-ivory-700 bg-transparent text-sm" placeholder="Optional" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-ink-700 dark:text-ivory-500 mb-1">Bed Number</label>
-              <input required type="text" value={formData.bed_number} onChange={e => setFormData({...formData, bed_number: e.target.value})} className="w-full p-2 rounded-lg border border-ivory-300 dark:border-ivory-700 bg-transparent text-sm" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-ink-700 dark:text-ivory-500 mb-1">ID Proof Type</label>
-              <input required type="text" value={formData.id_proof_type} onChange={e => setFormData({...formData, id_proof_type: e.target.value})} className="w-full p-2 rounded-lg border border-ivory-300 dark:border-ivory-700 bg-transparent text-sm" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-ink-700 dark:text-ivory-500 mb-1">ID Proof Number</label>
-              <input required type="text" value={formData.id_proof_number} onChange={e => setFormData({...formData, id_proof_number: e.target.value})} className="w-full p-2 rounded-lg border border-ivory-300 dark:border-ivory-700 bg-transparent text-sm" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-ink-700 dark:text-ivory-500 mb-1">Emergency Contact Name</label>
-              <input required type="text" value={formData.emergency_contact_name} onChange={e => setFormData({...formData, emergency_contact_name: e.target.value})} className="w-full p-2 rounded-lg border border-ivory-300 dark:border-ivory-700 bg-transparent text-sm" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-ink-700 dark:text-ivory-500 mb-1">Emergency Contact Phone</label>
-              <input required type="text" value={formData.emergency_contact_phone} onChange={e => setFormData({...formData, emergency_contact_phone: e.target.value})} className="w-full p-2 rounded-lg border border-ivory-300 dark:border-ivory-700 bg-transparent text-sm" />
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-ink-700 dark:text-ivory-500 mb-1">Move-in Date</label>
-            <input required type="date" value={formData.move_in_date} onChange={e => setFormData({...formData, move_in_date: e.target.value})} className="w-full p-2 rounded-lg border border-ivory-300 dark:border-ivory-700 bg-transparent text-sm" />
-          </div>
-
-          <div className="pt-4 flex justify-end gap-3">
-            <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 text-sm font-semibold text-ink-700 dark:text-ivory-500">Cancel</button>
-            <button type="submit" className="px-4 py-2 text-sm font-semibold bg-auburn-500 text-white rounded-[8px]">Save Resident</button>
-          </div>
           </form>
         </div>
       </Modal>

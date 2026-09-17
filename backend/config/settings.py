@@ -40,7 +40,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
+    'django.contrib.postgres',
+
     # Third party apps
     'rest_framework',
     'rest_framework_simplejwt',
@@ -102,6 +103,10 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 USE_DB = config('USE_DB', default='supabase')
 
+# Persistent connection lifetime (seconds). Was 0 (a fresh handshake per
+# request); raised to reuse connections across requests within a worker.
+DB_CONN_MAX_AGE = config('DB_CONN_MAX_AGE', default=60, cast=int)
+
 if USE_DB == 'sqlite':
     DATABASES = {
         'default': {
@@ -114,7 +119,7 @@ elif USE_DB == 'local':
     DATABASES = {
         'default': dj_database_url.config(
             default=config('LOCAL_DATABASE_URL', default='postgresql://postgres:postgres@localhost:5432/hh_core'),
-            conn_max_age=0,
+            conn_max_age=DB_CONN_MAX_AGE,
             conn_health_checks=True,
         )
     }
@@ -123,7 +128,7 @@ else:
     DATABASES = {
         'default': dj_database_url.config(
             default=config('DATABASE_URL'),
-            conn_max_age=0,
+            conn_max_age=DB_CONN_MAX_AGE,
             conn_health_checks=True,
         )
     }
@@ -187,6 +192,20 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    'DEFAULT_PAGINATION_CLASS': 'utils.pagination.CustomPageNumberPagination',
+    'PAGE_SIZE': 10,
+    'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        # General public/browsing traffic (hostel list/search/localities, etc.)
+        'anon': '60/min',
+        'user': '120/min',
+        # Tighter scope for abuse-sensitive OTP send/verify endpoints.
+        # Sits alongside the existing per-email cooldown in OTPService, not a replacement.
+        'otp': '5/min',
+    },
 }
 
 # CORS Configuration
@@ -259,3 +278,18 @@ if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
     logger.warning("CRITICAL: EMAIL_HOST_USER and/or EMAIL_HOST_PASSWORD are not set. Email OTPs will fail.")
 if not TWILIO_ACCOUNT_SID or not TWILIO_AUTH_TOKEN or not TWILIO_FROM_NUMBER:
     logger.warning("CRITICAL: Twilio configuration is missing. SMS OTPs will fail and return a 503 error.")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Razorpay Configuration
+# KEY_ID is the public-facing key — safe to send to Flutter client.
+# KEY_SECRET and WEBHOOK_SECRET MUST remain server-side only — never serialise
+# them into any API response.
+# ─────────────────────────────────────────────────────────────────────────────
+RAZORPAY_KEY_ID = config('RAZORPAY_KEY_ID', default='')
+RAZORPAY_KEY_SECRET = config('RAZORPAY_KEY_SECRET', default='')
+RAZORPAY_WEBHOOK_SECRET = config('RAZORPAY_WEBHOOK_SECRET', default='')
+
+if not RAZORPAY_KEY_ID or not RAZORPAY_KEY_SECRET:
+    logger.warning("CRITICAL: RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET is not set. Online payments will fail.")
+if not RAZORPAY_WEBHOOK_SECRET:
+    logger.warning("CRITICAL: RAZORPAY_WEBHOOK_SECRET is not set. Webhook verification will fail.")

@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import gsap from 'gsap';
+import { LineChart, Line, ResponsiveContainer, YAxis } from 'recharts';
 import Icon, { IconName } from './Icon';
 
 /**
@@ -21,6 +23,7 @@ interface StatCardProps {
   icon: IconName;
   loading?: boolean;
   delay?: number;
+  sparklineData?: number[];
 }
 
 const TONE_STYLES: Record<StatTone, { bar: string; iconBox: string; iconColor: string; badge: string }> = {
@@ -72,29 +75,46 @@ const AnimatedNumber: React.FC<{ value: number | string; prefix?: string; suffix
   value, prefix = '', suffix = '',
 }) => {
   const [display, setDisplay] = useState(0);
+
   useEffect(() => {
-    if (typeof value !== 'number') { setDisplay(0); return; }
-    let cur = 0;
-    const steps = 36;
-    const inc = value / steps;
-    let raf: number;
-    const tick = () => {
-      cur += inc;
-      if (cur >= value) { setDisplay(value); return; }
-      setDisplay(Math.ceil(cur));
-      raf = window.setTimeout(tick, 18) as unknown as number;
-    };
-    tick();
-    return () => { if (raf) window.clearTimeout(raf); };
+    if (typeof value !== 'number') {
+      setDisplay(0);
+      return;
+    }
+    
+    const obj = { val: 0 };
+    const tween = gsap.to(obj, {
+      val: value,
+      duration: 1.5,
+      ease: 'power2.out',
+      onUpdate: () => {
+        setDisplay(Math.ceil(obj.val));
+      }
+    });
+
+    return () => { tween.kill(); };
   }, [value]);
+
   if (typeof value !== 'number') return <>{value}</>;
   return <>{prefix}{display.toLocaleString('en-IN')}{suffix}</>;
 };
 
 export default function StatCard({
-  title, value, prefix, suffix, badge, tone, icon, loading = false, delay = 0,
+  title, value, prefix, suffix, badge, tone, icon, loading = false, delay = 0, sparklineData
 }: StatCardProps) {
   const t = TONE_STYLES[tone];
+  
+  // Prepare sparkline data if available
+  const hasSparkline = sparklineData && sparklineData.length >= 3;
+  const chartData = hasSparkline ? sparklineData.map((val, i) => ({ index: i, value: val })) : [];
+
+  // Extract base color from the iconBox string to style the line chart stroke
+  const strokeColor = t.iconColor.includes('auburn') ? 'var(--color-auburn-500)' 
+                    : t.iconColor.includes('emerald') ? 'var(--color-success)'
+                    : t.iconColor.includes('red') ? 'var(--color-error)'
+                    : t.iconColor.includes('amber') ? 'var(--color-warning)'
+                    : t.iconColor.includes('blue') ? '#3b82f6'
+                    : 'var(--color-text-secondary)';
   return (
     <div
       className="group relative overflow-hidden rounded-2xl border border-ivory-300 dark:border-ivory-700 bg-ivory-50 dark:bg-ivory-900 p-5 transition-all duration-300 hover:border-auburn-500/40 dark:hover:border-auburn-300/40 hover:shadow-lg animate-fade-in-up"
@@ -126,6 +146,25 @@ export default function StatCard({
             <span className={`inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${t.badge}`}>
               {badge}
             </span>
+          </div>
+        )}
+
+        {hasSparkline && (
+          <div className="absolute bottom-0 right-0 w-[45%] h-12 opacity-30 pointer-events-none">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <YAxis domain={['dataMin', 'dataMax']} hide />
+                <Line 
+                  type="monotone" 
+                  dataKey="value" 
+                  stroke={strokeColor} 
+                  strokeWidth={2.5} 
+                  dot={false}
+                  isAnimationActive={true}
+                  animationDuration={1500}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         )}
       </div>

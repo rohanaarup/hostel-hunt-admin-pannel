@@ -2,9 +2,10 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from django.db.models import Count
+from django.db.models import Count, Min, Max, Sum, OuterRef, Subquery
 from .models import Hostel
-from .serializers import HostelSerializer
+from .serializers import HostelSerializer, HostelListSerializer
+from apps.media_uploads.models import MediaItem
 from utils.permissions import IsOwner
 
 
@@ -44,14 +45,17 @@ class HostelViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated(), IsOwner()]
 
     def get_serializer_class(self):
-        if self.action in ['list', 'retrieve'] and not self.request.user.is_authenticated:
-            return PublicHostelSerializer
+        if not self.request.user.is_authenticated:
+            if self.action == 'list':
+                return HostelListSerializer
+            if self.action == 'retrieve':
+                return PublicHostelSerializer
         return HostelSerializer
 
     def get_queryset(self):
         # For public unauthenticated requests, return all active hostels
         if self.action in ['list', 'retrieve'] and not self.request.user.is_authenticated:
-            qs = Hostel.objects.filter(is_active=True).prefetch_related('rooms', 'media')
+            qs = Hostel.objects.filter(is_active=True)
 
             # Filter by gender_type
             gender = self.request.query_params.get('gender_type')
@@ -67,6 +71,24 @@ class HostelViewSet(viewsets.ModelViewSet):
             locality = self.request.query_params.get('locality')
             if locality:
                 qs = qs.filter(locality__icontains=locality)
+
+            if self.action == 'list':
+                # Lightweight list: aggregate room/bed counts and price range,
+                # and pull a single cover image via subquery — no full
+                # rooms/media prefetch (see HostelListSerializer).
+                cover_subquery = MediaItem.objects.filter(
+                    hostel=OuterRef('pk')
+                ).order_by('order_index', '-created_at').values('file_url')[:1]
+
+                qs = qs.annotate(
+                    price_from=Min('rooms__price_per_month'),
+                    price_to=Max('rooms__price_per_month'),
+                    room_count=Count('rooms', distinct=True),
+                    bed_count=Sum('rooms__bed_count'),
+                    cover_image=Subquery(cover_subquery),
+                )
+            else:
+                qs = qs.prefetch_related('rooms', 'media')
 
             return qs
 

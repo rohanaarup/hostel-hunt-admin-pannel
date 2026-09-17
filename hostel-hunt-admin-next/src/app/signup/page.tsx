@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { Input, Textarea, Select } from '@/components/ui/Input';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AuthLayout from '@/components/auth/AuthLayout';
@@ -174,7 +175,7 @@ export default function SignupPage() {
 
   return (
     <AuthLayout heroTitle={'Join Hostel Hunt\nAdmin Platform'}>
-      <div className="bg-ivory-100 dark:bg-ivory-900/80 rounded-2xl border border-ivory-300 dark:border-ivory-700 p-8 shadow-2xl relative overflow-hidden glass-card">
+      <div className="glass rounded-2xl border border-ivory-300/60 dark:border-ivory-700/50 p-8 shadow-2xl relative overflow-hidden glow-primary animate-fade-in-up">
         <div className="absolute -top-32 -right-32 w-64 h-64 bg-auburn-500/5 dark:bg-auburn-300/5 rounded-full blur-[80px] pointer-events-none" />
 
         <StepProgress steps={STEPS} currentStep={stepIndex} className="mb-8 relative z-10" />
@@ -206,7 +207,7 @@ export default function SignupPage() {
                 <label className="block text-[12px] font-semibold text-ink-700 dark:text-ivory-500 mb-1.5">
                   {identifierType === 'email' ? 'Email address' : 'Phone number'}
                 </label>
-                <input
+                <Input
                   type={identifierType === 'email' ? 'email' : 'tel'}
                   value={identifier}
                   onChange={e => setIdentifier(e.target.value)}
@@ -294,7 +295,7 @@ export default function SignupPage() {
               <div>
                 <label className="block text-[12px] font-semibold text-ink-700 dark:text-ivory-500 mb-1.5">Password</label>
                 <div className="relative">
-                  <input
+                  <Input
                     type={showPwd ? 'text' : 'password'}
                     value={password}
                     onChange={e => setPassword(e.target.value)}
@@ -329,7 +330,7 @@ export default function SignupPage() {
               <div>
                 <label className="block text-[12px] font-semibold text-ink-700 dark:text-ivory-500 mb-1.5">Confirm password</label>
                 <div className="relative">
-                  <input
+                  <Input
                     type={showConfirm ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}

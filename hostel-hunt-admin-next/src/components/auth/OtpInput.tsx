@@ -75,8 +75,8 @@ export default function OtpInput({
   };
 
   const borderClass = error
-    ? 'border-error/70 ring-2 ring-error/20 bg-error/5'
-    : 'border-ivory-300 dark:border-ivory-700 focus:border-auburn-500 dark:focus:border-auburn-300 focus:ring-[3px] focus:ring-auburn-500/20 dark:focus:ring-auburn-300/20 bg-ivory-50 dark:bg-ink-900';
+    ? 'border-[var(--color-error)] ring-2 ring-[var(--color-error)]/20 bg-[var(--color-error-light)]'
+    : 'border-[var(--color-border)] focus:border-[var(--color-primary)] focus:ring-[3px] focus:ring-[var(--color-primary)]/20 bg-[var(--color-surface)]';
 
   return (
     <div className="flex gap-3 justify-center">
@@ -95,7 +95,7 @@ export default function OtpInput({
           onKeyDown={(e) => handleKeyDown(e, i)}
           onPaste={handlePaste}
           onFocus={(e) => e.target.select()}
-          className={`w-12 h-14 text-center text-xl font-bold text-ink-900 dark:text-ivory-50 rounded-[10px] border outline-none transition-all duration-150 disabled:opacity-50 ${borderClass}`}
+          className={`w-12 h-14 text-center text-xl font-bold text-[var(--color-text-primary)] rounded-[10px] border outline-none transition-all duration-150 disabled:opacity-50 ${borderClass}`}
           aria-label={`OTP digit ${i + 1}`}
         />
       ))}

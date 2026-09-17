@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import QueryProvider from "@/providers/QueryProvider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -17,9 +18,17 @@ const jakarta = Plus_Jakarta_Sans({
   display: "swap",
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: "#A52A2A",
+};
+
 export const metadata: Metadata = {
   title: "Hostel Hunt Admin Panel",
   description: "Student hostel/PG discovery and booking platform for Hyderabad — manage your hostel with confidence.",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -31,9 +40,11 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${jakarta.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col" style={{ fontFamily: "var(--font-body), sans-serif" }}>
         <ThemeProvider>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+          <QueryProvider>
+            <AuthProvider>
+              {children}
+            </AuthProvider>
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>

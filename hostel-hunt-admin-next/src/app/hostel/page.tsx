@@ -1,28 +1,34 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/common/DashboardLayout';
-import { useTheme } from '@/contexts/ThemeContext';
 import { hostelService } from '@/services/api';
+import Icon from '@/components/ui/Icon';
 import type { HostelEnrollmentState } from '@/types';
+import gsap from 'gsap';
+
+const AMENITY_ICONS: Record<string, string> = {
+  wifi: '📶', ac: '❄️', food: '🍽️', laundry: '👕', cctv: '📷',
+  parking: '🅿️', housekeeping: '🧹', power_backup: '🔋', security: '🛡️',
+  lift: '🛗', gym: '💪', water_supply: '💧', hot_water: '🚿',
+  study_room: '📚', recreation: '🎮',
+};
 
 export default function MyHostelPage() {
-  const { theme } = useTheme();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [hostel, setHostel] = useState<HostelEnrollmentState | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchHostel = async () => {
       try {
         const res = await hostelService.getHostels();
         const hostels = Array.isArray(res) ? res : res.data || res.results;
-        if (hostels && hostels.length > 0) {
-          setHostel(hostels[0]);
-        }
+        if (hostels && hostels.length > 0) setHostel(hostels[0]);
       } catch (error) {
-        console.error("Error fetching hostel:", error);
+        console.error('Error fetching hostel:', error);
       } finally {
         setLoading(false);
       }
@@ -30,151 +36,275 @@ export default function MyHostelPage() {
     fetchHostel();
   }, []);
 
-  const cardBg = theme === 'dark' ? 'bg-ivory-900' : 'bg-ivory-100';
-  const cardBorder = theme === 'dark' ? 'border-ivory-700' : 'border-ivory-300';
-  const textSub = theme === 'dark' ? 'text-ivory-500' : 'text-ink-700';
+  useEffect(() => {
+    if (!loading && hostel && contentRef.current) {
+      const sections = contentRef.current.querySelectorAll('.section-block');
+      gsap.fromTo(sections,
+        { opacity: 0, y: 24 },
+        { opacity: 1, y: 0, duration: 0.45, stagger: 0.1, ease: 'power2.out', delay: 0.15 }
+      );
+    }
+  }, [loading, hostel]);
+
+  const infoSections = hostel ? [
+    {
+      icon: 'map-pin' as const,
+      color: 'var(--color-primary)',
+      light: 'var(--color-primary-light)',
+      label: 'Location',
+      primary: `${hostel.locality || hostel.city}, ${hostel.state}`,
+      secondary: hostel.address,
+    },
+    {
+      icon: 'building' as const,
+      color: 'var(--color-warning)',
+      light: 'var(--color-warning-light)',
+      label: 'Building',
+      primary: `${hostel.total_floors} Floors, ${hostel.total_rooms} Rooms`,
+      secondary: `${(hostel.gender_type as string || '').replace('_', ' ')} Hostel`,
+    },
+    {
+      icon: 'phone' as const,
+      color: 'var(--color-success)',
+      light: 'var(--color-success-light)',
+      label: 'Contact',
+      primary: hostel.email,
+      secondary: `+91 ${hostel.contact_number}`,
+    },
+  ] : [];
 
   return (
     <DashboardLayout title="My Hostel">
-      <div className="w-full animate-fade-in-up max-w-5xl mx-auto space-y-8">
+      <div className="w-full max-w-5xl mx-auto space-y-8 animate-fade-in-up">
+
+        {/* Header */}
         <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
-            <h1 className="text-[28px] font-bold text-ink-900 dark:text-ivory-50">Hostel Overview</h1>
-            <p className={`${textSub} mt-1 font-medium`}>
-              Manage and view your hostel profile details
+            <h1
+              className="text-[28px] font-extrabold tracking-tight"
+              style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text-primary)' }}
+            >
+              Hostel Overview
+            </h1>
+            <p className="mt-1 font-medium" style={{ color: 'var(--color-text-muted)' }}>
+              View and manage your hostel profile
             </p>
           </div>
           <button
             onClick={() => router.push('/hostel/edit')}
-            className="flex items-center gap-2 px-5 py-2 rounded-[10px] text-sm font-semibold transition-all bg-auburn-500 hover:bg-auburn-700 dark:bg-auburn-300 dark:hover:bg-auburn-100 text-ivory-50 dark:text-ink-900 auburn-glow"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-[10px] text-sm font-semibold transition-all hover:opacity-90"
+            style={{
+              background: 'var(--color-primary)',
+              color: 'var(--color-text-inverse)',
+              boxShadow: '0 4px 14px color-mix(in srgb, var(--color-primary) 30%, transparent)',
+            }}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
+            <Icon name="edit" className="w-4 h-4" />
             Edit Profile
           </button>
         </header>
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <svg className="w-8 h-8 animate-spin text-auburn-500 dark:text-auburn-300" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
+            <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--color-primary)' }} />
           </div>
         ) : !hostel ? (
-          <div className={`py-20 text-center ${cardBg} border ${cardBorder} rounded-2xl`}>
-            <div className="text-5xl mb-4">🏨</div>
-            <h2 className="text-xl font-bold text-ink-900 dark:text-ivory-50 mb-2">No Hostel Configured</h2>
-            <p className={`${textSub} mb-6 max-w-md mx-auto`}>
-              You haven't set up your hostel yet. Add your details to start managing rooms and bookings.
+          <div
+            className="py-20 text-center rounded-2xl"
+            style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+          >
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
+              <Icon name="hostel" className="w-8 h-8" />
+            </div>
+            <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--color-text-primary)' }}>No Hostel Configured</h2>
+            <p className="mb-6 max-w-md mx-auto" style={{ color: 'var(--color-text-muted)' }}>
+              You haven't set up your hostel yet. Add details to start managing rooms and bookings.
             </p>
             <button
               onClick={() => router.push('/hostel/edit')}
-              className="px-6 py-2.5 rounded-[10px] text-sm font-semibold bg-auburn-500 hover:bg-auburn-700 dark:bg-auburn-300 dark:hover:bg-auburn-100 text-ivory-50 dark:text-ink-900 transition-all"
+              className="px-6 py-2.5 rounded-[10px] text-sm font-semibold hover:opacity-90 transition-all"
+              style={{ background: 'var(--color-primary)', color: 'var(--color-text-inverse)' }}
             >
               Get Started
             </button>
           </div>
         ) : (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className={`${cardBg} border ${cardBorder} p-6 rounded-2xl`}>
-                <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center text-xl mb-4">📍</div>
-                <p className="text-[11px] uppercase tracking-widest font-bold text-ink-700 dark:text-ivory-500 mb-1">Location</p>
-                <p className="text-lg font-bold text-ink-900 dark:text-ivory-50">{hostel.locality || hostel.city}, {hostel.state}</p>
-                <p className={`${textSub} text-sm mt-1 truncate`} title={hostel.address}>{hostel.address}</p>
-              </div>
-              <div className={`${cardBg} border ${cardBorder} p-6 rounded-2xl`}>
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xl mb-4">🏢</div>
-                <p className="text-[11px] uppercase tracking-widest font-bold text-ink-700 dark:text-ivory-500 mb-1">Building</p>
-                <p className="text-lg font-bold text-ink-900 dark:text-ivory-50">{hostel.total_floors} Floors, {hostel.total_rooms} Rooms</p>
-                <p className={`${textSub} text-sm mt-1 capitalize`}>{hostel.gender_type} Hostel</p>
-              </div>
-              <div className={`${cardBg} border ${cardBorder} p-6 rounded-2xl`}>
-                <div className="w-10 h-10 rounded-xl bg-green-500/10 text-green-500 flex items-center justify-center text-xl mb-4">📞</div>
-                <p className="text-[11px] uppercase tracking-widest font-bold text-ink-700 dark:text-ivory-500 mb-1">Contact</p>
-                <p className="text-lg font-bold text-ink-900 dark:text-ivory-50 truncate" title={hostel.email}>{hostel.email}</p>
-                <p className={`${textSub} text-sm mt-1`}>+91 {hostel.contact_number}</p>
-              </div>
+          <div ref={contentRef} className="space-y-6">
+
+            {/* Quick info cards */}
+            <div className="section-block grid grid-cols-1 md:grid-cols-3 gap-5">
+              {infoSections.map(s => (
+                <div
+                  key={s.label}
+                  className="relative overflow-hidden rounded-2xl p-5 transition-all hover:shadow-md"
+                  style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+                >
+                  <div className="absolute top-0 left-0 w-1 h-full" style={{ background: s.color }} />
+                  <div className="pl-2">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ background: s.light, color: s.color }}>
+                      <Icon name={s.icon} className="w-5 h-5" />
+                    </div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--color-text-muted)' }}>
+                      {s.label}
+                    </p>
+                    <p className="text-base font-bold truncate" style={{ color: 'var(--color-text-primary)' }} title={s.primary}>
+                      {s.primary}
+                    </p>
+                    <p className="text-sm mt-0.5 truncate" style={{ color: 'var(--color-text-muted)' }}>{s.secondary}</p>
+                  </div>
+                </div>
+              ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className={`lg:col-span-2 ${cardBg} border ${cardBorder} rounded-2xl p-6 lg:p-8 space-y-8`}>
+            {/* Main content + sidebar */}
+            <div className="section-block grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+              {/* Main details */}
+              <div
+                className="lg:col-span-2 rounded-2xl p-6 lg:p-8 space-y-8"
+                style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+              >
+                {/* Description */}
                 <div>
-                  <h2 className="text-xl font-bold text-ink-900 dark:text-ivory-50 mb-3">{hostel.name}</h2>
-                  <p className={`${textSub} leading-relaxed`}>
+                  <h2
+                    className="text-xl font-bold mb-3"
+                    style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text-primary)' }}
+                  >
+                    {hostel.name}
+                  </h2>
+                  <p className="leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
                     {hostel.description || 'No description provided.'}
                   </p>
                 </div>
 
+                {/* Amenities */}
                 <div>
-                  <h3 className="text-lg font-bold text-ink-900 dark:text-ivory-50 mb-4 flex items-center gap-2">
-                    <span className="text-auburn-500 dark:text-auburn-300">✅</span> Amenities
+                  <h3 className="text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2" style={{ color: 'var(--color-text-muted)' }}>
+                    <Icon name="sparkles" className="w-4 h-4" style={{ color: 'var(--color-primary)' } as any} />
+                    Amenities
                   </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {hostel.amenities && hostel.amenities.length > 0 ? (
-                      hostel.amenities.map(amenity => (
-                        <span key={amenity} className="bg-ivory-300 dark:bg-ivory-700 text-ink-900 dark:text-ivory-50 text-xs font-semibold px-3 py-1.5 rounded-full capitalize">
+                  {hostel.amenities && hostel.amenities.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {hostel.amenities.map(amenity => (
+                        <span
+                          key={amenity}
+                          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full capitalize"
+                          style={{ background: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
+                        >
+                          <span>{AMENITY_ICONS[amenity] || '✓'}</span>
                           {amenity.replace('_', ' ')}
                         </span>
-                      ))
-                    ) : (
-                      <p className={`${textSub} text-sm`}>No amenities listed.</p>
-                    )}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>No amenities listed.</p>
+                  )}
                 </div>
 
+                {/* Policies */}
                 <div>
-                  <h3 className="text-lg font-bold text-ink-900 dark:text-ivory-50 mb-4 flex items-center gap-2">
-                    <span className="text-auburn-500 dark:text-auburn-300">📋</span> Rules & Policies
+                  <h3 className="text-sm font-bold uppercase tracking-wider mb-4" style={{ color: 'var(--color-text-muted)' }}>
+                    Rules & Policies
                   </h3>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="p-4 bg-ivory-50/50 dark:bg-ivory-50/5 border border-ivory-300 dark:border-ivory-700 rounded-xl">
-                      <p className="text-[10px] uppercase tracking-widest font-bold text-ink-700 dark:text-ivory-500 mb-2">Check-in Policy</p>
-                      <p className="text-sm font-medium text-ink-900 dark:text-ivory-50">{hostel.check_in_policy || 'Not specified'}</p>
-                    </div>
-                    <div className="p-4 bg-ivory-50/50 dark:bg-ivory-50/5 border border-ivory-300 dark:border-ivory-700 rounded-xl">
-                      <p className="text-[10px] uppercase tracking-widest font-bold text-ink-700 dark:text-ivory-500 mb-2">Check-out Policy</p>
-                      <p className="text-sm font-medium text-ink-900 dark:text-ivory-50">{hostel.check_out_policy || 'Not specified'}</p>
-                    </div>
-                    <div className="sm:col-span-2 p-4 bg-ivory-50/50 dark:bg-ivory-50/5 border border-ivory-300 dark:border-ivory-700 rounded-xl">
-                      <p className="text-[10px] uppercase tracking-widest font-bold text-ink-700 dark:text-ivory-500 mb-2">General Rules</p>
-                      <p className="text-sm font-medium text-ink-900 dark:text-ivory-50 whitespace-pre-wrap">{hostel.rules || 'Not specified'}</p>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {[
+                      { label: 'Check-in Policy', value: hostel.check_in_policy },
+                      { label: 'Check-out Policy', value: hostel.check_out_policy },
+                    ].map(p => (
+                      <div
+                        key={p.label}
+                        className="p-4 rounded-xl"
+                        style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)' }}
+                      >
+                        <p className="text-[10px] uppercase tracking-widest font-bold mb-2" style={{ color: 'var(--color-text-muted)' }}>
+                          {p.label}
+                        </p>
+                        <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
+                          {p.value || 'Not specified'}
+                        </p>
+                      </div>
+                    ))}
+                    <div
+                      className="sm:col-span-2 p-4 rounded-xl"
+                      style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)' }}
+                    >
+                      <p className="text-[10px] uppercase tracking-widest font-bold mb-2" style={{ color: 'var(--color-text-muted)' }}>
+                        General Rules
+                      </p>
+                      <p className="text-sm font-medium whitespace-pre-wrap" style={{ color: 'var(--color-text-primary)' }}>
+                        {hostel.rules || 'Not specified'}
+                      </p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-6">
-                <div className={`${cardBg} border ${cardBorder} rounded-2xl p-6`}>
-                   <h3 className="text-sm font-bold mb-4 text-ink-700 dark:text-ivory-500 uppercase tracking-wider">Owner Details</h3>
-                   <div className="flex items-center gap-4">
-                     <div className="w-12 h-12 rounded-full bg-auburn-500/10 dark:bg-auburn-300/10 text-auburn-500 dark:text-auburn-300 flex items-center justify-center font-bold text-lg">
-                       {hostel.owner_name ? hostel.owner_name.charAt(0) : 'O'}
-                     </div>
-                     <div>
-                       <p className="font-bold text-ink-900 dark:text-ivory-50">{hostel.owner_name}</p>
-                       <p className={`text-xs ${textSub}`}>Hostel Owner</p>
-                     </div>
-                   </div>
+              {/* Sidebar */}
+              <div className="space-y-5">
+                {/* Owner */}
+                <div
+                  className="rounded-2xl p-5"
+                  style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+                >
+                  <h3 className="text-[11px] font-bold uppercase tracking-wider mb-4" style={{ color: 'var(--color-text-muted)' }}>
+                    Owner Details
+                  </h3>
+                  <div className="flex items-center gap-4">
+                    <div
+                      className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg"
+                      style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}
+                    >
+                      {hostel.owner_name ? hostel.owner_name.charAt(0).toUpperCase() : 'O'}
+                    </div>
+                    <div>
+                      <p className="font-bold" style={{ color: 'var(--color-text-primary)' }}>{hostel.owner_name}</p>
+                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Hostel Owner</p>
+                    </div>
+                  </div>
                 </div>
 
-                <div className={`${cardBg} border ${cardBorder} rounded-2xl p-6`}>
-                   <h3 className="text-sm font-bold mb-4 text-ink-700 dark:text-ivory-500 uppercase tracking-wider">Room Occupancy Types</h3>
-                   <div className="flex flex-col gap-2">
-                     {hostel.occupancy_types && hostel.occupancy_types.length > 0 ? (
-                       hostel.occupancy_types.map(type => (
-                         <div key={type} className="flex items-center gap-3">
-                           <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                           <span className="capitalize font-medium text-sm text-ink-900 dark:text-ivory-50">{type} Sharing</span>
-                         </div>
-                       ))
-                     ) : (
-                       <p className={`text-xs ${textSub}`}>No occupancy types specified</p>
-                     )}
-                   </div>
+                {/* Occupancy types */}
+                <div
+                  className="rounded-2xl p-5"
+                  style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+                >
+                  <h3 className="text-[11px] font-bold uppercase tracking-wider mb-4" style={{ color: 'var(--color-text-muted)' }}>
+                    Room Types
+                  </h3>
+                  {hostel.occupancy_types && hostel.occupancy_types.length > 0 ? (
+                    <div className="flex flex-col gap-2">
+                      {hostel.occupancy_types.map(type => (
+                        <div key={type} className="flex items-center gap-3">
+                          <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--color-primary)' }} />
+                          <span className="capitalize font-medium text-sm" style={{ color: 'var(--color-text-primary)' }}>
+                            {type} Sharing
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>No occupancy types specified</p>
+                  )}
                 </div>
+
+                {/* Google Maps link */}
+                {hostel.google_maps_url && (
+                  <a
+                    href={hostel.google_maps_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-4 rounded-2xl transition-all hover:opacity-80"
+                    style={{
+                      background: 'var(--color-primary-light)',
+                      border: '1px solid color-mix(in srgb, var(--color-primary) 20%, transparent)',
+                      color: 'var(--color-primary)',
+                    }}
+                  >
+                    <Icon name="map-pin" className="w-5 h-5" />
+                    <span className="text-sm font-semibold">View on Google Maps</span>
+                    <Icon name="chevron-right" className="w-4 h-4 ml-auto" />
+                  </a>
+                )}
               </div>
             </div>
           </div>

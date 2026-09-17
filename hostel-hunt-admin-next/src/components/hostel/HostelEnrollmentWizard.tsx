@@ -165,8 +165,8 @@ export default function HostelEnrollmentWizard({ onClose }: Props) {
   return (
     <div className="bg-ivory-50 dark:bg-ivory-950 border border-ivory-300 dark:border-ivory-700 rounded-2xl w-full max-w-3xl mx-auto flex flex-col max-h-[90vh] shadow-2xl">
       {/* Header */}
-      <div className="px-8 pt-7 pb-6 border-b border-ivory-300 dark:border-ivory-700 flex-shrink-0">
-        <div className="flex justify-between items-start mb-6">
+      <div className="px-5 sm:px-8 pt-6 sm:pt-7 pb-5 sm:pb-6 border-b border-ivory-300 dark:border-ivory-700 flex-shrink-0">
+        <div className="flex justify-between items-start mb-5 sm:mb-6">
           <div>
             <h2 className="text-xl font-bold text-ink-900 dark:text-ivory-50">Register Your Hostel</h2>
             <p className="text-ink-700 dark:text-ivory-500 text-sm mt-0.5">
@@ -189,7 +189,7 @@ export default function HostelEnrollmentWizard({ onClose }: Props) {
       </div>
 
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto px-8 py-6 min-h-0">
+      <div className="flex-1 overflow-y-auto px-5 sm:px-8 py-5 sm:py-6 min-h-0">
         {currentStep === 0 && <Step1BasicDetails data={data} onChange={handleChange} errors={errors} />}
         {currentStep === 1 && <Step2HostelInfo data={data} onChange={handleChange} errors={errors} />}
         {currentStep === 2 && <Step3Amenities data={data} onChange={handleChange} />}
@@ -209,12 +209,12 @@ export default function HostelEnrollmentWizard({ onClose }: Props) {
 
       {/* Footer nav */}
       {currentStep < 5 && (
-        <div className="px-8 py-5 border-t border-ivory-300 dark:border-ivory-700 flex justify-between items-center flex-shrink-0">
+        <div className="px-5 sm:px-8 py-4 sm:py-5 border-t border-ivory-300 dark:border-ivory-700 flex justify-between items-center flex-shrink-0 gap-2">
           <button
             type="button"
             onClick={handleBack}
             disabled={currentStep === 0}
-            className="flex items-center gap-2 px-5 py-2.5 border border-ivory-300 hover:border-ivory-400 text-ink-700 hover:text-ink-900 dark:border-ivory-700 dark:hover:border-ivory-600 dark:text-ivory-500 dark:hover:text-ivory-50 rounded-[10px] font-medium text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center justify-center gap-1 sm:gap-2 px-4 sm:px-5 py-2.5 sm:py-2.5 min-h-[48px] sm:min-h-0 border border-ivory-300 hover:border-ivory-400 text-ink-700 hover:text-ink-900 dark:border-ivory-700 dark:hover:border-ivory-600 dark:text-ivory-500 dark:hover:text-ivory-50 rounded-[10px] font-medium text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -229,7 +229,7 @@ export default function HostelEnrollmentWizard({ onClose }: Props) {
           <button
             type="button"
             onClick={handleNext}
-            className="flex items-center gap-2 bg-auburn-500 hover:bg-auburn-700 dark:bg-auburn-300 dark:hover:bg-auburn-100 text-ivory-50 dark:text-ink-900 font-semibold px-6 py-2.5 rounded-[10px] transition-all auburn-glow"
+            className="flex items-center justify-center gap-1 sm:gap-2 bg-auburn-500 hover:bg-auburn-700 dark:bg-auburn-300 dark:hover:bg-auburn-100 text-ivory-50 dark:text-ink-900 font-semibold px-5 sm:px-6 py-2.5 sm:py-2.5 min-h-[48px] sm:min-h-0 rounded-[10px] transition-all auburn-glow"
           >
             {currentStep === STEPS.length - 2 ? 'Review' : 'Next'}
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

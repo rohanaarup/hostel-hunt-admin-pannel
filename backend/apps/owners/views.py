@@ -2,6 +2,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Owner
 from .services import OTPService
@@ -34,6 +35,8 @@ def error_response(errors, message="Error", status_code=status.HTTP_400_BAD_REQU
 
 class SendOtpView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'otp'
 
     def post(self, request):
         try:
@@ -70,6 +73,8 @@ class SendOtpView(APIView):
 
 class VerifyOtpView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'otp'
 
     def post(self, request):
         serializer = VerifyOtpSerializer(data=request.data)

@@ -5,6 +5,56 @@ from apps.media_uploads.serializers import MediaItemSerializer
 from apps.rooms.models import Room
 from apps.media_uploads.models import MediaItem
 
+
+class HostelListSerializer(serializers.ModelSerializer):
+    """
+    Lightweight serializer for the public hostel LIST endpoint.
+
+    HostelSerializer/PublicHostelSerializer nest the full `rooms` and
+    `media` arrays (every field of every room/media row) on every hostel,
+    which is fine for a single detail view but expensive across a whole
+    list. This serializer instead exposes: a starting/ending price range,
+    a single cover image URL, and room/bed counts — all populated via
+    queryset-level annotations (see HostelViewSet.get_queryset) rather
+    than per-instance queries, so listing N hostels stays a fixed number
+    of queries regardless of N.
+    """
+    cover_image = serializers.SerializerMethodField()
+    price_from = serializers.SerializerMethodField()
+    price_to = serializers.SerializerMethodField()
+    room_count = serializers.SerializerMethodField()
+    bed_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Hostel
+        fields = [
+            'id', 'name', 'locality', 'address', 'city', 'state',
+            'gender_type', 'is_active', 'is_verified',
+            'cover_image', 'price_from', 'price_to',
+            'room_count', 'bed_count',
+            'created_at', 'updated_at',
+        ]
+
+    def get_cover_image(self, obj):
+        return getattr(obj, 'cover_image', None)
+
+    def get_price_from(self, obj):
+        return getattr(obj, 'price_from', None)
+
+    def get_price_to(self, obj):
+        return getattr(obj, 'price_to', None)
+
+    def get_room_count(self, obj):
+        return getattr(obj, 'room_count', None) or 0
+
+    def get_bed_count(self, obj):
+        return getattr(obj, 'bed_count', None) or 0
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        ret['hostel_id'] = ret.pop('id')
+        return ret
+
 class HostelSerializer(serializers.ModelSerializer):
     rooms = RoomSerializer(many=True, read_only=True)
     media = MediaItemSerializer(many=True, read_only=True)

@@ -15,7 +15,7 @@ interface StepProgressProps {
 
 export default function StepProgress({ steps, currentStep, className = '' }: StepProgressProps) {
   return (
-    <div className={`flex items-center w-full ${className}`}>
+    <div className={`flex items-center w-full overflow-x-auto pb-4 -mb-4 snap-x ${className}`}>
       {steps.map((step, i) => {
         const isComplete = i < currentStep;
         const isActive = i === currentStep;

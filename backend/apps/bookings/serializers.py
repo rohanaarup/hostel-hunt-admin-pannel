@@ -60,4 +60,8 @@ class BookingCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data['status'] = 'pending'
+        # Auto-link the authenticated student user
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            validated_data['student'] = request.user
         return super().create(validated_data)

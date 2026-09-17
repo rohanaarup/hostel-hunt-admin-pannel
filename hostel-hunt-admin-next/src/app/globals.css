@@ -28,12 +28,12 @@
   --color-ivory-700: #6B5D4F;
   --color-ivory-900: #2E2723;
 
-  /* TERTIARY — Deep Emerald */
-  --color-emerald-50:  #E8F5F2;
-  --color-emerald-100: #A8D5CA;
-  --color-emerald-300: #5FA394;
-  --color-emerald-500: #0A6A5A; /* SUCCESS COLOR */
-  --color-emerald-700: #06463B;
+  /* TERTIARY — Sage Green */
+  --color-sage-50:  #F4F6F0;
+  --color-sage-100: #DCE3D0;
+  --color-sage-300: #9EAF8C;
+  --color-sage-500: #657753; /* SUCCESS COLOR */
+  --color-sage-700: #3D4A31;
 
   /* INK — Text colors */
   --color-ink-50:  #F7EFEA;
@@ -61,8 +61,8 @@
   --color-text-muted:    #8A7265;
   --color-text-inverse:  #FDFBF8;
 
-  --color-success:  #0A6A5A;
-  --color-success-light: #E8F5F2;
+  --color-success:  #657753;
+  --color-success-light: #F4F6F0;
   --color-error:    #A52A2A;
   --color-error-light:   #F9E6E6;
   --color-warning:  #B8843A;
@@ -83,8 +83,8 @@
   --color-text-muted:    #8A7265;
   --color-text-inverse:  #1E1B1B;
 
-  --color-success:  #5FA394;
-  --color-success-light: #06463B;
+  --color-success:  #9EAF8C;
+  --color-success-light: #3D4A31;
   --color-error:    #C97A7A;
   --color-error-light:   #5C1717;
   --color-warning:  #D4A574;
@@ -108,6 +108,8 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
+    width: 100%;
+    position: relative;
   }
 
   /* Custom scrollbar */
@@ -318,28 +320,28 @@ select option {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0.25;
-  filter: blur(6px) saturate(1.1);
+  opacity: 1;
+  filter: blur(2px) saturate(1.1);
   pointer-events: none;
 }
 .dark .auth-bg-video {
-  opacity: 0.18;
+  opacity: 0.85;
 }
 
 .auth-bg-overlay {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse at top left, rgba(165, 42, 42, 0.18), transparent 55%),
-    radial-gradient(ellipse at bottom right, rgba(10, 106, 90, 0.12), transparent 55%),
-    linear-gradient(180deg, rgba(253, 251, 248, 0.6) 0%, rgba(253, 251, 248, 0.85) 100%);
+    radial-gradient(ellipse at top left, rgba(165, 42, 42, 0.25), transparent 55%),
+    radial-gradient(ellipse at bottom right, rgba(10, 106, 90, 0.2), transparent 55%),
+    linear-gradient(180deg, rgba(253, 251, 248, 0.1) 0%, rgba(253, 251, 248, 0.5) 100%);
   pointer-events: none;
 }
 .dark .auth-bg-overlay {
   background:
-    radial-gradient(ellipse at top left, rgba(201, 122, 122, 0.14), transparent 55%),
-    radial-gradient(ellipse at bottom right, rgba(95, 163, 148, 0.10), transparent 55%),
-    linear-gradient(180deg, rgba(30, 27, 27, 0.7) 0%, rgba(30, 27, 27, 0.88) 100%);
+    radial-gradient(ellipse at top left, rgba(201, 122, 122, 0.2), transparent 55%),
+    radial-gradient(ellipse at bottom right, rgba(95, 163, 148, 0.15), transparent 55%),
+    linear-gradient(180deg, rgba(30, 27, 27, 0.2) 0%, rgba(30, 27, 27, 0.7) 100%);
 }
 
 /* Floating orb animation for hero */

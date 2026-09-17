@@ -1,6 +1,7 @@
 import uuid
 from django.db import models
 from django.conf import settings
+from django.contrib.postgres.indexes import GinIndex
 from apps.core.models import TenantScopedModel
 
 
@@ -23,15 +24,15 @@ class Hostel(TenantScopedModel):
     
     locality = models.CharField(max_length=255)
     address = models.TextField()
-    city = models.CharField(max_length=100)
-    state = models.CharField(max_length=100)
+    city = models.CharField(max_length=100, db_index=True)
+    state = models.CharField(max_length=100, db_index=True)
     pincode = models.CharField(max_length=20)
     landmark = models.CharField(max_length=255, null=True, blank=True)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     google_maps_url = models.URLField(max_length=500, null=True, blank=True)
     
-    gender_type = models.CharField(max_length=20, choices=GENDER_CHOICES)
+    gender_type = models.CharField(max_length=20, choices=GENDER_CHOICES, db_index=True)
     total_floors = models.PositiveIntegerField(default=1)
     total_rooms = models.PositiveIntegerField(default=0)
     total_beds = models.PositiveIntegerField(default=0)
@@ -53,6 +54,13 @@ class Hostel(TenantScopedModel):
     class Meta:
         db_table = 'hostels'
         ordering = ['-created_at']
+        indexes = [
+            # locality is filtered with __icontains (partial match); a
+            # plain B-tree index on city/state above doesn't help that,
+            # so use a trigram GIN index instead. Requires the pg_trgm
+            # extension (added via migration — see 0004_*.py).
+            GinIndex(fields=['locality'], name='hostel_locality_trgm', opclasses=['gin_trgm_ops']),
+        ]
 
     def __str__(self):
         return f"{self.name} ({self.city})"

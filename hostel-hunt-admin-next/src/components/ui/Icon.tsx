@@ -56,6 +56,7 @@ interface IconProps {
   name: IconName;
   className?: string;
   strokeWidth?: number;
+  style?: React.CSSProperties;
 }
 
 const PATHS: Record<IconName, React.ReactNode> = {
@@ -271,10 +272,11 @@ const PATHS: Record<IconName, React.ReactNode> = {
   ),
 };
 
-export default function Icon({ name, className = 'w-5 h-5', strokeWidth = 2 }: IconProps) {
+export default function Icon({ name, className = 'w-5 h-5', strokeWidth = 2, style }: IconProps) {
   return (
     <svg
       className={className}
+      style={style}
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"

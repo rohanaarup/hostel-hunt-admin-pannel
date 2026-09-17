@@ -74,20 +74,20 @@ export default function ConfirmDialog({
 
   return (
     <Modal isOpen={isOpen} onClose={onCancel} className="w-full max-w-[400px]">
-      <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-6 shadow-2xl">
+      <div className="bg-ivory-50 dark:bg-ink-900 border border-ivory-300 dark:border-ivory-700 rounded-2xl p-6 shadow-2xl">
         {/* Icon */}
         <div className={`w-12 h-12 ${style.bg} rounded-full flex items-center justify-center mb-4`}>{style.icon}</div>
 
         {/* Text */}
-        <h3 className="text-lg font-bold text-white mb-2">{title}</h3>
-        <p className="text-[#9A9690] text-sm leading-relaxed mb-6">{message}</p>
+        <h3 className="text-lg font-bold text-ink-900 dark:text-ivory-50 mb-2">{title}</h3>
+        <p className="text-ink-700 dark:text-ivory-500 text-sm leading-relaxed mb-6">{message}</p>
 
         {/* Actions */}
         <div className="flex gap-3">
           <button
             onClick={onCancel}
             disabled={isLoading}
-            className="flex-1 py-2.5 border border-[#2A2A2A] hover:border-[#3A3A3A] text-[#9A9690] hover:text-white rounded-[10px] font-medium text-sm transition-all"
+            className="flex-1 py-2.5 border border-ivory-300 dark:border-ivory-700 hover:border-ivory-500 dark:hover:border-ivory-500 text-ink-700 dark:text-ivory-500 hover:text-ink-900 dark:hover:text-ivory-50 rounded-[10px] font-medium text-sm transition-all"
           >
             {cancelLabel}
           </button>
