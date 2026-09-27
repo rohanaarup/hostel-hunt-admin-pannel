@@ -233,6 +233,15 @@ class CreateOrderView(APIView):
                 amount_paise=amount_paise,
                 receipt_id=str(booking.id),
             )
+        except razorpay_client.RazorpayAuthError as exc:
+            logger.error(
+                "CreateOrderView: Razorpay rejected credentials for booking %s: %s",
+                booking.id, exc,
+            )
+            return Response(
+                {'error': 'Payment gateway rejected the request — check API credentials.'},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
         except Exception as exc:
             logger.exception("Razorpay create_order failed: %s", exc)
             return Response(

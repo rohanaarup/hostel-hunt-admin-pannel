@@ -27,6 +27,20 @@ from django.conf import settings
 logger = logging.getLogger('apps.payments')
 
 
+# ─── Errors ─────────────────────────────────────────────────────────────────────
+
+class RazorpayAuthError(Exception):
+    """
+    Raised when Razorpay itself rejects a request because the configured
+    RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET pair is invalid.
+
+    A plain Exception subclass defined here (not in the razorpay SDK) so
+    callers outside this file can catch it by name without importing the
+    SDK — see Rule 1 above.
+    """
+    pass
+
+
 # ─── SDK client factory ────────────────────────────────────────────────────────
 
 def _get_client() -> razorpay.Client:
@@ -51,15 +65,29 @@ def create_order(amount_paise: int, receipt_id: str) -> dict:
         Razorpay order dict, notably order['id'] (e.g. "order_XXXX").
 
     Raises:
-        Exception on Razorpay API failure — caller should handle.
+        RazorpayAuthError if Razorpay rejects the request as an
+        authentication failure (invalid KEY_ID/KEY_SECRET) — callers should
+        surface this distinctly from a generic gateway failure.
+        Exception on any other Razorpay API failure — caller should handle.
     """
     client = _get_client()
-    order = client.order.create({
-        "amount": amount_paise,
-        "currency": "INR",
-        "receipt": receipt_id[:40],
-        "payment_capture": 1,  # Auto-capture on payment success
-    })
+    try:
+        order = client.order.create({
+            "amount": amount_paise,
+            "currency": "INR",
+            "receipt": receipt_id[:40],
+            "payment_capture": 1,  # Auto-capture on payment success
+        })
+    except razorpay.errors.BadRequestError as exc:
+        # Razorpay returns this exact error class (via HTTP 401 with
+        # code=BAD_REQUEST_ERROR) both for invalid credentials and for other
+        # malformed-request cases. Only the credentials case is worth a
+        # distinct, actionable message — "Authentication failed" is
+        # Razorpay's literal description text for a bad key/secret pair.
+        if 'authentication' in str(exc).lower():
+            logger.error("Razorpay rejected the request as an authentication failure: %s", exc)
+            raise RazorpayAuthError(str(exc)) from exc
+        raise
     logger.info("Razorpay order created: %s (amount=%s paise)", order.get('id'), amount_paise)
     return order
 

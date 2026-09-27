@@ -10,10 +10,13 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import logging
 from pathlib import Path
 from decouple import config, Csv
 from django.core.management.utils import get_random_secret_key
 import dj_database_url
+
+logger = logging.getLogger('apps.startup')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,8 +26,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
+# Never log or print this value, not even partially masked.
 SECRET_KEY = config('SECRET_KEY', default=get_random_secret_key())
-print(SECRET_KEY)
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
@@ -114,7 +117,7 @@ if USE_DB == 'sqlite':
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
-    print(f"[DB CONNECTED] sqlite path={DATABASES['default']['NAME']}")
+    logger.info("Database configured: sqlite")
 elif USE_DB == 'local':
     DATABASES = {
         'default': dj_database_url.config(
@@ -123,7 +126,7 @@ elif USE_DB == 'local':
             conn_health_checks=True,
         )
     }
-    print(f"[DB CONNECTED] LOCAL host={DATABASES['default']['HOST']} name={DATABASES['default']['NAME']}")
+    logger.info("Database configured: local postgres")
 else:
     DATABASES = {
         'default': dj_database_url.config(
@@ -132,7 +135,7 @@ else:
             conn_health_checks=True,
         )
     }
-    print(f"[DB CONNECTED] host={DATABASES['default']['HOST']} name={DATABASES['default']['NAME']}")
+    logger.info("Database configured: supabase")
 
 
 # Password validation
@@ -272,8 +275,6 @@ LOGGING = {
 }
 
 # Startup Validation
-import logging
-logger = logging.getLogger('apps.startup')
 if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
     logger.warning("CRITICAL: EMAIL_HOST_USER and/or EMAIL_HOST_PASSWORD are not set. Email OTPs will fail.")
 if not TWILIO_ACCOUNT_SID or not TWILIO_AUTH_TOKEN or not TWILIO_FROM_NUMBER:
