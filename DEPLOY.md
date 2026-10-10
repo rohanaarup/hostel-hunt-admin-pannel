@@ -11,14 +11,14 @@ Set `DEBUG` to `False` (an absent `DEBUG` also means off).
 
 Keep the ones already set: `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`.
 
-Optional: `CORS_ALLOWED_ORIGINS` (only if a browser site calls the API), `CSRF_TRUSTED_ORIGINS` (for `/admin/` login over HTTPS). Full list: `backend/.env.example`.
+Optional: `SENTRY_DSN` (turns on error reporting), `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`, `GIT_COMMIT` (set from `RENDER_GIT_COMMIT` by the start command in `render.yaml`), `CORS_ALLOWED_ORIGINS` (only if a browser site calls the API), `CSRF_TRUSTED_ORIGINS` (for `/admin/` login over HTTPS). Full list: `backend/.env.example`.
 
 `ALLOWED_HOSTS` **must contain the public hostname** the app calls. The mobile app calls `hostel-hunt-backend.onrender.com`. Earlier code ignored this variable and allowed every host, so its current value may be wrong; check it before deploying. A wrong value makes every API call return 400.
 
 ## Service settings (Render dashboard; mirrors `render.yaml`)
 - Root directory: `backend`
 - Build command: `pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput`
-- Start command: `gunicorn config.wsgi:application -c gunicorn.conf.py`
+- Start command: `GIT_COMMIT=$RENDER_GIT_COMMIT gunicorn config.wsgi:application -c gunicorn.conf.py`
 - Health check path: `/healthz`
 - Python: `PYTHON_VERSION` = `3.13.5` (same as `backend/.python-version`)
 
