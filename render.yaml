@@ -1,0 +1,44 @@
+# Reference configuration for the Render web service. It documents the
+# settings to enter in the Render dashboard; applying it as a Blueprint may
+# create a new service instead of adopting the existing one, so copy the
+# values by hand unless you intend that.
+#
+# Nothing in the Django code depends on Render: on your own server run the same
+# build commands, start command and environment variables.
+services:
+  - type: web
+    name: hostel-hunt-backend
+    runtime: python
+    region: singapore
+    plan: free
+    rootDir: backend
+    # Migrations run during the build because the free plan has no pre-deploy
+    # step. On a paid plan move `migrate` to preDeployCommand.
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput
+    startCommand: gunicorn config.wsgi:application -c gunicorn.conf.py
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      - key: DEBUG
+        value: "False"
+      # Secrets and per-environment values: enter in the dashboard (names only here).
+      - key: SECRET_KEY
+        sync: false
+      - key: ALLOWED_HOSTS
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: EMAIL_HOST_USER
+        sync: false
+      - key: EMAIL_HOST_PASSWORD
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      # Optional: set when a browser admin site exists.
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false

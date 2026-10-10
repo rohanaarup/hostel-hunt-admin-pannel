@@ -1,3 +1,13 @@
 .env
 __pycache__/
 *.pyc
+
+# Generated / local-only files
+staticfiles/
+media/
+*.sqlite3
+*.sqlite3.bak
+*.log
+data_dump.json
+response.html
+debug_booking.html
