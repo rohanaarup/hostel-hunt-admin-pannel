@@ -15,7 +15,9 @@ services:
     # Migrations run during the build because the free plan has no pre-deploy
     # step. On a paid plan move `migrate` to preDeployCommand.
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput
-    startCommand: gunicorn config.wsgi:application -c gunicorn.conf.py
+    # GIT_COMMIT tags log lines and Sentry events with the deployed version. Render sets
+    # RENDER_GIT_COMMIT; keeping the mapping here keeps the Django code host-neutral.
+    startCommand: GIT_COMMIT=$RENDER_GIT_COMMIT gunicorn config.wsgi:application -c gunicorn.conf.py
     healthCheckPath: /healthz
     envVars:
       - key: PYTHON_VERSION
@@ -38,6 +40,9 @@ services:
       - key: RAZORPAY_KEY_SECRET
         sync: false
       - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      # Error reporting. Leave unset to disable Sentry.
+      - key: SENTRY_DSN
         sync: false
       # Optional: set when a browser admin site exists.
       - key: CORS_ALLOWED_ORIGINS
