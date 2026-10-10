@@ -94,11 +94,11 @@ class OTPService:
                     [identifier],
                     fail_silently=False,
                 )
-                logger.info(f"SMTP EMAIL SENT TO {identifier}")
+                logger.info("OTP email sent")
                 return True, "Email sent successfully."
             except Exception as e:
                 # Provider/SMTP detail goes to the server log only, never to the client.
-                logger.error(f"Failed to send email: {str(e)}")
+                logger.error("Failed to send OTP email: %s", type(e).__name__)
                 return False, "Failed to send the verification email. Please try again later."
 
         elif identifier_type == 'phone':
@@ -123,17 +123,16 @@ class OTPService:
                     auth=HTTPBasicAuth(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
                 )
                 if response.status_code in [200, 201]:
-                    logger.info(f"SMS SENT TO {identifier} via Twilio.")
+                    logger.info("OTP SMS sent via Twilio")
                     return True, "SMS sent successfully."
                 else:
-                    error_msg = f"Twilio API Error ({response.status_code}): {response.text}"
-                    logger.error(error_msg)
+                    logger.error("Twilio API error: HTTP %s", response.status_code)
                     if dev_otp_exposed():
                         logger.warning(f"DEV FALLBACK: Twilio failed. Printing OTP for {identifier}: {code}")
                         return True, "SMS sent successfully (Dev Fallback)."
                     return False, "Failed to send the SMS. Please try again later."
             except requests.exceptions.RequestException as e:
-                logger.error(f"Failed to connect to SMS provider: {str(e)}")
+                logger.error("Failed to connect to SMS provider: %s", type(e).__name__)
                 return False, "Failed to send the SMS. Please try again later."
             
         return False, "Invalid identifier type."
