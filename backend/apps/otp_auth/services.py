@@ -6,6 +6,7 @@ from django.utils import timezone
 from django.conf import settings
 
 from apps.core.async_utils import run_in_background
+from apps.core.dev import dev_otp_exposed
 from .models import OTPRecord
 
 
@@ -49,7 +50,7 @@ class OTPService:
 
         try:
             if not getattr(settings, 'EMAIL_HOST_USER', None):
-                if settings.DEBUG:
+                if dev_otp_exposed():
                     logger.warning(f"DEV FALLBACK: No EMAIL_HOST_USER. Printing OTP for {recipient_email}: {otp_code}")
                     return
                 else:
