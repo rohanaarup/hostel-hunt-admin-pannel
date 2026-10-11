@@ -66,5 +66,11 @@ class BookingCreateSerializer(serializers.ModelSerializer):
         # Auto-link the authenticated student user
         request = self.context.get('request')
         if request and request.user.is_authenticated:
-            validated_data['student'] = request.user
+            user = request.user
+            validated_data['student'] = user
+            # The app sends the profile's name and phone, but a blank must not reach the owner.
+            if not (validated_data.get('student_name') or '').strip():
+                validated_data['student_name'] = user.display_name or ''
+            if not (validated_data.get('student_phone') or '').strip():
+                validated_data['student_phone'] = user.phone_number or ''
         return super().create(validated_data)

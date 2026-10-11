@@ -261,6 +261,8 @@ REST_FRAMEWORK = {
         # Tighter scope for abuse-sensitive OTP send/verify endpoints.
         # Sits alongside the existing per-email cooldown in OTPService, not a replacement.
         'otp': '5/min',
+        # Profile photo uploads: each one holds a server thread while it talks to Cloudinary.
+        'photo': '10/hour',
     },
 }
 

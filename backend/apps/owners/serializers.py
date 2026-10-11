@@ -3,6 +3,7 @@ from django.contrib.auth import authenticate
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError as DjangoValidationError
 import re
+from datetime import date
 from .models import Owner
 
 def normalize_and_validate_identifier(identifier, identifier_type):
@@ -42,10 +43,19 @@ class OwnerProfileUpdateSerializer(serializers.Serializer):
     """Fields a user may change with PATCH /auth/me/. Email and phone are accepted only so that
     an unchanged value is a no-op; changing them is refused by the view (it needs OTP verification)."""
     display_name = serializers.CharField(max_length=150, required=False)
-    gender = serializers.ChoiceField(choices=['male', 'female', 'other'], required=False)
-    date_of_birth = serializers.DateField(required=False)
+    gender = serializers.ChoiceField(choices=['male', 'female', 'other'], required=False, allow_null=True)
+    date_of_birth = serializers.DateField(required=False, allow_null=True)
     email = serializers.EmailField(required=False)
     phone_number = serializers.CharField(max_length=20, required=False)
+
+    def validate_date_of_birth(self, value):
+        if value is None:
+            return value
+        if value > date.today():
+            raise serializers.ValidationError('Date of birth cannot be in the future.')
+        if value.year < 1900:
+            raise serializers.ValidationError('Enter a date of birth after 1900.')
+        return value
 
 
 class SendOtpSerializer(serializers.Serializer):

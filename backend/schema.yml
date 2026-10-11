@@ -39,32 +39,100 @@ paths:
   /api/v1/auth/me/:
     get:
       operationId: auth_me_retrieve
+      summary: The signed-in user's profile
       tags:
       - auth
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileEnvelope'
+          description: ''
     patch:
       operationId: auth_me_partial_update
+      summary: Update the signed-in user's profile
       tags:
       - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedOwnerProfileUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedOwnerProfileUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedOwnerProfileUpdate'
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileEnvelope'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
   /api/v1/auth/me/photo/:
     post:
       operationId: auth_me_photo_create
+      summary: Upload the signed-in user's profile photo (JPEG, PNG or WebP, up to
+        5 MB)
       tags:
       - auth
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                profile_photo:
+                  type: string
+                  format: binary
+              required:
+              - profile_photo
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileEnvelope'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '413':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '502':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
   /api/v1/auth/register/:
     post:
       operationId: auth_register_create
@@ -1811,6 +1879,9 @@ components:
       - student_phone
       - updated_at
       - verified_at
+    BlankEnum:
+      enum:
+      - ''
     Booking:
       type: object
       description: Full read serializer — enriches FKs with human-readable names.
@@ -2009,6 +2080,21 @@ components:
       - hostel_count
       - id
       - name
+    ErrorEnvelope:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: string
+      required:
+      - errors
+      - message
+      - success
     GenderTypeEnum:
       enum:
       - boys
@@ -2453,6 +2539,84 @@ components:
       required:
       - body
       - title
+    NullEnum:
+      enum:
+      - null
+    OwnerProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        email:
+          nullable: true
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        phone_number:
+          type: string
+          nullable: true
+          maxLength: 20
+        display_name:
+          type: string
+          maxLength: 150
+        is_verified:
+          type: boolean
+        is_active:
+          type: boolean
+        profile_photo:
+          type: string
+          format: uri
+          nullable: true
+        gender:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/OwnerProfileGenderEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - display_name
+      - id
+      - updated_at
+    OwnerProfileGenderEnum:
+      enum:
+      - male
+      - female
+      - other
+      type: string
+      description: |-
+        * `male` - Male
+        * `female` - Female
+        * `other` - Other
+    OwnerProfileUpdateGenderEnum:
+      enum:
+      - male
+      - female
+      - other
+      type: string
+      description: |-
+        * `male` - male
+        * `female` - female
+        * `other` - other
     PaginatedAdminPaymentList:
       type: object
       required:
@@ -2854,6 +3018,30 @@ components:
           nullable: true
         is_active:
           type: boolean
+    PatchedOwnerProfileUpdate:
+      type: object
+      description: |-
+        Fields a user may change with PATCH /auth/me/. Email and phone are accepted only so that
+        an unchanged value is a no-op; changing them is refused by the view (it needs OTP verification).
+      properties:
+        display_name:
+          type: string
+          maxLength: 150
+        gender:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/OwnerProfileUpdateGenderEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        email:
+          type: string
+          format: email
+        phone_number:
+          type: string
+          maxLength: 20
     PatchedRoom:
       type: object
       properties:
@@ -3035,6 +3223,19 @@ components:
         * `SUCCESS` - Success
         * `FAILED` - Failed
         * `REFUNDED` - Refunded
+    ProfileEnvelope:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/OwnerProfile'
+      required:
+      - data
+      - message
+      - success
     Resident:
       type: object
       properties:
@@ -3169,6 +3370,11 @@ components:
       description: |-
         * `active` - Active
         * `vacated` - Vacated
+    RoleEnum:
+      enum:
+      - owner
+      type: string
+      description: '* `owner` - Owner'
     Room:
       type: object
       properties:
