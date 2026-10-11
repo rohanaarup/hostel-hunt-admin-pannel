@@ -54,7 +54,10 @@ Never print, log or commit secret values; refer to variables by name.
 - `backend/schema.yml` is the committed OpenAPI schema; an API change must regenerate it in the same PR.
 - `backend/contract/endpoints.txt` lists every endpoint the app and admin call. `apps/core/test_contract.py` fails on a renamed route, a wrong method, or an `expected-fail` marker that now passes. Remove the marker when you fix the route.
 - `backend/contract/fixtures/hostels_list.json` is a sample of the real list response; regenerate with `UPDATE_CONTRACT_FIXTURES=1 python manage.py test apps.core.test_contract.HostelListFixtureTests` and copy it to the app repo's `test/fixtures/`.
-- `GET /hostels/` (public list) honours `city`, `locality`, `gender_type`, `search` (name, locality, city, address) and `amenity`.
+- Places: `City`, `Locality` and `LocalityAlias` (apps/hostels/models.py) are staff-managed in Django admin. `Hostel.city_ref` / `locality_ref` link to them; the old `city` / `locality` / `state` text columns are kept for one release and kept in step. Case, spaces, hyphens, dots and accents never create a second place (`match_key` in apps/hostels/locations.py); a genuinely different spelling is added once as an alias.
+- `GET /hostels/` is the public list, the same for everyone whether or not a token is sent: active hostels, parameters `city`, `locality` (name, slug, alias or id; legacy values still work), `search` (name, locality, address; 2+ characters), `amenity`, `gender_type`, `page`, `page_size` (default 10, maximum 50). Newest first, then id. `?scope=mine` is the signed-in owner's own hostels (including inactive); `?scope=all` is staff only. Owners write through the same routes as before.
+- `GET /cities/` and `GET /cities/{slug}/localities/`: active entries that have an active hostel, with counts; `?include_empty=true` lists every active entry (the admin wizard). `GET /hostels/localities/` is kept for older apps.
+- `python manage.py deactivate_test_hostels` (staging only): dry run by default; `--apply` hides test-looking hostels and writes an undo file; `--restore <file>` reverses it.
 - CI also builds the admin site (`.github/workflows/admin.yml`, check `admin / build`: `npm ci`, `tsc --noEmit`, `npm run build`).
 - Swagger UI (`/api/docs/`) and `/api/schema/` exist only when DEBUG is on or `APP_ENV=staging`.
 
