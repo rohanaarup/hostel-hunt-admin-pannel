@@ -90,6 +90,16 @@ class SettingsBootTests(SimpleTestCase):
         for name in ('SECRET_KEY', 'ALLOWED_HOSTS', 'DATABASE_URL'):
             self.assertIn(name, proc.stderr)
 
+    def test_unparseable_database_url_gives_a_clear_error_without_the_value(self):
+        # Square brackets left from Supabase's [YOUR-PASSWORD] placeholder make the URL unparseable.
+        proc = run_python('import config.settings', prod_env(
+            DATABASE_URL='postgresql://postgres.abcd:[SecretPw123]@db.example.com:5432/postgres',
+        ))
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn('DATABASE_URL', proc.stderr)
+        self.assertIn('brackets', proc.stderr)
+        self.assertNotIn('SecretPw123', proc.stderr)
+
     def test_boots_when_required_variables_are_set(self):
         proc = run_python('import config.settings', prod_env())
         self.assertEqual(proc.returncode, 0, proc.stderr)
