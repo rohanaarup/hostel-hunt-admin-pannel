@@ -2,7 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from django.db.models import Count, Min, Max, Sum, OuterRef, Subquery
+from django.db.models import Count, Min, Max, Q, Sum, OuterRef, Subquery
 from .models import Hostel
 from .serializers import HostelSerializer, HostelListSerializer
 from apps.media_uploads.models import MediaItem
@@ -72,6 +72,19 @@ class HostelViewSet(viewsets.ModelViewSet):
             locality = self.request.query_params.get('locality')
             if locality:
                 qs = qs.filter(locality__icontains=locality)
+
+            # Free-text search over name, locality, city and address (case-insensitive).
+            search = (self.request.query_params.get('search') or '').strip()
+            if search:
+                qs = qs.filter(
+                    Q(name__icontains=search) | Q(locality__icontains=search)
+                    | Q(city__icontains=search) | Q(address__icontains=search)
+                )
+
+            # One amenity from the JSON list, e.g. ?amenity=ac (case-insensitive, whole item).
+            amenity = (self.request.query_params.get('amenity') or '').strip()
+            if amenity:
+                qs = qs.filter(amenities__icontains=f'"{amenity}"')
 
             if self.action == 'list':
                 # Lightweight list: aggregate room/bed counts and price range,

@@ -23,7 +23,6 @@ export const queryKeys = {
   recentActivity:    ['dashboard', 'activity'] as const,
   bookings:          (paymentMode?: string) => ['bookings', { paymentMode }] as const,
   payments:          (status?: string)        => ['payments', { status }] as const,
-  paymentSummary:    ['payments', 'summary'] as const,
   residents:         ['residents'] as const,
   notices:           ['notices'] as const,
   hostels:           ['hostels'] as const,
@@ -90,36 +89,10 @@ export function usePayments(status?: string) {
   return useQuery({
     queryKey: queryKeys.payments(status),
     queryFn: async (): Promise<Payment[]> => {
-      const res = await paymentService.getPayments(status);
+      const res = await paymentService.getPayments(status ? { status } : undefined);
       return unwrap<Payment>(res);
     },
   });
-}
-
-export function usePaymentSummary() {
-  return useQuery({
-    queryKey: queryKeys.paymentSummary,
-    queryFn: async () => {
-      const res = await paymentService.getSummary();
-      return (res?.data ?? res) ?? null;
-    },
-  });
-}
-
-export function usePaymentActions() {
-  const qc = useQueryClient();
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['payments'] });
-  return {
-    markPaid: useMutation({
-      mutationFn: ({ id, amountPaid }: { id: string; amountPaid?: number }) =>
-        paymentService.markPaymentPaid(id, amountPaid),
-      onSuccess: invalidate,
-    }),
-    create: useMutation({
-      mutationFn: (data: any) => paymentService.createPayment(data),
-      onSuccess: invalidate,
-    }),
-  };
 }
 
 // ─── Residents ────────────────────────────────────────────────────────────

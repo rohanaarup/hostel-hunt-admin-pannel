@@ -335,6 +335,10 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 EMAIL_TIMEOUT = 15  # Prevent Gunicorn worker timeout if Render blocks SMTP ports
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Hostel Hunt <noreply@hostelhunt.com>')
 
+# Cloudinary (profile photo uploads, unsigned preset: no API secret is used)
+CLOUDINARY_CLOUD_NAME = config('CLOUDINARY_CLOUD_NAME', default='')
+CLOUDINARY_UPLOAD_PRESET = config('CLOUDINARY_UPLOAD_PRESET', default='')
+
 # Twilio SMS Configuration
 TWILIO_ACCOUNT_SID = config('TWILIO_ACCOUNT_SID', default='')
 TWILIO_AUTH_TOKEN = config('TWILIO_AUTH_TOKEN', default='')

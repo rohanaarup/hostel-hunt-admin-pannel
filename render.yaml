@@ -46,6 +46,12 @@ services:
       # Error reporting. Leave unset to disable Sentry.
       - key: SENTRY_DSN
         sync: false
+      # Profile photo uploads (Cloudinary unsigned preset; no secret). Without them the
+      # photo endpoint answers 503 "Photo upload is not configured".
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_UPLOAD_PRESET
+        sync: false
       # Optional: set when a browser admin site exists.
       - key: CORS_ALLOWED_ORIGINS
         sync: false
@@ -87,4 +93,10 @@ services:
       - key: RAZORPAY_WEBHOOK_SECRET
         sync: false
       - key: SENTRY_DSN
+        sync: false
+      # Profile photo uploads (Cloudinary unsigned preset; no secret). Without them the
+      # photo endpoint answers 503 "Photo upload is not configured".
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_UPLOAD_PRESET
         sync: false

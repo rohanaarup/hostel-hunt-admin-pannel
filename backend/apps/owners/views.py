@@ -10,7 +10,7 @@ from .models import Owner
 from .services import OTPService
 from .serializers import (
     OwnerProfileSerializer, SendOtpSerializer, VerifyOtpSerializer,
-    SignupSerializer, LoginSerializer, ResetPasswordSerializer
+    SignupSerializer, LoginSerializer, ResetPasswordSerializer, OwnerProfileUpdateSerializer
 )
 
 logger = logging.getLogger(__name__)
@@ -192,3 +192,26 @@ class OwnerProfileView(APIView):
     def get(self, request):
         serializer = OwnerProfileSerializer(request.user)
         return success_response(data=serializer.data)
+
+    def patch(self, request):
+        serializer = OwnerProfileUpdateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return error_response(serializer.errors)
+        changes = dict(serializer.validated_data)
+        user = request.user
+
+        errors = {}
+        email = changes.pop('email', None)
+        if email is not None and email.strip().lower() != (user.email or '').lower():
+            errors['email'] = "Changing your email needs verification, which isn't available yet."
+        phone = changes.pop('phone_number', None)
+        if phone is not None and phone.strip() != (user.phone_number or ''):
+            errors['phone_number'] = "Changing your phone number needs verification, which isn't available yet."
+        if errors:
+            return error_response(errors, 'Some changes are not allowed.')
+
+        for field, value in changes.items():
+            setattr(user, field, value)
+        if changes:
+            user.save(update_fields=[*changes, 'updated_at'])
+        return success_response(data=OwnerProfileSerializer(user).data, message='Profile updated.')

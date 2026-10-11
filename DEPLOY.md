@@ -11,6 +11,8 @@ Set `DEBUG` to `False` (an absent `DEBUG` also means off).
 
 Keep the ones already set: `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`.
 
+Profile photo uploads need `CLOUDINARY_CLOUD_NAME` and `CLOUDINARY_UPLOAD_PRESET` (the cloud name and an UNSIGNED upload preset from the Cloudinary dashboard; no API secret). Without them `POST /auth/me/photo/` answers 503 "Photo upload is not configured".
+
 Optional: `SENTRY_DSN` (turns on error reporting), `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`, `GIT_COMMIT` (set from `RENDER_GIT_COMMIT` by the start command in `render.yaml`), `CORS_ALLOWED_ORIGINS` (only if a browser site calls the API), `CSRF_TRUSTED_ORIGINS` (for `/admin/` login over HTTPS). Full list: `backend/.env.example`.
 
 `ALLOWED_HOSTS` **must contain the public hostname** the app calls. The mobile app calls `hostel-hunt-backend.onrender.com`. Earlier code ignored this variable and allowed every host, so its current value may be wrong; check it before deploying. A wrong value makes every API call return 400.
@@ -21,6 +23,9 @@ Optional: `SENTRY_DSN` (turns on error reporting), `SENTRY_ENVIRONMENT`, `SENTRY
 - Start command: `GIT_COMMIT=$RENDER_GIT_COMMIT gunicorn config.wsgi:application -c gunicorn.conf.py`
 - Health check path: `/healthz`
 - Python: `PYTHON_VERSION` = `3.13.5` (same as `backend/.python-version`)
+
+## Database migrations
+The build command runs `migrate`. Migration `owners.0005_profile_fields_and_photo_url` only ADDS three nullable columns (`gender`, `date_of_birth`, `profile_photo_url`) to the owners table, so it removes and rewrites nothing and is safe to roll back by redeploying the previous commit (the extra columns are simply unused). Deploy to staging first and check `/readyz` and `/api/v1/auth/me/` before production.
 
 ## Deploy
 1. Set or change the environment variables above. Confirm `ALLOWED_HOSTS`.

@@ -46,6 +46,25 @@ paths:
       responses:
         '200':
           description: No response body
+    patch:
+      operationId: auth_me_partial_update
+      tags:
+      - auth
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/auth/me/photo/:
+    post:
+      operationId: auth_me_photo_create
+      tags:
+      - auth
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
   /api/v1/auth/register/:
     post:
       operationId: auth_register_create

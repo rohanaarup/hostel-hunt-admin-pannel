@@ -10,7 +10,7 @@ Everything below was checked against the code or run on 2026-10-10; things not r
 - `DEPLOY.md` – deploy, verify and rollback steps.
 
 ## Architecture
-- `apps/owners` – custom user model `owners.Owner`; OTP, register, login, reset-password, `auth/me` under `/api/v1/auth/`.
+- `apps/owners` – custom user model `owners.Owner`; OTP, register, login, reset-password under `/api/v1/auth/`. `auth/me/` supports GET and PATCH (display name, gender, date of birth; email and phone changes are refused until OTP verification exists). `auth/me/photo/` uploads a profile photo to Cloudinary (unsigned preset) and stores its URL; it needs `CLOUDINARY_CLOUD_NAME` and `CLOUDINARY_UPLOAD_PRESET`.
 - `apps/otp_auth` – separate email-OTP endpoints under `/api/v1/send/`, `/verify/`.
 - `apps/hostels`, `rooms`, `bookings`, `payments` (Razorpay), `dashboard`, `residents`, `notices`, `media_uploads` (stores image URLs only; the backend has no Cloudinary code or settings).
 - `apps/core` – tenant scoping (`core/tenancy`), `health.py` (`/healthz`, `/readyz`), `observability.py` (request id and the one-JSON-line-per-request log), `sentry_config.py` and `privacy.py` (Sentry setup, scrubbing, masking), `dev.py` (the OTP-exposure switch), `async_utils.py` (in-process thread pool for email sends).
@@ -46,7 +46,7 @@ Production start command (Linux): `gunicorn config.wsgi:application -c gunicorn.
 ## Environment variables
 Names and defaults are in `backend/.env.example` (a test fails if a variable read in `settings.py` is missing there).
 Required when `DEBUG` is off: `SECRET_KEY`, `ALLOWED_HOSTS`, `DATABASE_URL` – the server refuses to start and names the missing ones.
-Also used: `APP_ENV`, `DEBUG`, `USE_DB`, `LOCAL_DATABASE_URL`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS`, `TRUST_PROXY_SSL_HEADER`, `SECURE_SSL_REDIRECT`, `SECURE_HSTS_SECONDS`, `JWT_ACCESS_MINUTES`, `JWT_REFRESH_DAYS`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `DEFAULT_FROM_EMAIL`, `TWILIO_*`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `EXPOSE_DEV_OTP`, `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`, `GIT_COMMIT`, `SENTRY_TRACES_SAMPLE_RATE`, `GUNICORN_ACCESSLOG`, `DB_CONN_MAX_AGE`, `DJANGO_LOG_LEVEL`, `PORT`, `WEB_CONCURRENCY`, `GUNICORN_*`.
+Also used: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_UPLOAD_PRESET`, `APP_ENV`, `DEBUG`, `USE_DB`, `LOCAL_DATABASE_URL`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS`, `TRUST_PROXY_SSL_HEADER`, `SECURE_SSL_REDIRECT`, `SECURE_HSTS_SECONDS`, `JWT_ACCESS_MINUTES`, `JWT_REFRESH_DAYS`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `DEFAULT_FROM_EMAIL`, `TWILIO_*`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `EXPOSE_DEV_OTP`, `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`, `GIT_COMMIT`, `SENTRY_TRACES_SAMPLE_RATE`, `GUNICORN_ACCESSLOG`, `DB_CONN_MAX_AGE`, `DJANGO_LOG_LEVEL`, `PORT`, `WEB_CONCURRENCY`, `GUNICORN_*`.
 Never print, log or commit secret values; refer to variables by name.
 
 ## Change pipeline
@@ -54,6 +54,8 @@ Never print, log or commit secret values; refer to variables by name.
 - `backend/schema.yml` is the committed OpenAPI schema; an API change must regenerate it in the same PR.
 - `backend/contract/endpoints.txt` lists every endpoint the app and admin call. `apps/core/test_contract.py` fails on a renamed route, a wrong method, or an `expected-fail` marker that now passes. Remove the marker when you fix the route.
 - `backend/contract/fixtures/hostels_list.json` is a sample of the real list response; regenerate with `UPDATE_CONTRACT_FIXTURES=1 python manage.py test apps.core.test_contract.HostelListFixtureTests` and copy it to the app repo's `test/fixtures/`.
+- `GET /hostels/` (public list) honours `city`, `locality`, `gender_type`, `search` (name, locality, city, address) and `amenity`.
+- CI also builds the admin site (`.github/workflows/admin.yml`, check `admin / build`: `npm ci`, `tsc --noEmit`, `npm run build`).
 - Swagger UI (`/api/docs/`) and `/api/schema/` exist only when DEBUG is on or `APP_ENV=staging`.
 
 ## Rules for changes

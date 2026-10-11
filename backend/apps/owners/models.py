@@ -8,6 +8,11 @@ class Owner(AbstractBaseUser, PermissionsMixin):
     ROLE_CHOICES = (
         ('owner', 'Owner'),
     )
+    GENDER_CHOICES = (
+        ('male', 'Male'),
+        ('female', 'Female'),
+        ('other', 'Other'),
+    )
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, db_column='owner_id')
     email = models.EmailField(unique=True, null=True, blank=True)
@@ -18,7 +23,11 @@ class Owner(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     
-    profile_photo = models.ImageField(upload_to='profiles/', null=True, blank=True)
+    profile_photo = models.ImageField(upload_to='profiles/', null=True, blank=True)  # legacy: local disk, lost on deploy
+    # Photo stored on Cloudinary (see apps/owners/photo.py). Preferred over profile_photo.
+    profile_photo_url = models.URLField(max_length=1000, null=True, blank=True)
+    gender = models.CharField(max_length=10, choices=GENDER_CHOICES, null=True, blank=True)
+    date_of_birth = models.DateField(null=True, blank=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='owner')
     signup_source = models.CharField(max_length=50, default='admin_panel', blank=True)
     
