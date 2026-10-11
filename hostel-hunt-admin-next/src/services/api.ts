@@ -1,14 +1,15 @@
 import axios from 'axios';
 import type { AuthUser } from '../types';
 
-// Toggle this flag to true for localhost, false for Render server
-const USE_LOCAL_BACKEND = true;
-
-const LOCAL_URL = 'http://127.0.0.1:8001/api/v1';
+// Set true to use the local Django backend; false uses Render.
+const USE_LOCAL_BACKEND = false;
+const LOCAL_URL = 'http://127.0.0.1:8000/api/v1';
 const RENDER_URL = 'https://hostel-hunt-backend.onrender.com/api/v1';
 
 // Next.js requires NEXT_PUBLIC_ prefix for client-exposed env vars
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || (USE_LOCAL_BACKEND ? LOCAL_URL : RENDER_URL);
+const API_BASE_URL = USE_LOCAL_BACKEND
+  ? LOCAL_URL
+  : process.env.NEXT_PUBLIC_API_URL || RENDER_URL;
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
