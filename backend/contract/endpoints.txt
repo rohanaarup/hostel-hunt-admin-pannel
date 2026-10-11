@@ -29,7 +29,6 @@ app   GET    /hostels/
 app   GET    /hostels/{id}/
 app   GET    /hostels/localities/
 app   GET    /cities/
-app   GET    /cities/{slug}/localities/
 app   POST   /bookings/
 app   GET    /bookings/my/
 app   GET    /wishlist/
