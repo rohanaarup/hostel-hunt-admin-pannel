@@ -25,8 +25,10 @@ keepalive = int(os.environ.get('GUNICORN_KEEPALIVE', '5'))
 max_requests = int(os.environ.get('GUNICORN_MAX_REQUESTS', '1000'))
 max_requests_jitter = int(os.environ.get('GUNICORN_MAX_REQUESTS_JITTER', '100'))
 
-# Logs to stdout/stderr; the host collects them.
-accesslog = '-'
+# Logs to stdout/stderr; the host collects them. The per-request JSON line from
+# apps/core/observability.py replaces gunicorn's access log (it has route, timing and
+# query counts, and no raw paths). Set GUNICORN_ACCESSLOG=- to turn the access log back on.
+accesslog = os.environ.get('GUNICORN_ACCESSLOG') or None
 errorlog = '-'
 loglevel = os.environ.get('GUNICORN_LOG_LEVEL', 'info')
 

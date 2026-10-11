@@ -44,7 +44,7 @@ class SendOTPView(APIView):
             )
         except Exception as e:
             import logging
-            logging.getLogger(__name__).error(f"OTP Error: {str(e)}", exc_info=True)
+            logging.getLogger(__name__).error("OTP send failed: %s", type(e).__name__, exc_info=True)
             return Response(
                 {'success': False, 'message': 'Failed to send OTP. Please try again.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,

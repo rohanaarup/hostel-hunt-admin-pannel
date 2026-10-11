@@ -89,6 +89,8 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # Request id and the one-line-per-request log. Keep first so it times every other middleware.
+    'apps.core.observability.RequestLogMiddleware',
     'apps.core.health.HealthzMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -308,20 +310,37 @@ LOG_LEVEL = config('DJANGO_LOG_LEVEL', default='INFO')
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'filters': {
+        'request_id': {'()': 'apps.core.observability.RequestIdFilter'},
+        'mask_pii': {'()': 'apps.core.observability.PiiMaskFilter'},
+    },
     'formatters': {
         'verbose': {
-            'format': '{levelname} {asctime} {module} {message}',
+            'format': '{levelname} {asctime} [{request_id}] {module} {message}',
             'style': '{',
         },
+        # The request log line is already a complete JSON document.
+        'raw': {'format': '%(message)s'},
     },
     'handlers': {
         'console': {
             'level': LOG_LEVEL,
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
+            'filters': ['request_id', 'mask_pii'],
+        },
+        'request': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'raw',
         },
     },
     'loggers': {
+        'hh.request': {
+            'handlers': ['request'],
+            'level': 'INFO',
+            'propagate': False,
+        },
         'django': {
             'handlers': ['console'],
             'level': 'ERROR',
@@ -355,3 +374,23 @@ if not RAZORPAY_KEY_ID or not RAZORPAY_KEY_SECRET:
     logger.warning("CRITICAL: RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET is not set. Online payments will fail.")
 if not RAZORPAY_WEBHOOK_SECRET:
     logger.warning("CRITICAL: RAZORPAY_WEBHOOK_SECRET is not set. Webhook verification will fail.")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Observability
+# GIT_COMMIT / SENTRY_RELEASE tag log lines and Sentry events with the deployed
+# version. Sentry stays off unless SENTRY_DSN is set.
+# ─────────────────────────────────────────────────────────────────────────────
+GIT_COMMIT = config('GIT_COMMIT', default='')
+RELEASE = config('SENTRY_RELEASE', default='') or GIT_COMMIT
+SENTRY_DSN = config('SENTRY_DSN', default='')
+SENTRY_ENVIRONMENT = config('SENTRY_ENVIRONMENT', default='development' if DEBUG else 'production')
+SENTRY_TRACES_SAMPLE_RATE = config('SENTRY_TRACES_SAMPLE_RATE', default=0.0, cast=float)
+
+from apps.core.sentry_config import init_sentry  # noqa: E402
+
+init_sentry(
+    dsn=SENTRY_DSN,
+    environment=SENTRY_ENVIRONMENT,
+    release=RELEASE,
+    traces_sample_rate=SENTRY_TRACES_SAMPLE_RATE,
+)

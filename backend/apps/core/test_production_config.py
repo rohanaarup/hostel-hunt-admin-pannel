@@ -142,7 +142,7 @@ class SettingsValuesTests(SimpleTestCase):
         self.assertIn('whitenoise.middleware.WhiteNoiseMiddleware', self.s['MIDDLEWARE'])
 
     def test_logs_go_to_stdout_only(self):
-        self.assertEqual(self.s['HANDLERS'], ['logging.StreamHandler'])
+        self.assertEqual(set(self.s['HANDLERS']), {'logging.StreamHandler'})
 
     def test_jwt_lifetimes(self):
         self.assertEqual(self.s['ACCESS_SECONDS'], 30 * 60)
@@ -247,7 +247,7 @@ class DeploymentFilesTests(SimpleTestCase):
         self.assertEqual(conf['bind'], '0.0.0.0:9123')
         self.assertEqual(conf['worker_class'], 'gthread')
         self.assertGreaterEqual(conf['timeout'], 30)
-        self.assertEqual(conf['accesslog'], '-')
+        self.assertIsNone(conf['accesslog'])  # our request log replaces gunicorn's access log
         self.assertFalse(conf.get('preload_app', False))
 
     def test_requirements_are_exactly_pinned(self):

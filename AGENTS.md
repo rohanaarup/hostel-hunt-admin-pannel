@@ -13,11 +13,12 @@ Everything below was checked against the code or run on 2026-10-10; things not r
 - `apps/owners` – custom user model `owners.Owner`; OTP, register, login, reset-password, `auth/me` under `/api/v1/auth/`.
 - `apps/otp_auth` – separate email-OTP endpoints under `/api/v1/send/`, `/verify/`.
 - `apps/hostels`, `rooms`, `bookings`, `payments` (Razorpay), `dashboard`, `residents`, `notices`, `media_uploads` (stores image URLs only; the backend has no Cloudinary code or settings).
-- `apps/core` – tenant scoping (`core/tenancy`), `health.py` (`/healthz`, `/readyz`), `dev.py` (the OTP-exposure switch), `async_utils.py` (in-process thread pool for email sends).
+- `apps/core` – tenant scoping (`core/tenancy`), `health.py` (`/healthz`, `/readyz`), `observability.py` (request id and the one-JSON-line-per-request log), `sentry_config.py` and `privacy.py` (Sentry setup, scrubbing, masking), `dev.py` (the OTP-exposure switch), `async_utils.py` (in-process thread pool for email sends).
 - Auth: JWT (SimpleJWT), 30-minute access and 30-day refresh by default. DRF default permission is `IsAuthenticated`. Throttles: anon 60/min, user 120/min, otp 5/min, counted per worker process (no shared cache).
 - Database: `USE_DB` unset or `supabase` -> Postgres from `DATABASE_URL`; `local` -> `LOCAL_DATABASE_URL`; `sqlite` -> `backend/db.sqlite3`. **The default is the remote database, so always set `USE_DB` for local work and tests.**
 - Static files: WhiteNoise serves `backend/staticfiles/` (created by `collectstatic`). Uploaded media is served only when `DEBUG` is on.
 - Health: `/healthz` answers from a middleware with no database, host or HTTPS checks. `/readyz` runs `SELECT 1` and returns 503 on failure.
+- Observability: every request except `/healthz` writes one JSON line to stdout (logger `hh.request`; no paths, queries, headers or bodies). Sentry runs only when `SENTRY_DSN` is set. See `backend/docs/observability.md`.
 
 ## Commands (PowerShell; each was run in a clean copy of the committed code)
 ```
@@ -30,24 +31,26 @@ python manage.py migrate
 python manage.py runserver 0.0.0.0:8000      # /healthz and /readyz answer; /api/v1/debug-logs/ is 404
 
 $env:USE_DB='sqlite'
-python manage.py test apps utils             # 89 tests, all pass
+python manage.py test apps utils             # 121 tests, all pass
 python manage.py makemigrations --check --dry-run   # "No changes detected"
 
 # production-style check (set SECRET_KEY, ALLOWED_HOSTS, DATABASE_URL first, DEBUG unset)
 python manage.py check --deploy              # one expected warning: SECURE_HSTS_SECONDS
 python manage.py collectstatic --noinput
 ```
+Safe Sentry test (needs `SENTRY_DSN`; use `SENTRY_ENVIRONMENT=test`): `python manage.py sentry_test`.
 Production start command (Linux): `gunicorn config.wsgi:application -c gunicorn.conf.py`.
 
 ## Environment variables
 Names and defaults are in `backend/.env.example` (a test fails if a variable read in `settings.py` is missing there).
 Required when `DEBUG` is off: `SECRET_KEY`, `ALLOWED_HOSTS`, `DATABASE_URL` – the server refuses to start and names the missing ones.
-Also used: `DEBUG`, `USE_DB`, `LOCAL_DATABASE_URL`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS`, `TRUST_PROXY_SSL_HEADER`, `SECURE_SSL_REDIRECT`, `SECURE_HSTS_SECONDS`, `JWT_ACCESS_MINUTES`, `JWT_REFRESH_DAYS`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `DEFAULT_FROM_EMAIL`, `TWILIO_*`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `EXPOSE_DEV_OTP`, `DB_CONN_MAX_AGE`, `DJANGO_LOG_LEVEL`, `PORT`, `WEB_CONCURRENCY`, `GUNICORN_*`.
+Also used: `DEBUG`, `USE_DB`, `LOCAL_DATABASE_URL`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS`, `TRUST_PROXY_SSL_HEADER`, `SECURE_SSL_REDIRECT`, `SECURE_HSTS_SECONDS`, `JWT_ACCESS_MINUTES`, `JWT_REFRESH_DAYS`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `DEFAULT_FROM_EMAIL`, `TWILIO_*`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `EXPOSE_DEV_OTP`, `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`, `GIT_COMMIT`, `SENTRY_TRACES_SAMPLE_RATE`, `GUNICORN_ACCESSLOG`, `DB_CONN_MAX_AGE`, `DJANGO_LOG_LEVEL`, `PORT`, `WEB_CONCURRENCY`, `GUNICORN_*`.
 Never print, log or commit secret values; refer to variables by name.
 
 ## Rules for changes
 - Settings come from environment variables only. No host-specific code.
 - OTP values may appear in a response or log only when `DEBUG` and `EXPOSE_DEV_OTP` are both on. Provider/SMTP error text stays in server logs.
+- Logs and error reports must not contain emails, phone numbers, tokens, OTPs or request bodies. Do not log identifiers; masking in `privacy.py` is only a safety net.
 - No debug endpoints. Errors return a message and the right HTTP status, never a traceback.
 - `reset_db.py` and `reset_db_auto.py` drop every table; they refuse unless the database host is local and `--i-understand-this-drops-all-tables` is passed.
 - Keep what the shipped mobile app uses; add fields and endpoints first, remove later. Every bug fix ships with a test that failed before it.

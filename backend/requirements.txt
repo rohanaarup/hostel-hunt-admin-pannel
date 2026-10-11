@@ -29,6 +29,9 @@ gunicorn==23.0.0
 # Razorpay Payment Gateway
 razorpay==2.0.1
 
+# Error reporting (only active when SENTRY_DSN is set)
+sentry-sdk==2.71.0
+
 # Transitive dependencies (pinned so builds are repeatable)
 asgiref==3.11.1
 certifi==2026.6.17

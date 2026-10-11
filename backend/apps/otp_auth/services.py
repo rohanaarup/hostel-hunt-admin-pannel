@@ -64,9 +64,9 @@ class OTPService:
                 recipient_list=[recipient_email],
                 fail_silently=False,
             )
-            logger.info(f"SMTP EMAIL SENT TO {recipient_email}")
+            logger.info("OTP email sent")
         except Exception as e:
-            logger.error(f"Failed to send OTP to {recipient_email}: {e}")
+            logger.error("Failed to send OTP email: %s", type(e).__name__)
             raise e
 
     @classmethod
