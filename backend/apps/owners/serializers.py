@@ -25,6 +25,7 @@ class OwnerProfileSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'email', 'phone_number', 'display_name', 
             'is_verified', 'is_active', 'profile_photo', 
+            'gender', 'date_of_birth',
             'role', 'created_at', 'updated_at'
         ]
         
@@ -32,11 +33,19 @@ class OwnerProfileSerializer(serializers.ModelSerializer):
         ret = super().to_representation(instance)
         # Rename id to owner_id to match frontend interface
         ret['owner_id'] = ret.pop('id')
-        if ret.get('profile_photo'):
-            ret['profile_photo_url'] = ret.pop('profile_photo')
-        else:
-            ret['profile_photo_url'] = None
+        legacy = ret.pop('profile_photo', None)
+        ret['profile_photo_url'] = instance.profile_photo_url or legacy or None
         return ret
+
+
+class OwnerProfileUpdateSerializer(serializers.Serializer):
+    """Fields a user may change with PATCH /auth/me/. Email and phone are accepted only so that
+    an unchanged value is a no-op; changing them is refused by the view (it needs OTP verification)."""
+    display_name = serializers.CharField(max_length=150, required=False)
+    gender = serializers.ChoiceField(choices=['male', 'female', 'other'], required=False)
+    date_of_birth = serializers.DateField(required=False)
+    email = serializers.EmailField(required=False)
+    phone_number = serializers.CharField(max_length=20, required=False)
 
 
 class SendOtpSerializer(serializers.Serializer):

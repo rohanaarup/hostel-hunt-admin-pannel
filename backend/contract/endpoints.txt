@@ -21,16 +21,16 @@ app   POST   /auth/login/
 app   POST   /auth/reset-password/
 app   POST   /auth/token/refresh/
 app   GET    /auth/me/
-app   PATCH  /auth/me/            | expected-fail: view allows GET only; the app PATCHes profile edits (405)
-app   POST   /auth/me/photo/      | expected-fail: route does not exist; the app uploads the profile photo here (404)
+app   PATCH  /auth/me/
+app   POST   /auth/me/photo/
 
 # ---- app: hostels, bookings, dashboard ----
 app   GET    /hostels/
 app   GET    /hostels/{id}/
 app   GET    /hostels/localities/
 app   POST   /bookings/
-app   GET    /bookings/my-bookings/   | expected-fail: route does not exist; the real one is /bookings/my/ (404)
-app   GET    /favorites/hostels/      | expected-fail: route does not exist; the real one is /wishlist/ (404)
+app   GET    /bookings/my/
+app   GET    /wishlist/
 app   GET    /dashboard/student/stats/
 
 # ---- app: payments ----
@@ -44,8 +44,8 @@ app   GET    /payments/status/{id}/
 app   GET    /hostels/?city
 app   GET    /hostels/?locality
 app   GET    /hostels/?gender_type
-app   GET    /hostels/?search         | expected-fail: backend ignores the search parameter
-app   GET    /hostels/?amenity        | expected-fail: backend ignores the amenity parameter
+app   GET    /hostels/?search
+app   GET    /hostels/?amenity
 
 # ---- admin: auth ----
 admin POST   /auth/token/refresh/
@@ -73,10 +73,7 @@ admin POST   /bookings/{id}/verify/
 admin PATCH  /bookings/{id}/mark-paid/
 
 # ---- admin: payments ----
-admin GET    /payments/                    | expected-fail: route does not exist; real ones are /payments/list/ and /payments/admin-list/ (404)
-admin GET    /payments/summary/            | expected-fail: route does not exist (404)
-admin POST   /payments/create/             | expected-fail: route does not exist (404)
-admin PATCH  /payments/{id}/mark-paid/     | expected-fail: route does not exist (404)
+admin GET    /payments/admin-list/
 
 # ---- admin: residents, notices, media ----
 admin GET    /residents/
@@ -84,7 +81,7 @@ admin POST   /residents/create/
 admin PATCH  /residents/{id}/mark-vacated/
 admin GET    /notices/
 admin POST   /notices/create/
-admin DELETE /notices/{id}/                | expected-fail: view allows PATCH and PUT only; DELETE lives at /notices/{id}/delete/ (405)
+admin DELETE /notices/{id}/delete/
 admin POST   /media/upload/
 admin PATCH  /media/reorder/
 admin DELETE /media/{id}/
