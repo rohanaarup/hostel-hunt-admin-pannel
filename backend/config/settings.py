@@ -134,6 +134,20 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 USE_DB = config('USE_DB', default='supabase')
 
+
+def _database_from_url(name, url):
+    """Parse a database URL; on failure say which variable is wrong and why, never showing the value."""
+    try:
+        return dj_database_url.config(default=url, conn_max_age=DB_CONN_MAX_AGE, conn_health_checks=True)
+    except dj_database_url.ParseError:
+        raise ImproperlyConfigured(
+            f"{name} is not a valid database URL (the value is not shown). Common causes: "
+            "square brackets left around the password (Supabase shows [YOUR-PASSWORD]; remove the "
+            "brackets), or a password containing # / ? [ ] : or %, which must be percent-encoded "
+            "(# becomes %23, / becomes %2F, ? becomes %3F, [ becomes %5B, ] becomes %5D, : becomes %3A, "
+            "% becomes %25). The simplest fix is a password made of letters and digits only."
+        ) from None
+
 # Persistent connection lifetime (seconds). Was 0 (a fresh handshake per
 # request); raised to reuse connections across requests within a worker.
 DB_CONN_MAX_AGE = config('DB_CONN_MAX_AGE', default=60, cast=int)
@@ -150,10 +164,9 @@ if USE_DB == 'sqlite':
         logger.warning("USE_DB=sqlite with DEBUG off: data is not durable. Use a Postgres DATABASE_URL.")
 elif USE_DB == 'local':
     DATABASES = {
-        'default': dj_database_url.config(
-            default=config('LOCAL_DATABASE_URL', default='postgresql://postgres:postgres@localhost:5432/hh_core'),
-            conn_max_age=DB_CONN_MAX_AGE,
-            conn_health_checks=True,
+        'default': _database_from_url(
+            'LOCAL_DATABASE_URL',
+            config('LOCAL_DATABASE_URL', default='postgresql://postgres:postgres@localhost:5432/hh_core'),
         )
     }
     logger.info("Database configured: local postgres")
@@ -161,13 +174,7 @@ else:
     _database_url = config('DATABASE_URL', default='')
     if not _database_url:
         _missing_env.append('DATABASE_URL')
-    DATABASES = {
-        'default': dj_database_url.config(
-            default=_database_url,
-            conn_max_age=DB_CONN_MAX_AGE,
-            conn_health_checks=True,
-        )
-    }
+    DATABASES = {'default': _database_from_url('DATABASE_URL', _database_url)}
     logger.info("Database configured: supabase")
 
 if _missing_env:
