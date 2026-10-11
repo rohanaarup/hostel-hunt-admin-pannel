@@ -37,6 +37,8 @@ const STATUS_TO_TONE: Record<string, StatusTone> = {
   checked_in: 'success',
   checked_out: 'neutral',
   // payment
+  created: 'pending',
+  success: 'success',
   completed: 'success',
   failed: 'error',
   refunded: 'info',

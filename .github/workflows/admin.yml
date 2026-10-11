@@ -1,0 +1,43 @@
+name: admin
+
+# The Next.js admin site (hostel-hunt-admin-next). It is built from this repo but had no checks:
+# a TypeScript error, a bad import or a broken page would only show up when someone ran it.
+# (ESLint is not part of this: its config is currently broken and predates this workflow.)
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: admin-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: hostel-hunt-admin-next
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: hostel-hunt-admin-next/package-lock.json
+
+      - name: Install (exact versions from package-lock.json)
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Production build
+        run: npm run build

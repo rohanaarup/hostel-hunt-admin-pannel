@@ -125,7 +125,9 @@ export default function DashboardPage() {
 
   const { data: bookings = [] as Booking[] } = useQuery<Booking[]>({
     queryKey: ['bookings'],
-    queryFn: () => bookingService.getBookings().then(r => r.data)
+    // The bookings list is paginated ({ count, results }); older responses used { data }.
+    queryFn: () => bookingService.getBookings()
+      .then(r => Array.isArray(r?.results) ? r.results : Array.isArray(r?.data) ? r.data : Array.isArray(r) ? r : [])
   });
 
   // Since we load quickly from cache, we can safely derive loading state.

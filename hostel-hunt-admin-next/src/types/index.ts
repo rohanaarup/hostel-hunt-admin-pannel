@@ -175,24 +175,25 @@ export interface Booking {
 
 // ─── Payment ──────────────────────────────────────────────────────────────────
 
-export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded' | 'paid' | 'overdue' | 'partial';
-export type PaymentMethod = 'upi' | 'card' | 'bank_transfer' | 'cash';
+export type PaymentStatus = 'CREATED' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED';
 
+/** One online (Razorpay) payment, as returned by GET /payments/admin-list/. */
 export interface Payment {
   id: string;
-  booking: string | null;
-  hostel: string;
-  resident_name: string;
-  resident_phone: string;
-  amount_due: number;
-  amount_paid: number;
-  due_date: string;
-  paid_date: string | null;
-  mode: PaymentMethod;
+  booking: string;
+  razorpay_order_id: string;
+  amount: string; // decimal string in rupees, e.g. "6500.00"
+  currency: string;
   status: PaymentStatus;
-  marked_by: string | null;
-  notes: string;
+  verified_at: string | null;
   created_at: string;
+  updated_at: string;
+  student_name: string;
+  student_phone: string;
+  hostel_name: string;
+  room_number: string;
+  bed_number: string;
+  attempts: unknown[];
 }
 
 // ─── Resident ─────────────────────────────────────────────────────────────────

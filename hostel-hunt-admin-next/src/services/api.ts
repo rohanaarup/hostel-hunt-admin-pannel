@@ -109,15 +109,12 @@ export const bookingService = {
   markBookingPaid: (id: string) => api.patch(`/bookings/${id}/mark-paid/`).then(res => res.data),
 };
 
+// Online (Razorpay) payments for the signed-in owner's hostels. The backend has no offline rent
+// ledger, so there is no create / mark-paid / summary call. `status` is CREATED, PENDING, SUCCESS,
+// FAILED or REFUNDED. The response is paginated: { count, next, previous, results }.
 export const paymentService = {
-  getPayments: (status?: string) => {
-    const params = status ? { status } : {};
-    return api.get('/payments/', { params }).then(res => res.data);
-  },
-  getSummary: () => api.get('/payments/summary/').then(res => res.data),
-  createPayment: (data: any) => api.post('/payments/create/', data).then(res => res.data),
-  markPaymentPaid: (id: string, amountPaid?: number) =>
-    api.patch(`/payments/${id}/mark-paid/`, amountPaid !== undefined ? { amount_paid: amountPaid } : {}).then(res => res.data),
+  getPayments: (params?: { status?: string; page_size?: number }) =>
+    api.get('/payments/admin-list/', { params }).then(res => res.data),
 };
 
 export const residentService = {
@@ -129,7 +126,7 @@ export const residentService = {
 export const noticeService = {
   getNotices: () => api.get('/notices/').then(res => res.data),
   createNotice: (data: any) => api.post('/notices/create/', data).then(res => res.data),
-  deleteNotice: (id: string) => api.delete(`/notices/${id}/`).then(res => res.data),
+  deleteNotice: (id: string) => api.delete(`/notices/${id}/delete/`).then(res => res.data),
 };
 
 export const mediaService = {
