@@ -9,7 +9,8 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 
-from apps.hostels.models import Hostel
+from apps.hostels.locations import normalise_slug
+from apps.hostels.models import City, Hostel, Locality
 from apps.media_uploads.models import MediaItem
 from apps.rooms.models import Bed, Room
 
@@ -53,12 +54,19 @@ def ensure_sample_catalog():
         owner = Owner.objects.create_user(email=SEED_EMAIL, display_name='Seed Owner', password=SEED_PASSWORD)
 
     for spec in CATALOG:
+        city = City.objects.filter(slug=normalise_slug(spec['city'])).first() or City.objects.create(
+            name=spec['city'], state=spec['state'],
+        )
+        locality = Locality.objects.filter(city=city, slug=normalise_slug(spec['locality'])).first() or Locality.objects.create(
+            city=city, name=spec['locality'],
+        )
         hostel, _ = Hostel.objects.update_or_create(
             id=seed_id('hostel', spec['key']),
             defaults=dict(
                 owner=owner, name=spec['name'], owner_name='Seed Owner', contact_number='9000000000',
                 email=SEED_EMAIL, locality=spec['locality'], address=f"1 Sample Road, {spec['locality']}",
                 city=spec['city'], state=spec['state'], pincode=spec['pincode'],
+                city_ref=city, locality_ref=locality,
                 gender_type=spec['gender_type'], amenities=spec['amenities'],
                 occupancy_types=sorted({room[1] for room in spec['rooms']}), is_active=True,
             ),

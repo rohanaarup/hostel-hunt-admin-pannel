@@ -531,6 +531,46 @@ paths:
               schema:
                 $ref: '#/components/schemas/Booking'
           description: ''
+  /api/v1/cities/:
+    get:
+      operationId: cities_list
+      tags:
+      - cities
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/City'
+          description: ''
+  /api/v1/cities/{slug}/localities/:
+    get:
+      operationId: cities_localities_list
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - cities
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Locality'
+          description: ''
   /api/v1/dashboard/activity/:
     get:
       operationId: dashboard_activity_retrieve
@@ -580,7 +620,42 @@ paths:
   /api/v1/hostels/:
     get:
       operationId: hostels_list
+      description: |-
+        GET /hostels/                      public list: active hostels, the same for everyone, token or not
+        GET /hostels/?scope=mine           the signed-in owner's own hostels (including inactive)
+        GET /hostels/?scope=all            every hostel (staff only)
+        GET /hostels/{id}/                 public detail of an active hostel; owners can also open their own
+        POST/PUT/PATCH/DELETE              owner scoped, as before
+
+        Public list parameters: city, locality (name, slug, alias or id), search (name, locality, address),
+        amenity, gender_type, page, page_size (default 10, maximum 50). Ordered newest first, then by id,
+        so pages never repeat or skip a hostel.
       parameters:
+      - in: query
+        name: amenity
+        schema:
+          type: string
+        description: One amenity from the hostel's list, e.g. ac.
+      - in: query
+        name: city
+        schema:
+          type: string
+        description: 'City name, slug or id (case, spaces and punctuation ignored).
+          Without a locality: the whole city.'
+      - in: query
+        name: gender_type
+        schema:
+          type: string
+          enum:
+          - boys
+          - co_living
+          - girls
+      - in: query
+        name: locality
+        schema:
+          type: string
+        description: Locality name, slug, alias (e.g. a second spelling) or id. Best
+          combined with city.
       - name: page
         required: false
         in: query
@@ -593,6 +668,22 @@ paths:
         description: Number of results to return per page.
         schema:
           type: integer
+      - in: query
+        name: scope
+        schema:
+          type: string
+          enum:
+          - all
+          - mine
+          - public
+        description: public (default, same for everyone), mine (the signed-in owner's
+          hostels), all (staff).
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: At least 2 characters; matches name, locality or address, ignoring
+          case.
       tags:
       - hostels
       security:
@@ -607,6 +698,16 @@ paths:
           description: ''
     post:
       operationId: hostels_create
+      description: |-
+        GET /hostels/                      public list: active hostels, the same for everyone, token or not
+        GET /hostels/?scope=mine           the signed-in owner's own hostels (including inactive)
+        GET /hostels/?scope=all            every hostel (staff only)
+        GET /hostels/{id}/                 public detail of an active hostel; owners can also open their own
+        POST/PUT/PATCH/DELETE              owner scoped, as before
+
+        Public list parameters: city, locality (name, slug, alias or id), search (name, locality, address),
+        amenity, gender_type, page, page_size (default 10, maximum 50). Ordered newest first, then by id,
+        so pages never repeat or skip a hostel.
       tags:
       - hostels
       requestBody:
@@ -888,6 +989,16 @@ paths:
   /api/v1/hostels/{id}/:
     get:
       operationId: hostels_retrieve
+      description: |-
+        GET /hostels/                      public list: active hostels, the same for everyone, token or not
+        GET /hostels/?scope=mine           the signed-in owner's own hostels (including inactive)
+        GET /hostels/?scope=all            every hostel (staff only)
+        GET /hostels/{id}/                 public detail of an active hostel; owners can also open their own
+        POST/PUT/PATCH/DELETE              owner scoped, as before
+
+        Public list parameters: city, locality (name, slug, alias or id), search (name, locality, address),
+        amenity, gender_type, page, page_size (default 10, maximum 50). Ordered newest first, then by id,
+        so pages never repeat or skip a hostel.
       parameters:
       - in: path
         name: id
@@ -906,10 +1017,20 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PublicHostel'
+                $ref: '#/components/schemas/Hostel'
           description: ''
     put:
       operationId: hostels_update
+      description: |-
+        GET /hostels/                      public list: active hostels, the same for everyone, token or not
+        GET /hostels/?scope=mine           the signed-in owner's own hostels (including inactive)
+        GET /hostels/?scope=all            every hostel (staff only)
+        GET /hostels/{id}/                 public detail of an active hostel; owners can also open their own
+        POST/PUT/PATCH/DELETE              owner scoped, as before
+
+        Public list parameters: city, locality (name, slug, alias or id), search (name, locality, address),
+        amenity, gender_type, page, page_size (default 10, maximum 50). Ordered newest first, then by id,
+        so pages never repeat or skip a hostel.
       parameters:
       - in: path
         name: id
@@ -943,6 +1064,16 @@ paths:
           description: ''
     patch:
       operationId: hostels_partial_update
+      description: |-
+        GET /hostels/                      public list: active hostels, the same for everyone, token or not
+        GET /hostels/?scope=mine           the signed-in owner's own hostels (including inactive)
+        GET /hostels/?scope=all            every hostel (staff only)
+        GET /hostels/{id}/                 public detail of an active hostel; owners can also open their own
+        POST/PUT/PATCH/DELETE              owner scoped, as before
+
+        Public list parameters: city, locality (name, slug, alias or id), search (name, locality, address),
+        amenity, gender_type, page, page_size (default 10, maximum 50). Ordered newest first, then by id,
+        so pages never repeat or skip a hostel.
       parameters:
       - in: path
         name: id
@@ -975,6 +1106,16 @@ paths:
           description: ''
     delete:
       operationId: hostels_destroy
+      description: |-
+        GET /hostels/                      public list: active hostels, the same for everyone, token or not
+        GET /hostels/?scope=mine           the signed-in owner's own hostels (including inactive)
+        GET /hostels/?scope=all            every hostel (staff only)
+        GET /hostels/{id}/                 public detail of an active hostel; owners can also open their own
+        POST/PUT/PATCH/DELETE              owner scoped, as before
+
+        Public list parameters: city, locality (name, slug, alias or id), search (name, locality, address),
+        amenity, gender_type, page, page_size (default 10, maximum 50). Ordered newest first, then by id,
+        so pages never repeat or skip a hostel.
       parameters:
       - in: path
         name: id
@@ -994,10 +1135,8 @@ paths:
     get:
       operationId: hostels_localities_retrieve
       description: |-
-        GET /api/v1/hostels/localities/?city=Hyderabad
-        Returns distinct localities with hostel counts for the given city.
-        Response: [{"locality": "Kondapur", "count": 6}, ...]
-        Sorted by count descending.
+        GET /api/v1/hostels/localities/?city=Hyderabad   (kept for older apps; prefer /cities/{slug}/localities/)
+        Response: [{"locality": "Kondapur", "count": 6}, ...] sorted by count descending, active hostels only.
       tags:
       - hostels
       security:
@@ -1843,6 +1982,33 @@ components:
         * `room` - Room
         * `common_area` - Common Area
         * `video` - Video
+    City:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        slug:
+          oneOf:
+          - type: string
+            maxLength: 120
+            pattern: ^[-a-zA-Z0-9_]+$
+          - type: string
+            maxLength: 0
+        state:
+          type: string
+          maxLength: 100
+        hostel_count:
+          type: integer
+          readOnly: true
+      required:
+      - hostel_count
+      - id
+      - name
     GenderTypeEnum:
       enum:
       - boys
@@ -1882,6 +2048,16 @@ components:
             type: string
             format: uuid
           writeOnly: true
+        city_id:
+          type: string
+          format: uuid
+          writeOnly: true
+          nullable: true
+        locality_id:
+          type: string
+          format: uuid
+          writeOnly: true
+          nullable: true
         name:
           type: string
           maxLength: 255
@@ -1978,23 +2154,32 @@ components:
           type: string
           format: uuid
           readOnly: true
+        city_ref:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        locality_ref:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
       required:
       - address
-      - city
+      - city_ref
       - contact_number
       - created_at
       - email
       - gender_type
       - id
       - is_verified
-      - locality
+      - locality_ref
       - media
       - name
       - owner
       - owner_name
       - pincode
       - rooms
-      - state
       - updated_at
     HostelList:
       type: object
@@ -2034,6 +2219,7 @@ components:
           type: boolean
         is_verified:
           type: boolean
+        amenities: {}
         cover_image:
           type: string
           nullable: true
@@ -2089,6 +2275,30 @@ components:
         * `passport` - Passport
         * `driving_license` - Driving License
         * `other` - Other
+    Locality:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        slug:
+          oneOf:
+          - type: string
+            maxLength: 280
+            pattern: ^[-a-zA-Z0-9_]+$
+          - type: string
+            maxLength: 0
+        hostel_count:
+          type: integer
+          readOnly: true
+      required:
+      - hostel_count
+      - id
+      - name
     MediaItem:
       type: object
       properties:
@@ -2514,6 +2724,16 @@ components:
             type: string
             format: uuid
           writeOnly: true
+        city_id:
+          type: string
+          format: uuid
+          writeOnly: true
+          nullable: true
+        locality_id:
+          type: string
+          format: uuid
+          writeOnly: true
+          nullable: true
         name:
           type: string
           maxLength: 255
@@ -2610,6 +2830,16 @@ components:
           type: string
           format: uuid
           readOnly: true
+        city_ref:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        locality_ref:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
     PatchedNoticeUpdate:
       type: object
       properties:
@@ -2805,133 +3035,6 @@ components:
         * `SUCCESS` - Success
         * `FAILED` - Failed
         * `REFUNDED` - Refunded
-    PublicHostel:
-      type: object
-      description: Safe read-only serializer for unauthenticated public listing.
-      properties:
-        id:
-          type: string
-          format: uuid
-          readOnly: true
-        name:
-          type: string
-          maxLength: 255
-        owner_name:
-          type: string
-          maxLength: 255
-        contact_number:
-          type: string
-          maxLength: 20
-        email:
-          type: string
-          format: email
-          maxLength: 254
-        locality:
-          type: string
-          maxLength: 255
-        address:
-          type: string
-        city:
-          type: string
-          maxLength: 100
-        state:
-          type: string
-          maxLength: 100
-        pincode:
-          type: string
-          maxLength: 20
-        landmark:
-          type: string
-          nullable: true
-          maxLength: 255
-        latitude:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
-          nullable: true
-        longitude:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
-          nullable: true
-        google_maps_url:
-          nullable: true
-          oneOf:
-          - type: string
-            format: uri
-            maxLength: 500
-          - type: string
-            maxLength: 0
-        gender_type:
-          $ref: '#/components/schemas/GenderTypeEnum'
-        total_floors:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-        total_rooms:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-        total_beds:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-        occupancy_types: {}
-        description:
-          type: string
-          nullable: true
-        rules:
-          type: string
-          nullable: true
-        check_in_policy:
-          type: string
-          nullable: true
-          maxLength: 255
-        check_out_policy:
-          type: string
-          nullable: true
-          maxLength: 255
-        amenities: {}
-        is_active:
-          type: boolean
-        is_verified:
-          type: boolean
-          readOnly: true
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
-        rooms:
-          type: array
-          items:
-            $ref: '#/components/schemas/Room'
-          readOnly: true
-        media:
-          type: array
-          items:
-            $ref: '#/components/schemas/MediaItem'
-          readOnly: true
-      required:
-      - address
-      - city
-      - contact_number
-      - created_at
-      - email
-      - gender_type
-      - id
-      - is_verified
-      - locality
-      - media
-      - name
-      - owner_name
-      - pincode
-      - rooms
-      - state
-      - updated_at
     Resident:
       type: object
       properties:

@@ -28,6 +28,8 @@ app   POST   /auth/me/photo/
 app   GET    /hostels/
 app   GET    /hostels/{id}/
 app   GET    /hostels/localities/
+app   GET    /cities/
+app   GET    /cities/{slug}/localities/
 app   POST   /bookings/
 app   GET    /bookings/my/
 app   GET    /wishlist/
@@ -43,6 +45,8 @@ app   GET    /payments/status/{id}/
 # ---- app: query parameters sent to GET /hostels/ ----
 app   GET    /hostels/?city
 app   GET    /hostels/?locality
+app   GET    /hostels/?page
+app   GET    /hostels/?page_size
 app   GET    /hostels/?gender_type
 app   GET    /hostels/?search
 app   GET    /hostels/?amenity
@@ -63,6 +67,8 @@ admin GET    /dashboard/activity/
 admin POST   /hostels/
 admin PUT    /hostels/{id}/
 admin GET    /hostels/
+admin GET    /cities/
+admin GET    /cities/{slug}/localities/
 admin GET    /hostels/{id}/rooms/
 
 # ---- admin: bookings ----

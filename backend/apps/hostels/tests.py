@@ -27,8 +27,10 @@ class HostelTenantIsolationTests(APITestCase):
         self.hostel_b = _make_hostel(self.owner_b, "Hostel B")
 
     def test_authenticated_list_excludes_other_owners_hostel(self):
+        # The owner's own list is now explicit (?scope=mine); the plain list is the public one for
+        # everyone, with or without a token (see apps/hostels/test_locations.py ScopeTests).
         self.client.force_authenticate(user=self.owner_a)
-        resp = self.client.get(reverse("hostels-list"))
+        resp = self.client.get(reverse("hostels-list"), {"scope": "mine"})
         ids = {row["hostel_id"] for row in resp.data["results"]} if "results" in resp.data else {row["hostel_id"] for row in resp.data}
         self.assertIn(str(self.hostel_a.id), ids)
         self.assertNotIn(str(self.hostel_b.id), ids)

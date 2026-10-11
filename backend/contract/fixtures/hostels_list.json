@@ -5,6 +5,10 @@
   "results": [
     {
       "address": "1 Sample Road, Gachibowli",
+      "amenities": [
+        "wifi",
+        "ac"
+      ],
       "bed_count": 3,
       "city": "Hyderabad",
       "cover_image": "https://example.test/seed/alpha.jpg",
@@ -23,6 +27,9 @@
     },
     {
       "address": "1 Sample Road, Kondapur",
+      "amenities": [
+        "wifi"
+      ],
       "bed_count": 3,
       "city": "Hyderabad",
       "cover_image": "https://example.test/seed/beta.jpg",
