@@ -1,9 +1,11 @@
 'use client';
 
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Input, Textarea, Select } from '@/components/ui/Input';
 import FormField, { inputClass } from '@/components/ui/FormField';
 import type { HostelEnrollmentState } from '@/types';
+import { locationService, type City, type Locality } from '@/services/api';
 
 interface Props {
   data: HostelEnrollmentState;
@@ -17,6 +19,31 @@ export default function Step1BasicDetails({ data, onChange, errors }: Props) {
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => onChange(key, e.target.value),
     error: errors[key],
   });
+
+  const { data: cities = [], isLoading: citiesLoading, error: citiesError } = useQuery<City[]>({
+    queryKey: ['cities', 'all'],
+    queryFn: () => locationService.getCities(),
+  });
+  const selectedCity = cities.find(c => c.id === data.city_id);
+  const { data: localities = [], isLoading: localitiesLoading } = useQuery<Locality[]>({
+    queryKey: ['localities', selectedCity?.slug],
+    queryFn: () => locationService.getLocalities(selectedCity!.slug),
+    enabled: !!selectedCity,
+  });
+
+  const chooseCity = (id: string) => {
+    const city = cities.find(c => c.id === id);
+    onChange('city_id', id);
+    onChange('city', city?.name ?? '');
+    onChange('state', city?.state ?? '');
+    onChange('locality_id', '');
+    onChange('locality', '');
+  };
+  const chooseLocality = (id: string) => {
+    const locality = localities.find(l => l.id === id);
+    onChange('locality_id', id);
+    onChange('locality', locality?.name ?? '');
+  };
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -46,24 +73,49 @@ export default function Step1BasicDetails({ data, onChange, errors }: Props) {
           <Input {...f('email')} type="email" placeholder="hostel@example.com" hasError={!!errors.email} />
         </FormField>
 
-        {/* Locality */}
-        <FormField label="Locality" required error={errors.locality} className="md:col-span-2">
-          <Input {...f('locality')} placeholder="e.g. Andheri West" hasError={!!errors.locality} />
-        </FormField>
 
         {/* Address */}
         <FormField label="Full Address" required error={errors.address} className="md:col-span-2">
           <Input {...f('address')} placeholder="123, MG Road, Near City Mall" hasError={!!errors.address} />
         </FormField>
 
-        {/* City */}
-        <FormField label="City" required error={errors.city}>
-          <Input {...f('city')} placeholder="Mumbai" hasError={!!errors.city} />
+        {/* City: chosen from the list */}
+        <FormField
+          label="City"
+          required
+          error={errors.city_id || errors.city}
+          hint={citiesError ? 'Could not load cities. Reload the page.' : cities.length === 0 && !citiesLoading ? 'No cities yet. Ask support to add yours.' : undefined}
+        >
+          <Select
+            value={data.city_id ?? ''}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => chooseCity(e.target.value)}
+            disabled={citiesLoading}
+          >
+            <option value="">{citiesLoading ? 'Loading cities...' : 'Select a city'}</option>
+            {cities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </Select>
         </FormField>
 
-        {/* State */}
-        <FormField label="State" required error={errors.state}>
-          <Input {...f('state')} placeholder="Maharashtra" hasError={!!errors.state} />
+        {/* Locality: chosen from the selected city's list */}
+        <FormField
+          label="Locality"
+          required
+          error={errors.locality_id || errors.locality}
+          hint={selectedCity && !localitiesLoading && localities.length === 0 ? 'No localities for this city yet. Ask support to add yours.' : undefined}
+        >
+          <Select
+            value={data.locality_id ?? ''}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => chooseLocality(e.target.value)}
+            disabled={!selectedCity || localitiesLoading}
+          >
+            <option value="">{!selectedCity ? 'Choose a city first' : localitiesLoading ? 'Loading localities...' : 'Select a locality'}</option>
+            {localities.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </Select>
+        </FormField>
+
+        {/* State follows the chosen city */}
+        <FormField label="State" error={errors.state}>
+          <Input value={data.state ?? ''} readOnly placeholder="Set by the city" />
         </FormField>
 
         {/* Pincode */}

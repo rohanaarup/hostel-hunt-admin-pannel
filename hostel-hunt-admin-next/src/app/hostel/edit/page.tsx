@@ -90,6 +90,8 @@ export default function EditHostelPage() {
             }))
         : [];
       delete payload.media; delete payload.rooms; delete payload.owner; delete payload.owner_id;
+      if (!payload.city_id) delete payload.city_id;
+      if (!payload.locality_id) delete payload.locality_id;
 
       if (data.hostel_id) await hostelService.updateHostel(data.hostel_id, payload);
       else {

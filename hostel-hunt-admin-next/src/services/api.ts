@@ -91,7 +91,8 @@ export const hostelService = {
 
   createHostel: (data: any) => api.post('/hostels/', data).then(res => res.data),
   updateHostel: (id: string, data: any) => api.put(`/hostels/${id}/`, data).then(res => res.data),
-  getHostels: () => api.get('/hostels/').then(res => res.data),
+  // The owner's own hostels (the plain list is the public one for students). Up to 50 per page.
+  getHostels: () => api.get('/hostels/', { params: { scope: 'mine', page_size: 50 } }).then(res => res.data),
 };
 
 export const roomService = {
@@ -135,4 +136,16 @@ export const mediaService = {
 
   reorder: (items: any[]) => api.patch('/media/reorder/', { items }).then(res => res.data),
   delete: (id: string) => api.delete(`/media/${id}/`).then(res => res.data),
+};
+
+// Cities and localities are chosen from lists kept by staff, so spelling variants cannot multiply.
+// include_empty lists every active entry, including ones that have no hostel yet.
+export interface City { id: string; name: string; slug: string; state: string; hostel_count: number }
+export interface Locality { id: string; name: string; slug: string; hostel_count: number }
+
+export const locationService = {
+  getCities: (): Promise<City[]> =>
+    api.get('/cities/', { params: { include_empty: true } }).then(res => res.data),
+  getLocalities: (citySlug: string): Promise<Locality[]> =>
+    api.get(`/cities/${encodeURIComponent(citySlug)}/localities/`, { params: { include_empty: true } }).then(res => res.data),
 };
