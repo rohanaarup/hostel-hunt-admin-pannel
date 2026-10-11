@@ -1601,7 +1601,7 @@ components:
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/Status509Enum'
+          - $ref: '#/components/schemas/PaymentStatusEnum'
           readOnly: true
         verified_at:
           type: string
@@ -1673,6 +1673,7 @@ components:
           nullable: true
         room_display:
           type: string
+          nullable: true
           readOnly: true
         room_name:
           type: string
@@ -1915,19 +1916,16 @@ components:
           $ref: '#/components/schemas/GenderTypeEnum'
         total_floors:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         total_rooms:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         total_beds:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         occupancy_types: {}
         description:
           type: string
@@ -2019,18 +2017,23 @@ components:
           type: boolean
         cover_image:
           type: string
+          nullable: true
           readOnly: true
         price_from:
-          type: string
+          type: number
+          format: double
+          nullable: true
           readOnly: true
         price_to:
-          type: string
+          type: number
+          format: double
+          nullable: true
           readOnly: true
         room_count:
-          type: string
+          type: integer
           readOnly: true
         bed_count:
-          type: string
+          type: integer
           readOnly: true
         created_at:
           type: string
@@ -2093,9 +2096,8 @@ components:
           maxLength: 255
         order_index:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         created_at:
           type: string
           format: date-time
@@ -2403,6 +2405,7 @@ components:
           nullable: true
         room_display:
           type: string
+          nullable: true
           readOnly: true
         room_name:
           type: string
@@ -2545,19 +2548,16 @@ components:
           $ref: '#/components/schemas/GenderTypeEnum'
         total_floors:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         total_rooms:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         total_beds:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         occupancy_types: {}
         description:
           type: string
@@ -2614,9 +2614,8 @@ components:
           readOnly: true
         floor_number:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         room_number:
           type: string
           maxLength: 20
@@ -2627,23 +2626,20 @@ components:
           $ref: '#/components/schemas/SharingTypeEnum'
         capacity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         bed_count:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         price_per_month:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
         available_beds:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         has_attached_bathroom:
           type: boolean
         is_ac:
@@ -2701,7 +2697,7 @@ components:
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/Status509Enum'
+          - $ref: '#/components/schemas/PaymentStatusEnum'
           readOnly: true
         created_at:
           type: string
@@ -2776,6 +2772,20 @@ components:
       description: |-
         * `offline` - Offline
         * `online` - Online
+    PaymentStatusEnum:
+      enum:
+      - CREATED
+      - PENDING
+      - SUCCESS
+      - FAILED
+      - REFUNDED
+      type: string
+      description: |-
+        * `CREATED` - Created
+        * `PENDING` - Pending
+        * `SUCCESS` - Success
+        * `FAILED` - Failed
+        * `REFUNDED` - Refunded
     PublicHostel:
       type: object
       description: Safe read-only serializer for unauthenticated public listing.
@@ -2837,19 +2847,16 @@ components:
           $ref: '#/components/schemas/GenderTypeEnum'
         total_floors:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         total_rooms:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         total_beds:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         occupancy_types: {}
         description:
           type: string
@@ -3049,9 +3056,8 @@ components:
           readOnly: true
         floor_number:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         room_number:
           type: string
           maxLength: 20
@@ -3062,23 +3068,20 @@ components:
           $ref: '#/components/schemas/SharingTypeEnum'
         capacity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         bed_count:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         price_per_month:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
         available_beds:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         has_attached_bathroom:
           type: boolean
         is_ac:
@@ -3123,20 +3126,6 @@ components:
         * `triple` - Triple
         * `quad` - Quad
         * `dormitory` - Dormitory
-    Status509Enum:
-      enum:
-      - CREATED
-      - PENDING
-      - SUCCESS
-      - FAILED
-      - REFUNDED
-      type: string
-      description: |-
-        * `CREATED` - Created
-        * `PENDING` - Pending
-        * `SUCCESS` - Success
-        * `FAILED` - Failed
-        * `REFUNDED` - Refunded
     TokenRefresh:
       type: object
       properties:

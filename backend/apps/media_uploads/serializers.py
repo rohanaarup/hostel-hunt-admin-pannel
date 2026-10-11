@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import MediaItem
 
 class MediaItemSerializer(serializers.ModelSerializer):
-    remote_url = serializers.ReadOnlyField()
+    remote_url = serializers.CharField(read_only=True)
     
     class Meta:
         model = MediaItem

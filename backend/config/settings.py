@@ -303,7 +303,16 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     'SCHEMA_PATH_PREFIX': r'/api/v1',
+    'ENUM_NAME_OVERRIDES': {
+        'PaymentStatusEnum': 'apps.payments.models.PAYMENT_STATUS_CHOICES',
+    },
 }
+
+# drf_spectacular.W002 fires for every plain APIView that has no serializer (about 28 views); the
+# schema leaves those out and the contract test (contract/endpoints.txt) covers their routes.
+# SILENCED_SYSTEM_CHECKS (env, comma-separated) silences extra check ids, e.g. CI silences
+# security.W004 because HSTS is deliberately off until HTTPS is proven.
+SILENCED_SYSTEM_CHECKS = ['drf_spectacular.W002'] + list(config('SILENCED_SYSTEM_CHECKS', default='', cast=Csv()))
 
 # Email Configuration (SMTP)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

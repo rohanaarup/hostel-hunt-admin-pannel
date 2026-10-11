@@ -163,3 +163,6 @@ class PaymentAttempt(TenantScopedModel, UserScopedModel):
 
     def __str__(self):
         return f"Attempt {self.method} [{self.status}] — {self.payment_id}"
+
+# Module-level alias so the OpenAPI schema can name the enum (see SPECTACULAR_SETTINGS).
+PAYMENT_STATUS_CHOICES = Payment.Status

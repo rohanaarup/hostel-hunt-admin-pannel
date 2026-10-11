@@ -37,10 +37,11 @@ jobs:
     env:
       # CI-only values, not secrets. DEBUG is deliberately unset (= off) so the production
       # settings path is what gets tested.
-      SECRET_KEY: ci-only-not-a-secret-ci-only-not-a-secret
+      SECRET_KEY: ci-only-secret-key-0123456789-abcdefghijklmnopqrstuvwxyz-ABCDEFGH
       ALLOWED_HOSTS: localhost
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/hh_ci
-      SECURE_HSTS_SECONDS: "3600"
+      # HSTS is off on purpose until HTTPS is proven (see DEPLOY.md); every other warning fails CI.
+      SILENCED_SYSTEM_CHECKS: security.W004
 
     defaults:
       run:
