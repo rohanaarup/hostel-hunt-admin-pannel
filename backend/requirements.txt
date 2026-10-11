@@ -1,26 +1,41 @@
+# All versions are pinned exactly. Upgrade deliberately, run the full test
+# suite, and update this file in the same commit.
+# Python: see .python-version (3.13.x). Django 5.2 is an LTS release.
+
 # Django core
-django>=5.1,<5.3
-djangorestframework>=3.15
-djangorestframework-simplejwt>=5.4
+Django==5.2.15
+djangorestframework==3.17.1
+djangorestframework-simplejwt==5.5.1
+django-cors-headers==4.9.0
+django-filter==25.2
+
+# Static files in production (admin and DRF browsable API assets)
+whitenoise==6.12.0
 
 # Database
-psycopg[binary]>=3.2
-dj-database-url>=2.3
+psycopg[binary]==3.3.4
+dj-database-url==3.1.2
 
 # Environment
-python-decouple>=3.8
-
-# CORS
-django-cors-headers>=4.4
-
-# Filtering
-django-filter>=24.3
+python-decouple==3.8
 
 # Media handling
-Pillow>=10.4
-requests
+Pillow==12.2.0
+requests==2.34.2
 
+# Production server
 gunicorn==23.0.0
 
 # Razorpay Payment Gateway
-razorpay>=1.4
+razorpay==2.0.1
+
+# Transitive dependencies (pinned so builds are repeatable)
+asgiref==3.11.1
+certifi==2026.6.17
+charset-normalizer==3.4.7
+idna==3.18
+psycopg-binary==3.3.4
+PyJWT==2.13.0
+sqlparse==0.5.5
+tzdata==2026.2
+urllib3==2.7.0

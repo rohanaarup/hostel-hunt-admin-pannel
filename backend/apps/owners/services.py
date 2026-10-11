@@ -4,6 +4,7 @@ from datetime import timedelta
 from django.utils import timezone
 from django.core.mail import send_mail
 from django.conf import settings
+from apps.core.dev import dev_otp_exposed
 from .models import OTPRecord
 
 class OTPService:
@@ -80,9 +81,12 @@ class OTPService:
             subject = "Hostel Hunt - Verification Code"
             try:
                 if not getattr(settings, 'EMAIL_HOST_USER', None):
-                    logger.warning(f"DEV FALLBACK: No EMAIL_HOST_USER. Printing OTP for {identifier}: {code}")
-                    return True, f"Email failed (No SMTP). Your TEST OTP is: {code}"
-                        
+                    if dev_otp_exposed():
+                        logger.warning(f"DEV FALLBACK: No EMAIL_HOST_USER. Printing OTP for {identifier}: {code}")
+                        return True, f"Email failed (No SMTP). Your TEST OTP is: {code}"
+                    logger.error("Email OTP not sent: EMAIL_HOST_USER is not configured.")
+                    return False, "Email service is not configured."
+
                 send_mail(
                     subject,
                     message,
@@ -93,20 +97,19 @@ class OTPService:
                 logger.info(f"SMTP EMAIL SENT TO {identifier}")
                 return True, "Email sent successfully."
             except Exception as e:
-                error_msg = f"Failed to send email: {str(e)}"
-                logger.error(error_msg)
-                return False, error_msg
-            
+                # Provider/SMTP detail goes to the server log only, never to the client.
+                logger.error(f"Failed to send email: {str(e)}")
+                return False, "Failed to send the verification email. Please try again later."
+
         elif identifier_type == 'phone':
             if not getattr(settings, 'TWILIO_ACCOUNT_SID', None) or not getattr(settings, 'TWILIO_AUTH_TOKEN', None):
-                if settings.DEBUG:
+                if dev_otp_exposed():
                     logger.warning(f"DEV FALLBACK: No Twilio config. Printing OTP for {identifier}: {code}")
                     return True, "SMS sent successfully (Dev Fallback)."
                 else:
-                    error_msg = "SMS provider is not configured in the environment."
-                    logger.error(error_msg)
-                    return False, error_msg
-                
+                    logger.error("SMS provider is not configured in the environment.")
+                    return False, "SMS provider is not configured in the environment."
+
             twilio_url = f"https://api.twilio.com/2010-04-01/Accounts/{settings.TWILIO_ACCOUNT_SID}/Messages.json"
             payload = {
                 "To": identifier,
@@ -125,13 +128,12 @@ class OTPService:
                 else:
                     error_msg = f"Twilio API Error ({response.status_code}): {response.text}"
                     logger.error(error_msg)
-                    if settings.DEBUG:
+                    if dev_otp_exposed():
                         logger.warning(f"DEV FALLBACK: Twilio failed. Printing OTP for {identifier}: {code}")
                         return True, "SMS sent successfully (Dev Fallback)."
-                    return False, error_msg
+                    return False, "Failed to send the SMS. Please try again later."
             except requests.exceptions.RequestException as e:
-                error_msg = f"Failed to connect to SMS provider: {str(e)}"
-                logger.error(error_msg)
-                return False, error_msg
+                logger.error(f"Failed to connect to SMS provider: {str(e)}")
+                return False, "Failed to send the SMS. Please try again later."
             
         return False, "Invalid identifier type."

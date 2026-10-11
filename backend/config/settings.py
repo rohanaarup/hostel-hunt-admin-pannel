@@ -11,9 +11,12 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import logging
+from datetime import timedelta
 from pathlib import Path
+from urllib.parse import urlparse
+
 from decouple import config, Csv
-from django.core.management.utils import get_random_secret_key
+from django.core.exceptions import ImproperlyConfigured
 import dj_database_url
 
 logger = logging.getLogger('apps.startup')
@@ -25,13 +28,33 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
+# SECURITY WARNING: don't run with debug turned on in production!
+# DEBUG is off unless the environment turns it on.
+DEBUG = config('DEBUG', default=False, cast=bool)
+
+# Required environment variables that are missing. Collected so one clear
+# error names all of them, then raised after the database block below.
+# Only NAMES are ever reported, never values.
+_missing_env = []
+
 # SECURITY WARNING: keep the secret key used in production secret!
 # Never log or print this value, not even partially masked.
-SECRET_KEY = config('SECRET_KEY', default=get_random_secret_key())
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=True, cast=bool)
+# With DEBUG on, a fixed development-only key is used so tokens and sessions
+# survive restarts; it is not a secret and must never be used in production.
+SECRET_KEY = config('SECRET_KEY', default='')
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = 'dev-only-insecure-key-not-for-production'
+    else:
+        _missing_env.append('SECRET_KEY')
 
-ALLOWED_HOSTS = ['*']  # Allow all devices on Wi-Fi to connect
+if DEBUG:
+    # Development: let phones and emulators on the local network connect.
+    ALLOWED_HOSTS = ['*']
+else:
+    ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='', cast=Csv())
+    if not ALLOWED_HOSTS:
+        _missing_env.append('ALLOWED_HOSTS')
 
 
 # Application definition
@@ -66,7 +89,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'apps.core.health.HealthzMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -118,6 +143,8 @@ if USE_DB == 'sqlite':
         }
     }
     logger.info("Database configured: sqlite")
+    if not DEBUG:
+        logger.warning("USE_DB=sqlite with DEBUG off: data is not durable. Use a Postgres DATABASE_URL.")
 elif USE_DB == 'local':
     DATABASES = {
         'default': dj_database_url.config(
@@ -128,14 +155,23 @@ elif USE_DB == 'local':
     }
     logger.info("Database configured: local postgres")
 else:
+    _database_url = config('DATABASE_URL', default='')
+    if not _database_url:
+        _missing_env.append('DATABASE_URL')
     DATABASES = {
         'default': dj_database_url.config(
-            default=config('DATABASE_URL'),
+            default=_database_url,
             conn_max_age=DB_CONN_MAX_AGE,
             conn_health_checks=True,
         )
     }
     logger.info("Database configured: supabase")
+
+if _missing_env:
+    raise ImproperlyConfigured(
+        "Missing required environment variables: " + ", ".join(_missing_env)
+        + ". Set them in the process environment (see .env.example for the full list)."
+    )
 
 
 # Password validation
@@ -173,6 +209,12 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+# `collectstatic` gathers admin/DRF assets here; WhiteNoise serves them.
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage'},
+}
 
 # Media files
 MEDIA_URL = '/media/'
@@ -211,16 +253,40 @@ REST_FRAMEWORK = {
     },
 }
 
+# JWT lifetimes. Rotation stays off: the shipped app does not need it.
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=config('JWT_ACCESS_MINUTES', default=30, cast=int)),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=config('JWT_REFRESH_DAYS', default=30, cast=int)),
+}
+
 # CORS Configuration
+# Browsers only: the mobile app does not use CORS. With DEBUG off, only the
+# origins listed in CORS_ALLOWED_ORIGINS (comma-separated, with scheme) may call the API.
 if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
 else:
-    CORS_ALLOWED_ORIGINS = ['hostel-hunt-backend.onrender.com',
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5174",
-        "http://localhost:5175",
-    ]
+    CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='', cast=Csv())
+    for _origin in CORS_ALLOWED_ORIGINS:
+        _parts = urlparse(_origin)
+        if not _parts.scheme or not _parts.netloc:
+            raise ImproperlyConfigured(
+                f"CORS_ALLOWED_ORIGINS entry {_origin!r} needs a scheme, e.g. https://example.com"
+            )
+
+# HTTPS / cookies. Behind a TLS-terminating proxy (Render, nginx) the proxy
+# sets X-Forwarded-Proto; set TRUST_PROXY_SSL_HEADER=False if gunicorn is
+# exposed directly with no such proxy.
+CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='', cast=Csv())
+if not DEBUG and config('TRUST_PROXY_SSL_HEADER', default=True, cast=bool):
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=not DEBUG, cast=bool)
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+# HSTS is hard to undo, so it starts off. Raise it once HTTPS is proven.
+SECURE_HSTS_SECONDS = config('SECURE_HSTS_SECONDS', default=0, cast=int)
+
+# Development only: allow OTP values in responses/logs. Needs DEBUG on as well.
+EXPOSE_DEV_OTP = config('EXPOSE_DEV_OTP', default=False, cast=bool)
 
 # Email Configuration (SMTP)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -237,7 +303,8 @@ TWILIO_ACCOUNT_SID = config('TWILIO_ACCOUNT_SID', default='')
 TWILIO_AUTH_TOKEN = config('TWILIO_AUTH_TOKEN', default='')
 TWILIO_FROM_NUMBER = config('TWILIO_FROM_NUMBER', default='')
 
-# Logging Configuration
+# Logging Configuration (stdout only; the host collects it)
+LOG_LEVEL = config('DJANGO_LOG_LEVEL', default='INFO')
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -249,26 +316,20 @@ LOGGING = {
     },
     'handlers': {
         'console': {
-            'level': 'INFO',
+            'level': LOG_LEVEL,
             'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
-        },
-        'file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': str(BASE_DIR / 'django.log'),
             'formatter': 'verbose',
         },
     },
     'loggers': {
         'django': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': 'ERROR',
             'propagate': True,
         },
         'apps': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
+            'handlers': ['console'],
+            'level': LOG_LEVEL,
             'propagate': True,
         },
     },

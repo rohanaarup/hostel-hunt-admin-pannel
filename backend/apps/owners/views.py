@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -10,6 +12,9 @@ from .serializers import (
     OwnerProfileSerializer, SendOtpSerializer, VerifyOtpSerializer,
     SignupSerializer, LoginSerializer, ResetPasswordSerializer
 )
+
+logger = logging.getLogger(__name__)
+
 
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
@@ -65,10 +70,13 @@ class SendOtpView(APIView):
                 return error_response({"identifier": msg}, "Failed to send OTP.", status.HTTP_503_SERVICE_UNAVAILABLE)
                 
             return error_response(serializer.errors)
-        except Exception as e:
-            import traceback
-            tb = traceback.format_exc()
-            return Response({"success": False, "traceback": tb}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception:
+            logger.exception("Unexpected error while sending OTP")
+            return error_response(
+                {"identifier": "Failed to send OTP. Please try again."},
+                "Failed to send OTP. Please try again.",
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class VerifyOtpView(APIView):
@@ -184,25 +192,3 @@ class OwnerProfileView(APIView):
     def get(self, request):
         serializer = OwnerProfileSerializer(request.user)
         return success_response(data=serializer.data)
-
-
-class DebugVersionView(APIView):
-    permission_classes = [AllowAny]
-
-    def get(self, request):
-        return Response({"version": "debug-v3-logs"})
-
-
-class DebugLogsView(APIView):
-    permission_classes = [AllowAny]
-
-    def get(self, request):
-        import os
-        from django.conf import settings
-        log_path = os.path.join(settings.BASE_DIR, 'django.log')
-        if not os.path.exists(log_path):
-            return Response("No log file found.", status=status.HTTP_404_NOT_FOUND)
-        with open(log_path, 'r', errors='ignore') as f:
-            content = f.read()
-        from django.http import HttpResponse
-        return HttpResponse(content[-50000:], content_type='text/plain')
