@@ -29,9 +29,8 @@ app   GET    /hostels/
 app   GET    /hostels/{id}/
 app   GET    /hostels/localities/
 app   GET    /cities/
+app   GET    /hostels/{id}/rooms/
 app   POST   /bookings/
-app   GET    /bookings/my/
-app   GET    /wishlist/
 app   GET    /dashboard/student/stats/
 
 # ---- app: payments ----
