@@ -43,3 +43,16 @@ A build older than this release also needs the old environment. Older code canno
 - Build fails with "Missing required environment variables": the message names them; set them for the build environment too.
 - Admin pages have no styling: `collectstatic` did not run in the build command.
 - Redirect loop over HTTPS: the proxy is not sending `X-Forwarded-Proto`; set `TRUST_PROXY_SSL_HEADER=False` only if there is no TLS proxy at all.
+
+## Staging
+A second Render service (`hostel-hunt-backend-staging` in `render.yaml`) runs the same code against its own Supabase project, so changes can be tried without touching production data. It deploys from `main` after CI passes; production is deployed by hand from a commit that already ran on staging.
+
+Staging environment variable NAMES (values come from the staging project, never production's): `APP_ENV=staging`, `DEBUG=False`, `SECRET_KEY`, `ALLOWED_HOSTS`, `DATABASE_URL`, `SENTRY_ENVIRONMENT=staging`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` (Razorpay TEST-mode keys), optionally `SENTRY_DSN`.
+
+Load the sample data once, from a computer with the staging variables set (the command refuses unless `APP_ENV=staging`, and refuses if the database holds owners that are not seed data):
+
+```
+python manage.py seed_staging
+```
+
+Swagger UI is then at `https://<staging-host>/api/docs/`. It is not served in production.

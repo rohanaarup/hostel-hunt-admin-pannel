@@ -19,6 +19,8 @@ services:
     # RENDER_GIT_COMMIT; keeping the mapping here keeps the Django code host-neutral.
     startCommand: GIT_COMMIT=$RENDER_GIT_COMMIT gunicorn config.wsgi:application -c gunicorn.conf.py
     healthCheckPath: /healthz
+    # Production is deployed by hand from a commit that already ran on staging.
+    autoDeployTrigger: off
     envVars:
       - key: PYTHON_VERSION
         value: 3.13.5
@@ -46,4 +48,43 @@ services:
         sync: false
       # Optional: set when a browser admin site exists.
       - key: CORS_ALLOWED_ORIGINS
+        sync: false
+
+  # Staging: same code and settings as production, a separate database, and sample data.
+  # Deploys from `main` after CI passes. Do not point an uptime monitor at it (it should sleep).
+  - type: web
+    name: hostel-hunt-backend-staging
+    runtime: python
+    region: singapore
+    plan: free
+    rootDir: backend
+    branch: main
+    autoDeployTrigger: checksPass
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput
+    startCommand: GIT_COMMIT=$RENDER_GIT_COMMIT gunicorn config.wsgi:application -c gunicorn.conf.py
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      - key: DEBUG
+        value: "False"
+      - key: APP_ENV
+        value: staging
+      - key: SENTRY_ENVIRONMENT
+        value: staging
+      # Values for the STAGING project only (never reuse production's):
+      - key: SECRET_KEY
+        sync: false
+      - key: ALLOWED_HOSTS
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      # Use Razorpay TEST-mode keys here.
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: SENTRY_DSN
         sync: false
