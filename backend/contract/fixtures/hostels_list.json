@@ -1,0 +1,43 @@
+{
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "address": "1 Sample Road, Gachibowli",
+      "bed_count": 3,
+      "city": "Hyderabad",
+      "cover_image": "https://example.test/seed/alpha.jpg",
+      "created_at": "<datetime>",
+      "gender_type": "boys",
+      "hostel_id": "<uuid>",
+      "is_active": true,
+      "is_verified": false,
+      "locality": "Gachibowli",
+      "name": "Seed Alpha Residency",
+      "price_from": 6500.0,
+      "price_to": 9500.0,
+      "room_count": 2,
+      "state": "Telangana",
+      "updated_at": "<datetime>"
+    },
+    {
+      "address": "1 Sample Road, Kondapur",
+      "bed_count": 3,
+      "city": "Hyderabad",
+      "cover_image": "https://example.test/seed/beta.jpg",
+      "created_at": "<datetime>",
+      "gender_type": "girls",
+      "hostel_id": "<uuid>",
+      "is_active": true,
+      "is_verified": false,
+      "locality": "Kondapur",
+      "name": "Seed Beta Stay",
+      "price_from": 5200.0,
+      "price_to": 5200.0,
+      "room_count": 1,
+      "state": "Telangana",
+      "updated_at": "<datetime>"
+    }
+  ]
+}

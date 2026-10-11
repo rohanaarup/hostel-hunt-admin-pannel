@@ -31,21 +31,30 @@ python manage.py migrate
 python manage.py runserver 0.0.0.0:8000      # /healthz and /readyz answer; /api/v1/debug-logs/ is 404
 
 $env:USE_DB='sqlite'
-python manage.py test apps utils             # 121 tests, all pass
+python manage.py test apps utils             # 136 tests, all pass
 python manage.py makemigrations --check --dry-run   # "No changes detected"
+python manage.py spectacular --file schema.yml      # regenerate the OpenAPI schema after an API change
 
 # production-style check (set SECRET_KEY, ALLOWED_HOSTS, DATABASE_URL first, DEBUG unset)
 python manage.py check --deploy              # one expected warning: SECURE_HSTS_SECONDS
 python manage.py collectstatic --noinput
 ```
+Staging only: `APP_ENV=staging python manage.py seed_staging` loads 3 sample hostels (refuses elsewhere).
 Safe Sentry test (needs `SENTRY_DSN`; use `SENTRY_ENVIRONMENT=test`): `python manage.py sentry_test`.
 Production start command (Linux): `gunicorn config.wsgi:application -c gunicorn.conf.py`.
 
 ## Environment variables
 Names and defaults are in `backend/.env.example` (a test fails if a variable read in `settings.py` is missing there).
 Required when `DEBUG` is off: `SECRET_KEY`, `ALLOWED_HOSTS`, `DATABASE_URL` – the server refuses to start and names the missing ones.
-Also used: `DEBUG`, `USE_DB`, `LOCAL_DATABASE_URL`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS`, `TRUST_PROXY_SSL_HEADER`, `SECURE_SSL_REDIRECT`, `SECURE_HSTS_SECONDS`, `JWT_ACCESS_MINUTES`, `JWT_REFRESH_DAYS`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `DEFAULT_FROM_EMAIL`, `TWILIO_*`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `EXPOSE_DEV_OTP`, `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`, `GIT_COMMIT`, `SENTRY_TRACES_SAMPLE_RATE`, `GUNICORN_ACCESSLOG`, `DB_CONN_MAX_AGE`, `DJANGO_LOG_LEVEL`, `PORT`, `WEB_CONCURRENCY`, `GUNICORN_*`.
+Also used: `APP_ENV`, `DEBUG`, `USE_DB`, `LOCAL_DATABASE_URL`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS`, `TRUST_PROXY_SSL_HEADER`, `SECURE_SSL_REDIRECT`, `SECURE_HSTS_SECONDS`, `JWT_ACCESS_MINUTES`, `JWT_REFRESH_DAYS`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `DEFAULT_FROM_EMAIL`, `TWILIO_*`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `EXPOSE_DEV_OTP`, `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`, `GIT_COMMIT`, `SENTRY_TRACES_SAMPLE_RATE`, `GUNICORN_ACCESSLOG`, `DB_CONN_MAX_AGE`, `DJANGO_LOG_LEVEL`, `PORT`, `WEB_CONCURRENCY`, `GUNICORN_*`.
 Never print, log or commit secret values; refer to variables by name.
+
+## Change pipeline
+- CI (`.github/workflows/backend.yml`, check name `backend / test`) runs on every push and PR: pinned install, `check --deploy` (warnings fail), `makemigrations --check`, `collectstatic`, the schema diff, then all tests on Postgres with DEBUG off.
+- `backend/schema.yml` is the committed OpenAPI schema; an API change must regenerate it in the same PR.
+- `backend/contract/endpoints.txt` lists every endpoint the app and admin call. `apps/core/test_contract.py` fails on a renamed route, a wrong method, or an `expected-fail` marker that now passes. Remove the marker when you fix the route.
+- `backend/contract/fixtures/hostels_list.json` is a sample of the real list response; regenerate with `UPDATE_CONTRACT_FIXTURES=1 python manage.py test apps.core.test_contract.HostelListFixtureTests` and copy it to the app repo's `test/fixtures/`.
+- Swagger UI (`/api/docs/`) and `/api/schema/` exist only when DEBUG is on or `APP_ENV=staging`.
 
 ## Rules for changes
 - Settings come from environment variables only. No host-specific code.

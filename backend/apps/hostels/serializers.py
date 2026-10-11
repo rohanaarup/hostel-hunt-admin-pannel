@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from .models import Hostel
 from apps.rooms.serializers import RoomSerializer
@@ -35,18 +36,23 @@ class HostelListSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at',
         ]
 
+    @extend_schema_field(serializers.CharField(allow_null=True))
     def get_cover_image(self, obj):
         return getattr(obj, 'cover_image', None)
 
+    @extend_schema_field(serializers.FloatField(allow_null=True))
     def get_price_from(self, obj):
         return getattr(obj, 'price_from', None)
 
+    @extend_schema_field(serializers.FloatField(allow_null=True))
     def get_price_to(self, obj):
         return getattr(obj, 'price_to', None)
 
+    @extend_schema_field(serializers.IntegerField())
     def get_room_count(self, obj):
         return getattr(obj, 'room_count', None) or 0
 
+    @extend_schema_field(serializers.IntegerField())
     def get_bed_count(self, obj):
         return getattr(obj, 'bed_count', None) or 0
 

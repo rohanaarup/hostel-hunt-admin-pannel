@@ -1,0 +1,85 @@
+name: backend
+
+# Every push and every pull request runs the same checks, on Postgres (production's database),
+# with production-style settings (DEBUG off). Nothing here needs a secret.
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: hh_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # CI-only values, not secrets. DEBUG is deliberately unset (= off) so the production
+      # settings path is what gets tested.
+      SECRET_KEY: ci-only-secret-key-0123456789-abcdefghijklmnopqrstuvwxyz-ABCDEFGH
+      ALLOWED_HOSTS: localhost
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/hh_ci
+      # HSTS is off on purpose until HTTPS is proven (see DEPLOY.md); every other warning fails CI.
+      SILENCED_SYSTEM_CHECKS: security.W004
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: backend/.python-version
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install pinned requirements
+        run: pip install -r requirements.txt
+
+      - name: Deploy checks (fail on any warning)
+        run: python manage.py check --deploy --fail-level WARNING
+
+      - name: Migrations are up to date
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Static files collect
+        run: python manage.py collectstatic --noinput
+
+      - name: OpenAPI schema is up to date
+        run: |
+          python manage.py spectacular --file /tmp/schema.generated.yml
+          if ! diff -u --strip-trailing-cr schema.yml /tmp/schema.generated.yml; then
+            echo "::error file=backend/schema.yml::schema.yml is out of date. A serializer, view or URL changed. If intended, run: python manage.py spectacular --file schema.yml"
+            exit 1
+          fi
+
+      - name: Tests (includes the API contract) on Postgres
+        # The Django test client talks plain HTTP, so the HTTPS redirect is off for this step only
+        # (the deploy check above ran with it on). The redirect itself is covered by the
+        # production-settings tests in apps/core/test_production_config.py.
+        env:
+          SECURE_SSL_REDIRECT: "False"
+        run: python manage.py test apps utils --noinput
