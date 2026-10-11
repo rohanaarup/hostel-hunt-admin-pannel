@@ -19,10 +19,14 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+from apps.core.api_docs import schema_view, swagger_view
 from apps.core.health import readyz
 
 urlpatterns = [
     path('readyz', readyz, name='readyz'),
+    # Swagger UI and the schema: served only when DEBUG is on or APP_ENV=staging.
+    path('api/schema/', schema_view, name='schema'),
+    path('api/docs/', swagger_view, name='swagger-ui'),
     path('admin/', admin.site.urls),
     
     # API Routes

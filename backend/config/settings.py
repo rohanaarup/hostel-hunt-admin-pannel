@@ -70,6 +70,7 @@ INSTALLED_APPS = [
 
     # Third party apps
     'rest_framework',
+    'drf_spectacular',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
@@ -233,6 +234,7 @@ AUTH_USER_MODEL = 'owners.Owner'
 
 # REST Framework Configuration
 REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
@@ -289,6 +291,19 @@ SECURE_HSTS_SECONDS = config('SECURE_HSTS_SECONDS', default=0, cast=int)
 
 # Development only: allow OTP values in responses/logs. Needs DEBUG on as well.
 EXPOSE_DEV_OTP = config('EXPOSE_DEV_OTP', default=False, cast=bool)
+
+# Which deployment this is: production | staging | development. Gates the staging seed command
+# and the Swagger UI. Defaults to development when DEBUG is on, otherwise production.
+APP_ENV = config('APP_ENV', default='development' if DEBUG else 'production')
+
+# OpenAPI schema (committed as backend/schema.yml; CI regenerates it and fails on any difference).
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Hostel Hunt API',
+    'DESCRIPTION': 'REST API for the Hostel Hunt app and owner admin.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SCHEMA_PATH_PREFIX': r'/api/v1',
+}
 
 # Email Configuration (SMTP)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

@@ -1,0 +1,90 @@
+# API contract: every endpoint the clients call.
+#
+# One line per call:   <client> <METHOD> <path under /api/v1> [| expected-fail: <reason>]
+#   client  = app (Flutter) or admin (Next.js)
+#   {id}    = any id segment
+#   Query-parameter lines look like:  app GET /hostels/?search
+#
+# apps/core/test_contract.py resolves every path with django.urls.resolve and checks the
+# view allows the method. A line without a marker that fails breaks the build (a route was
+# renamed or removed). A line WITH a marker that now passes also breaks the build: delete
+# the marker in the same change that fixes the route.
+#
+# Keep in step with the clients: the app repo checks its own copy
+# (rohii_hostel_hunt/test/contract/app_endpoints.txt) against the Dart sources.
+
+# ---- app: auth ----
+app   POST   /auth/send-otp/
+app   POST   /auth/verify-otp/
+app   POST   /auth/register/
+app   POST   /auth/login/
+app   POST   /auth/reset-password/
+app   POST   /auth/token/refresh/
+app   GET    /auth/me/
+app   PATCH  /auth/me/            | expected-fail: view allows GET only; the app PATCHes profile edits (405)
+app   POST   /auth/me/photo/      | expected-fail: route does not exist; the app uploads the profile photo here (404)
+
+# ---- app: hostels, bookings, dashboard ----
+app   GET    /hostels/
+app   GET    /hostels/{id}/
+app   GET    /hostels/localities/
+app   POST   /bookings/
+app   GET    /bookings/my-bookings/   | expected-fail: route does not exist; the real one is /bookings/my/ (404)
+app   GET    /favorites/hostels/      | expected-fail: route does not exist; the real one is /wishlist/ (404)
+app   GET    /dashboard/student/stats/
+
+# ---- app: payments ----
+app   POST   /payments/create-order/
+app   POST   /payments/initiate-upi-intent/
+app   POST   /payments/initiate-card-checkout/
+app   POST   /payments/verify/
+app   GET    /payments/status/{id}/
+
+# ---- app: query parameters sent to GET /hostels/ ----
+app   GET    /hostels/?city
+app   GET    /hostels/?locality
+app   GET    /hostels/?gender_type
+app   GET    /hostels/?search         | expected-fail: backend ignores the search parameter
+app   GET    /hostels/?amenity        | expected-fail: backend ignores the amenity parameter
+
+# ---- admin: auth ----
+admin POST   /auth/token/refresh/
+admin POST   /auth/send-otp/
+admin POST   /auth/verify-otp/
+admin POST   /auth/register/
+admin POST   /auth/login/
+admin POST   /auth/logout/
+admin POST   /auth/reset-password/
+admin GET    /auth/me/
+
+# ---- admin: dashboard, hostels, rooms ----
+admin GET    /dashboard/stats/
+admin GET    /dashboard/activity/
+admin POST   /hostels/
+admin PUT    /hostels/{id}/
+admin GET    /hostels/
+admin GET    /hostels/{id}/rooms/
+
+# ---- admin: bookings ----
+admin GET    /bookings/
+admin POST   /bookings/{id}/approve/
+admin POST   /bookings/{id}/reject/
+admin POST   /bookings/{id}/verify/
+admin PATCH  /bookings/{id}/mark-paid/
+
+# ---- admin: payments ----
+admin GET    /payments/                    | expected-fail: route does not exist; real ones are /payments/list/ and /payments/admin-list/ (404)
+admin GET    /payments/summary/            | expected-fail: route does not exist (404)
+admin POST   /payments/create/             | expected-fail: route does not exist (404)
+admin PATCH  /payments/{id}/mark-paid/     | expected-fail: route does not exist (404)
+
+# ---- admin: residents, notices, media ----
+admin GET    /residents/
+admin POST   /residents/create/
+admin PATCH  /residents/{id}/mark-vacated/
+admin GET    /notices/
+admin POST   /notices/create/
+admin DELETE /notices/{id}/                | expected-fail: view allows PATCH and PUT only; DELETE lives at /notices/{id}/delete/ (405)
+admin POST   /media/upload/
+admin PATCH  /media/reorder/
+admin DELETE /media/{id}/
