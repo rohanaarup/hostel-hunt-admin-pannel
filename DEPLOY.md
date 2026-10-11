@@ -27,6 +27,21 @@ Optional: `SENTRY_DSN` (turns on error reporting), `SENTRY_ENVIRONMENT`, `SENTRY
 ## Database migrations
 The build command runs `migrate`. Migration `owners.0005_profile_fields_and_photo_url` only ADDS three nullable columns (`gender`, `date_of_birth`, `profile_photo_url`) to the owners table, so it removes and rewrites nothing and is safe to roll back by redeploying the previous commit (the extra columns are simply unused). Deploy to staging first and check `/readyz` and `/api/v1/auth/me/` before production.
 
+## T1 migrations (places) and the test-hostel command
+Two migrations in `hostels`: `0005_city_and_locality_tables` (new tables, two nullable links on hostels, one index) and `0006_link_existing_hostels_to_places` (builds a City and Locality entry from each distinct text already on a hostel and links the hostel). The legacy text columns are never changed; the data migration is reversible and safe to run twice.
+
+A database that was last migrated before `hostels.0004` (the shared database was at `0003`) also gets `0004` (the `pg_trgm` extension and search indexes) and the older pending migrations of other apps in the same run. Staging proved `pg_trgm` is allowed on Supabase. Order: staging first, check `/readyz`, `/api/v1/cities/` and `/api/v1/hostels/`, then production only with the owner's approval.
+
+Hiding test hostels (staging only; the command refuses elsewhere):
+```
+python manage.py deactivate_test_hostels                          # dry run: lists, changes nothing
+python manage.py deactivate_test_hostels --apply --undo-file undo.json   # hides them, writes the undo file
+python manage.py deactivate_test_hostels --restore undo.json      # reverses it
+```
+`--ids a,b` names hostels explicitly. Nothing is ever deleted.
+
+Roll back the migrations (if ever needed): `python manage.py migrate hostels 0004` unlinks the hostels and removes the new tables; the text columns are untouched.
+
 ## Deploy
 1. Set or change the environment variables above. Confirm `ALLOWED_HOSTS`.
 2. Deploy the commit (merging to the deploy branch is a human step).

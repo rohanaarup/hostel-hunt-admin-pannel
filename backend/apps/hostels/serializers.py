@@ -1,6 +1,7 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
-from .models import Hostel
+from .locations import resolve_city, resolve_localities
+from .models import City, Hostel, Locality
 from apps.rooms.serializers import RoomSerializer
 from apps.media_uploads.serializers import MediaItemSerializer
 from apps.rooms.models import Room
@@ -30,7 +31,7 @@ class HostelListSerializer(serializers.ModelSerializer):
         model = Hostel
         fields = [
             'id', 'name', 'locality', 'address', 'city', 'state',
-            'gender_type', 'is_active', 'is_verified',
+            'gender_type', 'is_active', 'is_verified', 'amenities',
             'cover_image', 'price_from', 'price_to',
             'room_count', 'bed_count',
             'created_at', 'updated_at',
@@ -67,11 +68,18 @@ class HostelSerializer(serializers.ModelSerializer):
     
     rooms_data = serializers.ListField(child=serializers.DictField(), write_only=True, required=False)
     media_ids = serializers.ListField(child=serializers.UUIDField(), write_only=True, required=False)
+    # Preferred way to set the place: ids from GET /cities/ and /cities/{slug}/localities/.
+    city_id = serializers.UUIDField(write_only=True, required=False, allow_null=True)
+    locality_id = serializers.UUIDField(write_only=True, required=False, allow_null=True)
 
     class Meta:
         model = Hostel
         fields = '__all__'
-        read_only_fields = ('id', 'owner', 'created_at', 'updated_at', 'is_verified')
+        read_only_fields = ('id', 'owner', 'created_at', 'updated_at', 'is_verified', 'city_ref', 'locality_ref')
+        # The text fields stay accepted (legacy clients); with city_id / locality_id they are filled in.
+        extra_kwargs = {
+            'city': {'required': False}, 'locality': {'required': False}, 'state': {'required': False},
+        }
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
@@ -79,7 +87,60 @@ class HostelSerializer(serializers.ModelSerializer):
         ret['hostel_id'] = ret.pop('id')
         # Map owner to owner_id
         ret['owner_id'] = ret.pop('owner')
+        ret['city_id'] = ret.pop('city_ref')
+        ret['locality_id'] = ret.pop('locality_ref')
         return ret
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        city = locality = None
+        city_given = locality_given = False
+
+        if attrs.get('city_id'):
+            city_given = True
+            city = City.objects.filter(pk=attrs['city_id'], is_active=True).first()
+            if city is None:
+                raise serializers.ValidationError({'city_id': 'Unknown or inactive city.'})
+        elif (attrs.get('city') or '').strip():
+            city_given = True
+            city = resolve_city(attrs['city'])
+        elif 'city_id' in attrs or 'city' in attrs:
+            city_given = True
+
+        if attrs.get('locality_id'):
+            locality_given = True
+            locality = Locality.objects.select_related('city').filter(pk=attrs['locality_id'], is_active=True).first()
+            if locality is None:
+                raise serializers.ValidationError({'locality_id': 'Unknown or inactive locality.'})
+            if city is not None and locality.city_id != city.pk:
+                raise serializers.ValidationError({'locality_id': f'{locality.name} is not in {city.name}.'})
+            if city is None and not city_given:
+                city, city_given = locality.city, True
+        elif (attrs.get('locality') or '').strip():
+            locality_given = True
+            matches = resolve_localities(attrs['locality'], city) if city is not None else []
+            locality = matches[0] if matches else None
+        elif 'locality_id' in attrs or 'locality' in attrs:
+            locality_given = True
+        attrs.pop('city_id', None)
+        attrs.pop('locality_id', None)
+
+        if city_given:
+            attrs['city_ref'] = city
+            if city is not None:
+                attrs['city'] = city.name
+                if not (attrs.get('state') or '').strip():
+                    attrs['state'] = city.state
+        if locality_given:
+            attrs['locality_ref'] = locality
+            if locality is not None:
+                attrs['locality'] = locality.name
+
+        if self.instance is None:  # creating: the place is still required, as before
+            for field in ('city', 'locality', 'state'):
+                if not (attrs.get(field) or '').strip():
+                    raise serializers.ValidationError({field: 'This field is required.'})
+        return attrs
 
     def create(self, validated_data):
         rooms_data = validated_data.pop('rooms_data', [])

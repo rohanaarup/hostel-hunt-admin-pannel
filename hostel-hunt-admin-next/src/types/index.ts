@@ -270,6 +270,9 @@ export interface HostelEnrollmentState {
   address: string;
   city: string;
   state: string;
+  // Chosen from the city and locality lists; the text fields above follow them.
+  city_id: string;
+  locality_id: string;
   pincode: string;
   google_maps_url: string;
   landmark: string;
@@ -315,7 +318,7 @@ export interface RoomDraft {
 
 export const INITIAL_ENROLLMENT_STATE: HostelEnrollmentState = {
   name: '', owner_name: '', contact_number: '', email: '',
-  locality: '', address: '', city: '', state: '', pincode: '',
+  locality: '', address: '', city: '', state: '', city_id: '', locality_id: '', pincode: '',
   google_maps_url: '', landmark: '', latitude: '', longitude: '',
   gender_type: '', total_floors: '', total_rooms: '', total_beds: '',
   occupancy_types: [], description: '', rules: '', check_in_policy: '', check_out_policy: '',

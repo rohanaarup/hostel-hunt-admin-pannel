@@ -53,7 +53,7 @@ def allowed_methods(view_func):
 
 def endpoint_problem(method, path):
     """None when the route exists and allows the method, otherwise a short reason."""
-    url = API_PREFIX + path.replace('{id}', SAMPLE_ID)
+    url = API_PREFIX + path.replace('{id}', SAMPLE_ID).replace('{slug}', 'hyderabad')
     try:
         match = resolve(url)
     except Resolver404:
@@ -108,9 +108,12 @@ class HostelQueryParameterContractTests(TestCase):
         self.assertEqual(response.status_code, 200)
         return {item['name'] for item in response.json()['results']}
 
+    # (parameters sent, expected). A set means "exactly these hostel names"; an int means "this many".
     CHECKS = {
         'city': ({'city': 'Hyderabad'}, {'Seed Alpha Residency', 'Seed Beta Stay'}),
-        'locality': ({'locality': 'Gachi'}, {'Seed Alpha Residency'}),
+        'locality': ({'city': 'Hyderabad', 'locality': 'Gachibowli'}, {'Seed Alpha Residency'}),
+        'page_size': ({'page_size': 1}, 1),
+        'page': ({'page': 2, 'page_size': 1}, 1),
         'gender_type': ({'gender_type': 'girls'}, {'Seed Beta Stay'}),
         'search': ({'search': 'Gamma'}, {'Seed Gamma PG'}),
         'amenity': ({'amenity': 'gym'}, {'Seed Gamma PG'}),
@@ -124,7 +127,8 @@ class HostelQueryParameterContractTests(TestCase):
             base, _, param = path.partition('?')
             self.assertEqual(base, '/hostels/', f'no check written for {path}')
             params, expected = self.CHECKS[param]
-            honoured = self.names(**params) == expected
+            got = self.names(**params)
+            honoured = (len(got) == expected) if isinstance(expected, int) else (got == expected)
             where = f'{CONTRACT_FILE.name}:{number} {client} GET {path}'
             if not honoured and reason is None:
                 broken.append(f'{where}: the backend ignores or mishandles this parameter')

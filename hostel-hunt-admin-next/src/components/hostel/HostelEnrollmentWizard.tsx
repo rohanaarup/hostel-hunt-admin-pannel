@@ -55,10 +55,9 @@ export default function HostelEnrollmentWizard({ onClose }: Props) {
       if (!data.owner_name.trim()) newErrors.owner_name = 'Owner name is required';
       if (!data.contact_number.trim()) newErrors.contact_number = 'Contact number is required';
       if (!data.email.trim()) newErrors.email = 'Email is required';
-      if (!data.locality.trim()) newErrors.locality = 'Locality is required';
+      if (!data.city_id) newErrors.city_id = 'Please choose a city';
+      if (!data.locality_id) newErrors.locality_id = 'Please choose a locality';
       if (!data.address.trim()) newErrors.address = 'Address is required';
-      if (!data.city.trim()) newErrors.city = 'City is required';
-      if (!data.state.trim()) newErrors.state = 'State is required';
       if (!data.pincode.trim()) newErrors.pincode = 'Pincode is required';
     }
 
@@ -118,6 +117,10 @@ export default function HostelEnrollmentWizard({ onClose }: Props) {
               available_beds: Number(r.available_beds) || 0,
             }))
         : [];
+
+      // The ids come from the city and locality lists; send none rather than an empty string.
+      if (!payload.city_id) delete payload.city_id;
+      if (!payload.locality_id) delete payload.locality_id;
 
       // We don't send nested objects
       delete payload.rooms;
