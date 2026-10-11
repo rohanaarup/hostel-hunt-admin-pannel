@@ -11,7 +11,7 @@ Set `DEBUG` to `False` (an absent `DEBUG` also means off).
 
 Keep the ones already set: `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`.
 
-Profile photo uploads need `CLOUDINARY_CLOUD_NAME` and `CLOUDINARY_UPLOAD_PRESET` (the cloud name and an UNSIGNED upload preset from the Cloudinary dashboard; no API secret). Without them `POST /auth/me/photo/` answers 503 "Photo upload is not configured".
+Profile photo uploads need `CLOUDINARY_CLOUD_NAME` and `CLOUDINARY_UPLOAD_PRESET` (the cloud name and an UNSIGNED upload preset from the Cloudinary dashboard; no API secret). Without them `POST /auth/me/photo/` answers 503 "Photo upload is not configured". The upload holds one server thread while it talks to Cloudinary, so it is limited: 10 second timeout to Cloudinary, 5 MB (a larger request is refused with 413 before its body is read), 25 megapixels, and 10 uploads per hour per user (throttle scope `photo`, answers 429 with `Retry-After`).
 
 Optional: `SENTRY_DSN` (turns on error reporting), `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`, `GIT_COMMIT` (set from `RENDER_GIT_COMMIT` by the start command in `render.yaml`), `CORS_ALLOWED_ORIGINS` (only if a browser site calls the API), `CSRF_TRUSTED_ORIGINS` (for `/admin/` login over HTTPS). Full list: `backend/.env.example`.
 

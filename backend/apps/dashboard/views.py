@@ -77,13 +77,9 @@ class StudentDashboardStatsView(APIView):
     def get(self, request):
         user = request.user
 
-        # Build a filter that catches:
-        # 1. Bookings where student FK is explicitly set to this user
-        # 2. Legacy bookings (student=NULL) where student_name matches the user's name
-        user_name = getattr(user, 'display_name', '') or getattr(user, 'username', '')
+        # Only bookings linked to this user. Anonymous bookings carry a typed name that anyone can
+        # choose, so matching on the name would show one person's bookings to another.
         booking_filter = Q(student=user)
-        if user_name:
-            booking_filter |= Q(student__isnull=True, student_name__iexact=user_name)
 
         # Query 1 — aggregate booking status breakdown in a single pass
         booking_stats = Booking.objects.filter(booking_filter).aggregate(

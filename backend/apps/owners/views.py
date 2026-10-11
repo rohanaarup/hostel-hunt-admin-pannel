@@ -1,6 +1,7 @@
 import logging
 
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -14,6 +15,18 @@ from .serializers import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Response shapes for the schema: every profile route answers {success, message, data|errors}.
+PROFILE_ENVELOPE = inline_serializer('ProfileEnvelope', {
+    'success': serializers.BooleanField(),
+    'message': serializers.CharField(),
+    'data': OwnerProfileSerializer(),
+})
+ERROR_ENVELOPE = inline_serializer('ErrorEnvelope', {
+    'success': serializers.BooleanField(),
+    'message': serializers.CharField(),
+    'errors': serializers.DictField(child=serializers.CharField()),
+})
 
 
 def get_tokens_for_user(user):
@@ -189,11 +202,23 @@ class ResetPasswordView(APIView):
 class OwnerProfileView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(responses={200: PROFILE_ENVELOPE}, summary='The signed-in user\'s profile')
     def get(self, request):
         serializer = OwnerProfileSerializer(request.user)
         return success_response(data=serializer.data)
 
+    @extend_schema(
+        request=OwnerProfileUpdateSerializer,
+        responses={200: PROFILE_ENVELOPE, 400: ERROR_ENVELOPE},
+        summary='Update the signed-in user\'s profile',
+    )
     def patch(self, request):
+        unknown = [key for key in request.data if key not in OwnerProfileUpdateSerializer().fields]
+        if unknown:
+            return error_response(
+                {key: 'This field cannot be changed.' for key in unknown},
+                'Some fields cannot be changed.',
+            )
         serializer = OwnerProfileUpdateSerializer(data=request.data)
         if not serializer.is_valid():
             return error_response(serializer.errors)
