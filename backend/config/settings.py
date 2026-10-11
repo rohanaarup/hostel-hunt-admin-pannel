@@ -303,6 +303,10 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     'SCHEMA_PATH_PREFIX': r'/api/v1',
+    'POSTPROCESSING_HOOKS': [
+        'drf_spectacular.hooks.postprocess_schema_enums',
+        'apps.core.schema_hooks.use_postgres_integer_ranges',
+    ],
     'ENUM_NAME_OVERRIDES': {
         'PaymentStatusEnum': 'apps.payments.models.PAYMENT_STATUS_CHOICES',
     },

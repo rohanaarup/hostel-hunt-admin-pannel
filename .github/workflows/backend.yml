@@ -42,6 +42,9 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/hh_ci
       # HSTS is off on purpose until HTTPS is proven (see DEPLOY.md); every other warning fails CI.
       SILENCED_SYSTEM_CHECKS: security.W004
+      # The Django test client talks plain HTTP; the HTTPS redirect itself is covered by the
+      # production-settings tests in apps/core/test_production_config.py.
+      SECURE_SSL_REDIRECT: "False"
 
     defaults:
       run:
