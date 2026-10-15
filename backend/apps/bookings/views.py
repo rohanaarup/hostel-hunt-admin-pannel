@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.utils import timezone
+from apps.payments import holds
 from .models import Booking
 from .serializers import BookingSerializer, BookingCreateSerializer
 from apps.core.querysets import TenantScopedQuerysetMixin
@@ -97,6 +98,18 @@ class BookingViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             qs = qs.filter(status=booking_status)
         return qs
 
+    @staticmethod
+    def _take_bed(booking):
+        """A booking paid outside Razorpay takes its bed. Returns an error Response, or None when all is well."""
+        try:
+            holds.take_bed(booking)
+        except holds.BedBusy:
+            return Response(
+                {"error": "A student is paying online for this bed right now. Try again in a few minutes."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        return None
+
     # ------------------------------------------------------------------ #
     #  Custom actions                                                       #
     # ------------------------------------------------------------------ #
@@ -142,6 +155,9 @@ class BookingViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        busy = self._take_bed(booking)
+        if busy is not None:
+            return busy
         booking.status = 'paid'
         booking.marked_paid_by = request.user
         booking.marked_paid_at = timezone.now()
@@ -159,6 +175,9 @@ class BookingViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        busy = self._take_bed(booking)
+        if busy is not None:
+            return busy
         booking.status = 'paid'
         booking.marked_paid_by = request.user
         booking.marked_paid_at = timezone.now()

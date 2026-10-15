@@ -1,5 +1,6 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
+from apps.rooms.models import Bed
 from .models import Booking
 
 
@@ -60,6 +61,19 @@ class BookingCreateSerializer(serializers.ModelSerializer):
             'amount': {'required': False, 'allow_null': True},
             'notes': {'required': False, 'allow_null': True},
         }
+
+    def validate(self, attrs):
+        # A bed that is already paid for cannot be requested again. (Beds are locked when a payment starts;
+        # this only keeps an obviously taken bed from reaching the owner as a new request.)
+        room, number = attrs.get('room'), attrs.get('bed_number')
+        if room is not None and number:
+            try:
+                number = int(number)
+            except (TypeError, ValueError):
+                return attrs
+            if Bed.objects.filter(room=room, bed_number=number, is_available=False).exists():
+                raise serializers.ValidationError({'bed_number': 'This bed is no longer available.'})
+        return attrs
 
     def create(self, validated_data):
         validated_data['status'] = 'pending'
