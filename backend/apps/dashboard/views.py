@@ -281,9 +281,26 @@ from apps.residents.models import Resident
 from apps.payments.models import Payment
 
 
+OWNER_STATS = inline_serializer('OwnerDashboardStats', {
+    'success': serializers.BooleanField(),
+    'data': inline_serializer('OwnerDashboardStatsData', {
+        'total_hostels': serializers.IntegerField(),
+        'total_residents': serializers.IntegerField(),
+        'total_beds': serializers.IntegerField(help_text="The beds entered on the owner's hostels; the number the occupancy rate divides by."),
+        'occupancy_rate': serializers.IntegerField(),
+        'bookings_by_status': serializers.DictField(child=serializers.IntegerField(), help_text='pending, confirmed, paid, cancelled, rejected: counted over ALL bookings.'),
+        'bookings_by_payment_mode': serializers.DictField(child=serializers.IntegerField(), help_text='offline, online.'),
+        'revenue_collected': serializers.FloatField(),
+        'revenue_pending': serializers.FloatField(),
+        'pending_bookings': serializers.IntegerField(),
+    }),
+})
+
+
 class DashboardStatsView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(responses=OWNER_STATS, summary="The signed-in owner's dashboard numbers")
     def get(self, request):
         user = request.user
 

@@ -1,12 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { Input, Textarea, Select } from '@/components/ui/Input';
 import Modal from '@/components/ui/Modal';
 import Icon from '@/components/ui/Icon';
 import type { Notice } from '@/types';
-import { noticeService, hostelService } from '@/services/api';
+import { noticeService } from '@/services/api';
+import ErrorState from '@/components/ui/ErrorState';
+import { useNotices, useHostels, flattenPages } from '@/hooks/queries';
+import { errorMessage } from '@/services/errors';
 import gsap from 'gsap';
 
 function timeAgo(iso: string) {
@@ -25,17 +28,14 @@ export default function NoticeBoard() {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
-  const { data: notices = [] as Notice[], isLoading: isNoticesLoading } = useQuery<Notice[]>({
-    queryKey: ['notices'],
-    queryFn: () => noticeService.getNotices()
-      .then(r => Array.isArray(r?.data) ? r.data : Array.isArray(r) ? r : [])
-  });
+  // Notices are paged ({ count, results }): the newest page here, "Load more" for older ones.
+  const {
+    data: noticePages, isLoading: isNoticesLoading, error: noticesError, refetch: refetchNotices,
+    isFetching, hasNextPage, fetchNextPage, isFetchingNextPage,
+  } = useNotices();
+  const { items: notices } = flattenPages(noticePages?.pages) as { items: Notice[]; total: number };
 
-  const { data: hostels = [] as any[], isLoading: isHostelsLoading } = useQuery<any[]>({
-    queryKey: ['hostels'],
-    queryFn: () => hostelService.getHostels()
-      .then(r => Array.isArray(r?.data) ? r.data : Array.isArray(r) ? r : [])
-  });
+  const { data: hostels = [] as any[], isLoading: isHostelsLoading } = useHostels();
 
   const isLoading = isNoticesLoading || isHostelsLoading;
 
@@ -58,7 +58,7 @@ export default function NoticeBoard() {
       setFormData({ title: '', body: '', hostel: '' });
     } catch (error) {
       console.error('Failed to create notice', error);
-      alert('Failed to create notice');
+      alert(`Could not create the notice. ${errorMessage(error)}`);
     }
   };
 
@@ -69,7 +69,7 @@ export default function NoticeBoard() {
       queryClient.invalidateQueries({ queryKey: ['notices'] });
     } catch (error) {
       console.error('Failed to delete notice', error);
-      alert('Failed to delete notice');
+      alert(`Could not delete the notice. ${errorMessage(error)}`);
     }
   };
 
@@ -99,6 +99,8 @@ export default function NoticeBoard() {
               <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: 'var(--color-border)' }} />
             ))}
           </div>
+        ) : noticesError && notices.length === 0 ? (
+          <ErrorState error={noticesError} what="notices" onRetry={() => refetchNotices()} retrying={isFetching} />
         ) : notices.length === 0 ? (
           <div className="py-12 text-center">
             <div
@@ -143,6 +145,16 @@ export default function NoticeBoard() {
                 </div>
               </div>
             ))}
+            {hasNextPage && (
+              <button
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                className="w-full py-2 text-sm font-semibold rounded-xl disabled:opacity-50"
+                style={{ color: 'var(--color-primary)' }}
+              >
+                {isFetchingNextPage ? 'Loading…' : 'Load older notices'}
+              </button>
+            )}
           </div>
         )}
       </div>

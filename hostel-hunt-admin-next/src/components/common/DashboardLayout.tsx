@@ -1,6 +1,7 @@
 'use client';
 
 import Sidebar from './Sidebar';
+import RequireAuth from './RequireAuth';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState } from 'react';
@@ -41,6 +42,7 @@ export default function DashboardLayout({ children, title = 'Dashboard' }: { chi
   const today = new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
 
   return (
+    <RequireAuth>
     <div
       className="min-h-screen flex transition-colors duration-300 pb-16 md:pb-0"
       style={{ background: 'var(--color-background)' }}
@@ -120,5 +122,6 @@ export default function DashboardLayout({ children, title = 'Dashboard' }: { chi
         <BottomNavItem to="/residents" label="Residents" Icon={UilUsersAlt} />
       </nav>
     </div>
+    </RequireAuth>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { Input, Textarea, Select } from '@/components/ui/Input';
 import { useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/common/DashboardLayout';
@@ -10,6 +10,9 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import Icon from '@/components/ui/Icon';
 import type { Booking } from '@/types';
 import { bookingService } from '@/services/api';
+import ErrorState from '@/components/ui/ErrorState';
+import { useBookings, useDashboardStats, flattenPages } from '@/hooks/queries';
+import { errorMessage } from '@/services/errors';
 import gsap from 'gsap';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -242,10 +245,13 @@ function BookingsContent() {
   const gridRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
-  const { data: bookings = [] as Booking[], isLoading } = useQuery<Booking[]>({
-    queryKey: ['bookings'],
-    queryFn: () => bookingService.getBookings().then(r => Array.isArray(r?.data) ? r.data : Array.isArray(r) ? r : [])
-  });
+  // The bookings list is paged ({ count, results }): the rows loaded so far, and "Load more" for the rest.
+  const {
+    data: bookingPages, isLoading, error, refetch, isFetching, hasNextPage, fetchNextPage, isFetchingNextPage,
+  } = useBookings();
+  const { items: bookings, total: totalBookings } = flattenPages(bookingPages?.pages);
+  // The real totals come from the server's counts, not from the rows that happen to be loaded.
+  const { data: stats } = useDashboardStats();
 
   // Stagger cards on tab switch
   useEffect(() => {
@@ -309,7 +315,7 @@ function BookingsContent() {
       queryClient.invalidateQueries({ queryKey: ['dashboard', 'activity'] });
     } catch (error) {
       console.error(`Failed to ${action} booking:`, error);
-      alert(`Failed to update booking status. Please try again.`);
+      alert(`Could not update the booking. ${errorMessage(error)}`);
     } finally {
       setActionTarget(null);
     }
@@ -326,10 +332,10 @@ function BookingsContent() {
   const headerInfo = HEADER[currentTab];
 
   const summaryStats = [
-    { label: 'Pending',   value: bookings.filter(b => b.status === 'pending').length,                  color: 'var(--color-warning)' },
-    { label: 'Confirmed', value: bookings.filter(b => b.status === 'confirmed').length,                 color: 'var(--color-success)' },
-    { label: 'Paid',      value: bookings.filter(b => (b.status as string) === 'paid').length,         color: 'var(--color-primary)' },
-    { label: 'Total',     value: bookings.length,                                                      color: 'var(--color-text-primary)' },
+    { label: 'Pending',   value: stats?.bookings_by_status.pending   ?? bookings.filter(b => b.status === 'pending').length,           color: 'var(--color-warning)' },
+    { label: 'Confirmed', value: stats?.bookings_by_status.confirmed ?? bookings.filter(b => b.status === 'confirmed').length,         color: 'var(--color-success)' },
+    { label: 'Paid',      value: stats?.bookings_by_status.paid      ?? bookings.filter(b => (b.status as string) === 'paid').length, color: 'var(--color-primary)' },
+    { label: 'Total',     value: totalBookings,                                                                                         color: 'var(--color-text-primary)' },
   ];
 
   return (
@@ -436,8 +442,8 @@ function BookingsContent() {
           </div>
 
           <button
-            onClick={() => queryClient.invalidateQueries({ queryKey: ['bookings'] })}
-            disabled={isLoading}
+            onClick={() => refetch()}
+            disabled={isLoading || isFetching}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
             style={{
               background: 'var(--color-surface)',
@@ -445,7 +451,7 @@ function BookingsContent() {
               color: 'var(--color-text-secondary)',
             }}
           >
-            <Icon name="refresh" className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <Icon name="refresh" className={`w-4 h-4 ${isLoading || isFetching ? 'animate-spin' : ''}`} />
             Refresh
           </button>
         </div>
@@ -461,7 +467,9 @@ function BookingsContent() {
               />
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : error && bookings.length === 0 ? (
+          <ErrorState error={error} what="bookings" onRetry={() => refetch()} retrying={isFetching} />
+        ) : filtered.length === 0 && !hasNextPage ? (
           <EmptyState tab={currentTab} />
         ) : (
           <div ref={gridRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -470,6 +478,26 @@ function BookingsContent() {
                 <BookingCard booking={b} onAction={(id, action) => setActionTarget({ id, action })} />
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Paging: this page shows the bookings loaded so far */}
+        {!isLoading && bookings.length > 0 && (
+          <div className="flex flex-col items-center gap-3 pt-2">
+            <p className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>
+              Showing {bookings.length} of {totalBookings} bookings
+            </p>
+            {error && <ErrorState error={error} what="more bookings" onRetry={() => fetchNextPage()} retrying={isFetchingNextPage} />}
+            {hasNextPage && !error && (
+              <button
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+                style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}
+              >
+                {isFetchingNextPage ? 'Loading…' : 'Load more'}
+              </button>
+            )}
           </div>
         )}
       </div>

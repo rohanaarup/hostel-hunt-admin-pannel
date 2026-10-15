@@ -652,13 +652,18 @@ paths:
   /api/v1/dashboard/stats/:
     get:
       operationId: dashboard_stats_retrieve
+      summary: The signed-in owner's dashboard numbers
       tags:
       - dashboard
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerDashboardStats'
+          description: ''
   /api/v1/dashboard/student/stats/:
     get:
       operationId: dashboard_student_stats_retrieve
@@ -2611,6 +2616,58 @@ components:
     NullEnum:
       enum:
       - null
+    OwnerDashboardStats:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/OwnerDashboardStatsData'
+      required:
+      - data
+      - success
+    OwnerDashboardStatsData:
+      type: object
+      properties:
+        total_hostels:
+          type: integer
+        total_residents:
+          type: integer
+        total_beds:
+          type: integer
+          description: The beds entered on the owner's hostels; the number the occupancy
+            rate divides by.
+        occupancy_rate:
+          type: integer
+        bookings_by_status:
+          type: object
+          additionalProperties:
+            type: integer
+          description: 'pending, confirmed, paid, cancelled, rejected: counted over
+            ALL bookings.'
+        bookings_by_payment_mode:
+          type: object
+          additionalProperties:
+            type: integer
+          description: offline, online.
+        revenue_collected:
+          type: number
+          format: double
+        revenue_pending:
+          type: number
+          format: double
+        pending_bookings:
+          type: integer
+      required:
+      - bookings_by_payment_mode
+      - bookings_by_status
+      - occupancy_rate
+      - pending_bookings
+      - revenue_collected
+      - revenue_pending
+      - total_beds
+      - total_hostels
+      - total_residents
     OwnerProfile:
       type: object
       properties:

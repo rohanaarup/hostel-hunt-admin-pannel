@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   bookingService,
   paymentService,
@@ -9,63 +9,98 @@ import {
   hostelService,
   roomService,
 } from '@/services/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { unwrapList, unwrapObject, unwrapPage, type Page } from '@/services/unwrap';
 import type { DashboardStats, ActivityItem, Booking, Payment, Resident, Notice } from '@/types';
 
 /**
- * Thin TanStack Query wrappers around the existing service functions.
- * Service internals are untouched — only the consumption layer changes.
- *
- * Query keys are centralized so mutations can invalidate them precisely.
+ * The one place pages get their data. Every hook reads the server's reply through the unwrap helpers
+ * (so a { count, results } reply is never mistaken for an empty list) and gives each kind of data its
+ * own query key (so two pages can never overwrite each other's cache with a different shape).
+ * A failed request is an error the page shows with a Retry, never an empty list.
  */
 
 export const queryKeys = {
   dashboardStats:    ['dashboard', 'stats'] as const,
   recentActivity:    ['dashboard', 'activity'] as const,
-  bookings:          (paymentMode?: string) => ['bookings', { paymentMode }] as const,
-  payments:          (status?: string)        => ['payments', { status }] as const,
+  pendingBookings:   ['bookings', 'pending'] as const,
+  recentBookings:    ['bookings', 'recent'] as const,
+  bookings:          (paymentMode?: string) => ['bookings', 'all', { paymentMode }] as const,
+  payments:          (status?: string)      => ['payments', { status }] as const,
   residents:         ['residents'] as const,
   notices:           ['notices'] as const,
   hostels:           ['hostels'] as const,
   rooms:             (hostelId: string) => ['rooms', hostelId] as const,
 };
 
+const PAGE_SIZE = 25;
+
+/** Owner data is only requested once there is a signed-in owner, so a logged-out visitor sends nothing. */
+function useSignedIn(): boolean {
+  const { isReady, isAuthenticated } = useAuth();
+  return isReady && isAuthenticated;
+}
+
+
+/** The rows of every page loaded so far, and the server's total. */
+export function flattenPages<T>(pages: Page<T>[] | undefined): { items: T[]; total: number } {
+  const list = pages ?? [];
+  return { items: list.flatMap((p) => p.items), total: list.length ? list[list.length - 1].count : 0 };
+}
+
 // ─── Dashboard ────────────────────────────────────────────────────────────
 
 export function useDashboardStats() {
+  const signedIn = useSignedIn();
   return useQuery({
+    enabled: signedIn,
     queryKey: queryKeys.dashboardStats,
-    queryFn: async (): Promise<DashboardStats | null> => {
-      const res = await hostelService.getDashboardStats();
-      return (res?.data ?? res) as DashboardStats | null;
-    },
+    queryFn: async (): Promise<DashboardStats> => unwrapObject<DashboardStats>(await hostelService.getDashboardStats()),
   });
 }
 
 export function useRecentActivity() {
+  const signedIn = useSignedIn();
   return useQuery({
+    enabled: signedIn,
     queryKey: queryKeys.recentActivity,
-    queryFn: async (): Promise<ActivityItem[]> => {
-      const res = await hostelService.getRecentActivity();
-      const list = (res?.data ?? res) as ActivityItem[] | undefined;
-      return Array.isArray(list) ? list : [];
-    },
+    queryFn: async (): Promise<ActivityItem[]> => unwrapList<ActivityItem>(await hostelService.getRecentActivity()),
   });
 }
 
 // ─── Bookings ─────────────────────────────────────────────────────────────
 
-function unwrap<T>(res: any): T[] {
-  const list = res?.data ?? res?.results ?? res;
-  return Array.isArray(list) ? list : [];
+/** The requests waiting for an answer, for the dashboard's quick actions: the server filters, not the page. */
+export function usePendingBookings() {
+  const signedIn = useSignedIn();
+  return useQuery({
+    enabled: signedIn,
+    queryKey: queryKeys.pendingBookings,
+    queryFn: async (): Promise<Booking[]> =>
+      unwrapList<Booking>(await bookingService.getBookings({ status: 'pending', page_size: 10 })),
+  });
 }
 
-export function useBookings(paymentMode?: 'offline' | 'online') {
+/** The 100 newest bookings, for the dashboard's volume heatmap (a full-year count would need its own server total). */
+export function useRecentBookings() {
+  const signedIn = useSignedIn();
   return useQuery({
+    enabled: signedIn,
+    queryKey: queryKeys.recentBookings,
+    queryFn: async (): Promise<Booking[]> => unwrapList<Booking>(await bookingService.getBookings({ page_size: 100 })),
+  });
+}
+
+/** Every booking, a page at a time. `fetchNextPage` is the "Load more" button. */
+export function useBookings(paymentMode?: 'offline' | 'online') {
+  const signedIn = useSignedIn();
+  return useInfiniteQuery({
+    enabled: signedIn,
     queryKey: queryKeys.bookings(paymentMode),
-    queryFn: async (): Promise<Booking[]> => {
-      const res = await bookingService.getBookings(paymentMode);
-      return unwrap<Booking>(res);
-    },
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }): Promise<Page<Booking>> =>
+      unwrapPage<Booking>(await bookingService.getBookings({ payment_mode: paymentMode, page: pageParam, page_size: PAGE_SIZE })),
+    getNextPageParam: (last, all) => (last.next ? all.length + 1 : undefined),
   });
 }
 
@@ -74,6 +109,7 @@ export function useBookingActions() {
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['bookings'] });
     qc.invalidateQueries({ queryKey: queryKeys.dashboardStats });
+    qc.invalidateQueries({ queryKey: queryKeys.recentActivity });
   };
   return {
     approve: useMutation({ mutationFn: (id: string) => bookingService.approveBooking(id), onSuccess: invalidate }),
@@ -86,30 +122,35 @@ export function useBookingActions() {
 // ─── Payments ─────────────────────────────────────────────────────────────
 
 export function usePayments(status?: string) {
+  const signedIn = useSignedIn();
   return useQuery({
+    enabled: signedIn,
     queryKey: queryKeys.payments(status),
-    queryFn: async (): Promise<Payment[]> => {
-      const res = await paymentService.getPayments(status ? { status } : undefined);
-      return unwrap<Payment>(res);
-    },
+    queryFn: async (): Promise<Page<Payment>> =>
+      unwrapPage<Payment>(await paymentService.getPayments({ status, page_size: 100 })),
   });
 }
 
 // ─── Residents ────────────────────────────────────────────────────────────
 
 export function useResidents() {
-  return useQuery({
+  const signedIn = useSignedIn();
+  return useInfiniteQuery({
+    enabled: signedIn,
     queryKey: queryKeys.residents,
-    queryFn: async (): Promise<Resident[]> => {
-      const res = await residentService.getResidents();
-      return unwrap<Resident>(res);
-    },
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }): Promise<Page<Resident>> =>
+      unwrapPage<Resident>(await residentService.getResidents({ page: pageParam, page_size: PAGE_SIZE })),
+    getNextPageParam: (last, all) => (last.next ? all.length + 1 : undefined),
   });
 }
 
 export function useResidentActions() {
   const qc = useQueryClient();
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['residents'] });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['residents'] });
+    qc.invalidateQueries({ queryKey: queryKeys.dashboardStats });
+  };
   return {
     markVacated: useMutation({
       mutationFn: (id: string) => residentService.markResidentVacated(id),
@@ -125,12 +166,14 @@ export function useResidentActions() {
 // ─── Notices ──────────────────────────────────────────────────────────────
 
 export function useNotices() {
-  return useQuery({
+  const signedIn = useSignedIn();
+  return useInfiniteQuery({
+    enabled: signedIn,
     queryKey: queryKeys.notices,
-    queryFn: async (): Promise<Notice[]> => {
-      const res = await noticeService.getNotices();
-      return unwrap<Notice>(res);
-    },
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }): Promise<Page<Notice>> =>
+      unwrapPage<Notice>(await noticeService.getNotices({ page: pageParam, page_size: PAGE_SIZE })),
+    getNextPageParam: (last, all) => (last.next ? all.length + 1 : undefined),
   });
 }
 
@@ -153,24 +196,19 @@ export function useNoticeActions() {
 // ─── Hostels & Rooms ──────────────────────────────────────────────────────
 
 export function useHostels() {
+  const signedIn = useSignedIn();
   return useQuery({
+    enabled: signedIn,
     queryKey: queryKeys.hostels,
-    queryFn: async () => {
-      const res = await hostelService.getHostels();
-      const list = res?.data ?? res?.results ?? res;
-      return Array.isArray(list) ? list : [];
-    },
+    queryFn: async (): Promise<any[]> => unwrapList<any>(await hostelService.getHostels()),
   });
 }
 
 export function useRooms(hostelId: string | null) {
+  const signedIn = useSignedIn();
   return useQuery({
     queryKey: queryKeys.rooms(hostelId ?? ''),
-    enabled: !!hostelId,
-    queryFn: async () => {
-      const res = await roomService.getRooms(hostelId!);
-      const list = res?.data ?? res?.results ?? res;
-      return Array.isArray(list) ? list : [];
-    },
+    enabled: signedIn && !!hostelId,
+    queryFn: async (): Promise<any[]> => unwrapList<any>(await roomService.getRooms(hostelId!)),
   });
 }

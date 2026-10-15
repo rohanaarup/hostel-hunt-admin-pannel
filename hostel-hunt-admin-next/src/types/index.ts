@@ -106,6 +106,7 @@ export interface MediaItem {
   category: MediaCategory;
   upload_progress: number;  // 0–100
   remote_url?: string;      // set after successful upload
+  upload_error?: string;    // set when uploading or saving this file failed
   mime_type: string;
   file_name: string;
   order_index: number;
@@ -251,7 +252,12 @@ export interface ActivityItem {
 export interface DashboardStats {
   total_hostels: number;
   total_residents: number;
+  /** The beds the owner entered across their hostels: the same number the occupancy rate divides by. */
+  total_beds: number;
   occupancy_rate: number;
+  /** Counted over ALL bookings (the bookings list is paged, so a page is not a total). */
+  bookings_by_status: Record<'pending' | 'confirmed' | 'paid' | 'cancelled' | 'rejected', number>;
+  bookings_by_payment_mode: Record<'offline' | 'online', number>;
   revenue_collected: number;
   revenue_pending: number;
   pending_bookings: number;

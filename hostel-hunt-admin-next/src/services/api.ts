@@ -1,18 +1,17 @@
 import axios from 'axios';
 import type { AuthUser } from '../types';
 
-// Set true to use the local Django backend; false uses Render.
-const USE_LOCAL_BACKEND = false;
-const LOCAL_URL = 'http://127.0.0.1:8000/api/v1';
-const RENDER_URL = 'https://hostel-hunt-backend.onrender.com/api/v1';
+// The API address comes from NEXT_PUBLIC_API_URL, set in .env.local for development and in the build
+// settings for staging and production. next.config.ts stops the build when it is missing, so a build
+// can never quietly talk to the wrong server. (It must be written out like this for Next.js to inline it.)
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL as string;
 
-// Next.js requires NEXT_PUBLIC_ prefix for client-exposed env vars
-const API_BASE_URL = USE_LOCAL_BACKEND
-  ? LOCAL_URL
-  : process.env.NEXT_PUBLIC_API_URL || RENDER_URL;
+/** How long any request may take before it counts as failed. */
+export const REQUEST_TIMEOUT_MS = 20_000;
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
+  timeout: REQUEST_TIMEOUT_MS,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -30,30 +29,75 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+/** Requests to these routes never trigger a token refresh: a 401 there means "wrong credentials". */
+const AUTH_ROUTES = /\/auth\/(login|register|send-otp|verify-otp|resend-otp|reset-password|forgot-password|token\/refresh)\//;
+
+/** Where the browser is sent when the session ends. A separate object so a test can replace it. */
+export const session = {
+  goToLogin() {
+    if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
+  },
+};
+
+/** Forget the saved login and go to the login page (once, and not when already there). */
+export function endSession() {
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem('hh_auth_user');
+  sessionStorage.removeItem('hh_auth_user');
+  session.goToLogin();
+}
+
+// One refresh at a time. When several requests get a 401 together (a dashboard fires four), they all
+// wait for the same refresh instead of each sending their own.
+let refreshInFlight: Promise<string> | null = null;
+
+export function refreshAccessToken(): Promise<string> {
+  if (!refreshInFlight) {
+    const refresh = localStorage.getItem('refresh_token');
+    if (!refresh) {
+      // Nothing to refresh with: the same as the server refusing it.
+      return Promise.reject(Object.assign(new Error('No refresh token'), { response: { status: 401 } }));
+    }
+    refreshInFlight = axios
+      .post(`${API_BASE_URL}/auth/token/refresh/`, { refresh }, { timeout: REQUEST_TIMEOUT_MS })
+      .then(({ data }) => {
+        localStorage.setItem('access_token', data.access);
+        return data.access as string;
+      })
+      .finally(() => {
+        refreshInFlight = null;
+      });
+  }
+  return refreshInFlight;
+}
+
 // Add a response interceptor to handle 401 and refresh tokens automatically
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const status = error.response?.status;
+    const isAuthRoute = AUTH_ROUTES.test(originalRequest?.url ?? '');
+
+    if (status === 401 && originalRequest && !originalRequest._retry && !isAuthRoute) {
       originalRequest._retry = true;
       try {
-        const refreshToken = localStorage.getItem('refresh_token');
-        if (!refreshToken) throw new Error('No refresh token');
-
-        const { data } = await axios.post(`${API_BASE_URL}/auth/token/refresh/`, {
-          refresh: refreshToken,
-        });
-
-        localStorage.setItem('access_token', data.access);
-        originalRequest.headers.Authorization = `Bearer ${data.access}`;
+        const access = await refreshAccessToken();
+        originalRequest.headers.Authorization = `Bearer ${access}`;
         return api(originalRequest);
-      } catch (err) {
-        // Refresh failed, logout
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        window.location.href = '/login';
-        return Promise.reject(err);
+      } catch (refreshError) {
+        // Only a refresh the server REJECTS ends the session. If the refresh could not be tried (no
+        // connection, a timeout, a server that is waking up) the login is kept, and the caller gets
+        // that failure, so a bad moment on the network never logs anyone out.
+        const refreshStatus = (refreshError as { response?: { status?: number } })?.response?.status;
+        if (refreshStatus === 400 || refreshStatus === 401 || refreshStatus === 403) {
+          endSession();
+          return Promise.reject(error);
+        }
+        return Promise.reject(refreshError);
       }
     }
     return Promise.reject(error);
@@ -96,14 +140,15 @@ export const hostelService = {
 };
 
 export const roomService = {
-  getRooms: (hostelId: string) => api.get(`/hostels/${hostelId}/rooms/`).then(res => res.data),
+  // The most the API allows on one page; a hostel with more rooms than this is not expected.
+  getRooms: (hostelId: string) =>
+    api.get(`/hostels/${hostelId}/rooms/`, { params: { page_size: 100 } }).then(res => res.data),
 };
 
 export const bookingService = {
-  getBookings: (paymentMode?: 'offline' | 'online') => {
-    const params = paymentMode ? { payment_mode: paymentMode } : {};
-    return api.get('/bookings/', { params }).then(res => res.data);
-  },
+  // Paged: { count, next, previous, results }. Read it with unwrapPage / unwrapList.
+  getBookings: (params: { payment_mode?: 'offline' | 'online'; status?: string; page?: number; page_size?: number } = {}) =>
+    api.get('/bookings/', { params }).then(res => res.data),
   approveBooking: (id: string) => api.post(`/bookings/${id}/approve/`).then(res => res.data),
   rejectBooking: (id: string) => api.post(`/bookings/${id}/reject/`).then(res => res.data),
   verifyPayment: (id: string) => api.post(`/bookings/${id}/verify/`).then(res => res.data),
@@ -119,13 +164,15 @@ export const paymentService = {
 };
 
 export const residentService = {
-  getResidents: () => api.get('/residents/').then(res => res.data),
+  getResidents: (params: { page?: number; page_size?: number } = {}) =>
+    api.get('/residents/', { params }).then(res => res.data),
   createResident: (data: any) => api.post('/residents/create/', data).then(res => res.data),
   markResidentVacated: (id: string) => api.patch(`/residents/${id}/mark-vacated/`).then(res => res.data),
 };
 
 export const noticeService = {
-  getNotices: () => api.get('/notices/').then(res => res.data),
+  getNotices: (params: { page?: number; page_size?: number } = {}) =>
+    api.get('/notices/', { params }).then(res => res.data),
   createNotice: (data: any) => api.post('/notices/create/', data).then(res => res.data),
   deleteNotice: (id: string) => api.delete(`/notices/${id}/delete/`).then(res => res.data),
 };

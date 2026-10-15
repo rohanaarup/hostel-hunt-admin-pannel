@@ -76,3 +76,20 @@ python manage.py seed_staging
 ```
 
 Swagger UI is then at `https://<staging-host>/api/docs/`. It is not served in production.
+
+## Admin site (hostel-hunt-admin-next)
+The admin site must be built with `NEXT_PUBLIC_API_URL`, the backend's `/api/v1` address. Without it `next build` and `next dev` stop with a clear message, so a build can never quietly talk to the wrong server. It is read at BUILD time (it ends up in the browser), so change it and rebuild.
+- development: `.env.local` (see `.env.example`), usually `http://127.0.0.1:8000/api/v1`
+- staging: `NEXT_PUBLIC_API_URL=https://hostel-hunt-admin-pannel.onrender.com/api/v1`
+- production: `NEXT_PUBLIC_API_URL=https://hostel-hunt-backend.onrender.com/api/v1`
+Also set `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` and `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` (the same cloud as the backend's `CLOUDINARY_CLOUD_NAME`: the backend only accepts media addresses on that cloud). Tests: `npm test` (runs in CI).
+
+## Legacy bookings (staging only)
+Old bookings made before an account existed have no student. `link_legacy_bookings` links one to an account only when the phone number typed on the booking matches EXACTLY ONE verified account; it prints counts only. Run it from a computer with the STAGING variables set (`APP_ENV=staging` and the staging `DATABASE_URL`); it refuses to run anywhere else.
+```
+python manage.py link_legacy_bookings                                   # dry run (the default): counts only, changes nothing
+python manage.py link_legacy_bookings --apply --undo-file undo.json     # link them; undo.json holds booking ids only
+python manage.py link_legacy_bookings --restore undo.json               # reverse exactly what --apply linked
+```
+Bookings that cannot be matched stay unlinked and are visible to the hostel owner and staff only.
+
