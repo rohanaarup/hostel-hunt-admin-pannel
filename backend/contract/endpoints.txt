@@ -30,6 +30,11 @@ app   GET    /hostels/{id}/
 app   GET    /hostels/localities/
 app   GET    /cities/
 app   GET    /hostels/{id}/rooms/
+app   GET    /wishlist/
+app   POST   /wishlist/
+app   GET    /wishlist/ids/
+app   DELETE /wishlist/hostel/{id}/
+app   GET    /bookings/my/
 app   POST   /bookings/
 app   GET    /dashboard/student/stats/
 

@@ -4,6 +4,8 @@ from .views import (
     DashboardActivityView,
     StudentDashboardStatsView,
     WishlistView,
+    WishlistIdsView,
+    WishlistHostelView,
     WishlistDetailView,
 )
 
@@ -17,5 +19,7 @@ urlpatterns = [
 
     # ── Wishlist ────────────────────────────────────────────────────────────
     path('wishlist/', WishlistView.as_view(), name='wishlist-list'),
+    path('wishlist/ids/', WishlistIdsView.as_view(), name='wishlist-ids'),
+    path('wishlist/hostel/<uuid:hostel_id>/', WishlistHostelView.as_view(), name='wishlist-hostel'),
     path('wishlist/<uuid:pk>/', WishlistDetailView.as_view(), name='wishlist-detail'),
 ]

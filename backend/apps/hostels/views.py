@@ -81,12 +81,35 @@ def apply_list_filters(qs, params):
 
     search = (params.get('search') or '').strip()
     if len(search) >= 2:
-        qs = qs.filter(Q(name__icontains=search) | Q(locality__icontains=search) | Q(address__icontains=search))
+        condition = Q(name__icontains=search) | Q(locality__icontains=search) | Q(address__icontains=search)
+        # Another spelling of a locality (staff add them, e.g. in Telugu or Hindi) finds its hostels too.
+        matches = resolve_localities(search)
+        if matches:
+            condition |= Q(locality_ref__in=matches)
+        qs = qs.filter(condition)
 
     amenity = (params.get('amenity') or '').strip()
     if amenity:
         qs = qs.filter(amenities__icontains=f'"{amenity}"')
     return qs
+
+
+def public_hostel_queryset():
+    """Active hostels in active cities, with price range, counts and cover image as annotations (no
+    per-row queries). The public list and the saved-hostels list are both built on it."""
+    cover = MediaItem.objects.filter(hostel=OuterRef('pk')).order_by('order_index', '-created_at').values('file_url')[:1]
+    return (
+        Hostel.objects
+        .filter(is_active=True)
+        .filter(Q(city_ref__isnull=True) | Q(city_ref__is_active=True))
+        .annotate(
+            price_from=Subquery(_room_stat(Min('price_per_month')), output_field=DecimalField(max_digits=10, decimal_places=2)),
+            price_to=Subquery(_room_stat(Max('price_per_month')), output_field=DecimalField(max_digits=10, decimal_places=2)),
+            room_count=Coalesce(Subquery(_room_stat(Count('pk')), output_field=IntegerField()), 0),
+            bed_count=Coalesce(Subquery(_room_stat(Sum('bed_count')), output_field=IntegerField()), 0),
+            cover_image=Subquery(cover),
+        )
+    )
 
 
 LIST_PARAMETERS = [
@@ -158,19 +181,7 @@ class HostelViewSet(viewsets.ModelViewSet):
         return Hostel.objects.filter(tenant_scope_q(Hostel, user)).prefetch_related('rooms', 'media')
 
     def _public_list_queryset(self):
-        cover = MediaItem.objects.filter(hostel=OuterRef('pk')).order_by('order_index', '-created_at').values('file_url')[:1]
-        return (
-            Hostel.objects
-            .filter(is_active=True)
-            .filter(Q(city_ref__isnull=True) | Q(city_ref__is_active=True))
-            .annotate(
-                price_from=Subquery(_room_stat(Min('price_per_month')), output_field=DecimalField(max_digits=10, decimal_places=2)),
-                price_to=Subquery(_room_stat(Max('price_per_month')), output_field=DecimalField(max_digits=10, decimal_places=2)),
-                room_count=Coalesce(Subquery(_room_stat(Count('pk')), output_field=IntegerField()), 0),
-                bed_count=Coalesce(Subquery(_room_stat(Sum('bed_count')), output_field=IntegerField()), 0),
-                cover_image=Subquery(cover),
-            )
-        )
+        return public_hostel_queryset()
 
     def retrieve(self, request, *args, **kwargs):
         hostel = self.get_object()
