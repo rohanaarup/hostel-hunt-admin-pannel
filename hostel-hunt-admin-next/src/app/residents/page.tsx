@@ -1,14 +1,17 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { Input, Textarea, Select } from '@/components/ui/Input';
 import DashboardLayout from '@/components/common/DashboardLayout';
 import Modal from '@/components/ui/Modal';
 import StatusBadge from '@/components/ui/StatusBadge';
 import Icon from '@/components/ui/Icon';
 import type { Resident } from '@/types';
-import { residentService, hostelService } from '@/services/api';
+import { residentService } from '@/services/api';
+import ErrorState from '@/components/ui/ErrorState';
+import { useResidents, useHostels, flattenPages } from '@/hooks/queries';
+import { errorMessage } from '@/services/errors';
 import gsap from 'gsap';
 
 function formatDate(d: string | null | undefined) {
@@ -35,17 +38,15 @@ export default function ResidentsPage() {
 
   const queryClient = useQueryClient();
 
-  const { data: residents = [] as Resident[], isLoading: isResidentsLoading } = useQuery<Resident[]>({
-    queryKey: ['residents'],
-    queryFn: () => residentService.getResidents()
-      .then(r => Array.isArray(r?.data) ? r.data : Array.isArray(r) ? r : [])
-  });
+  // Residents are paged ({ count, results }): what is loaded so far, and "Load more" for the rest.
+  const {
+    data: residentPages, isLoading: isResidentsLoading, error: residentsError, refetch: refetchResidents,
+    isFetching, hasNextPage, fetchNextPage, isFetchingNextPage,
+  } = useResidents();
+  const { items: residents, total: totalResidents } = flattenPages(residentPages?.pages) as { items: Resident[]; total: number };
 
-  const { data: hostels = [] as any[], isLoading: isHostelsLoading } = useQuery<any[]>({
-    queryKey: ['hostels'],
-    queryFn: () => hostelService.getHostels()
-      .then(r => Array.isArray(r?.data) ? r.data : Array.isArray(r) ? r : [])
-  });
+  // The hostels for the "add resident" form. If they cannot load the form says why instead of showing an empty list.
+  const { data: hostels = [] as any[], isLoading: isHostelsLoading, error: hostelsError, refetch: refetchHostels } = useHostels();
 
   const isLoading = isResidentsLoading || isHostelsLoading;
 
@@ -66,7 +67,7 @@ export default function ResidentsPage() {
       queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
     } catch (error) {
       console.error('Failed to mark vacated', error);
-      alert('Failed to update resident status');
+      alert(`Could not update the resident. ${errorMessage(error)}`);
     }
   };
 
@@ -79,7 +80,7 @@ export default function ResidentsPage() {
       setShowAddModal(false);
     } catch (error) {
       console.error('Failed to create resident', error);
-      alert('Failed to create resident record');
+      alert(`Could not save the resident. ${errorMessage(error)}`);
     }
   };
 
@@ -184,7 +185,9 @@ export default function ResidentsPage() {
               <div key={i} className="h-48 rounded-2xl animate-pulse" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }} />
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : residentsError && residents.length === 0 ? (
+          <ErrorState error={residentsError} what="residents" onRetry={() => refetchResidents()} retrying={isFetching} />
+        ) : filtered.length === 0 && !hasNextPage ? (
           <div
             className="py-20 text-center rounded-2xl"
             style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
@@ -273,6 +276,26 @@ export default function ResidentsPage() {
             ))}
           </div>
         )}
+
+        {/* Paging: the residents loaded so far */}
+        {!isLoading && residents.length > 0 && (
+          <div className="flex flex-col items-center gap-3 pt-2">
+            <p className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>
+              Showing {residents.length} of {totalResidents} residents
+            </p>
+            {residentsError && <ErrorState error={residentsError} what="more residents" onRetry={() => fetchNextPage()} retrying={isFetchingNextPage} />}
+            {hasNextPage && !residentsError && (
+              <button
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+                style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}
+              >
+                {isFetchingNextPage ? 'Loading…' : 'Load more'}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Add Resident Modal */}
@@ -304,6 +327,12 @@ export default function ResidentsPage() {
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--color-text-muted)' }}>Hostel</label>
+                {hostelsError ? (
+                  <p className="text-xs mb-1" style={{ color: 'var(--color-error)' }}>
+                    {errorMessage(hostelsError)}{' '}
+                    <button type="button" className="underline font-semibold" onClick={() => refetchHostels()}>Retry</button>
+                  </p>
+                ) : null}
                 <Select required value={formData.hostel} onChange={e => setFormData({ ...formData, hostel: e.target.value })}
                   className="w-full p-2.5 rounded-lg text-sm outline-none"
                   style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}

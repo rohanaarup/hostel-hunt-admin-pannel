@@ -3,29 +3,26 @@
 import React, { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { isClientError } from '@/services/errors';
 
 /**
  * Single source of truth for app-wide query behavior.
  *
- * Defaults chosen for the Hostel Hunt admin panel:
- *  - staleTime 2 min: list data doesn't go stale every keystroke, but a
- *    tab-back-into-panel feels current because of refetchOnWindowFocus.
- *  - refetchOnWindowFocus: true (matches the brief — feels live without
- *    a real websocket).
- *  - retry: 1 — auth failures get surfaced fast, the axios 401-refresh
- *    interceptor handles the genuine auth edge case.
- *  - refetchOnReconnect: true so a flaky network doesn't strand the owner
- *    on a stale view.
+ *  - staleTime 1 min: moving between pages reuses what was just loaded.
+ *  - refetchOnWindowFocus: false. A tab switch must not silently reload every list; the Refresh
+ *    buttons and the actions (approve, reject...) reload what changed.
+ *  - retry: once, and never for a 4xx answer (a 400, 403 or 404 will not get better by asking again).
+ *  - refetchOnReconnect: true so a flaky network doesn't strand the owner on a stale view.
  */
 function makeClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 1000 * 60 * 2,         // 2 minutes
+        staleTime: 1000 * 60,             // 1 minute
         gcTime: 1000 * 60 * 10,           // keep cached data 10 min
-        refetchOnWindowFocus: true,
+        refetchOnWindowFocus: false,
         refetchOnReconnect: true,
-        retry: 1,
+        retry: (failureCount, error) => failureCount < 1 && !isClientError(error),
       },
       mutations: {
         retry: 0,

@@ -4,10 +4,13 @@ import React, { useCallback, useRef } from 'react';
 import { Input, Textarea, Select } from '@/components/ui/Input';
 import axios from 'axios';
 import type { HostelEnrollmentState, MediaItem, MediaCategory } from '@/types';
+import { errorMessage } from '@/services/errors';
+import { isServerId } from '../mediaUpload';
 
 interface Props {
   data: HostelEnrollmentState;
   onChange: (key: keyof HostelEnrollmentState, value: unknown) => void;
+  errors?: Partial<Record<keyof HostelEnrollmentState, string>>;
 }
 
 function uid() {
@@ -21,7 +24,7 @@ const CATEGORY_CONFIG: { key: MediaCategory; label: string; icon: string; accept
   { key: 'video', label: 'Videos', icon: '🎥', accept: 'video/*' },
 ];
 
-export default function Step4MediaUpload({ data, onChange }: Props) {
+export default function Step4MediaUpload({ data, onChange, errors }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeCategory, setActiveCategory] = React.useState<MediaCategory>('hostel');
   const [dragOver, setDragOver] = React.useState(false);
@@ -48,8 +51,13 @@ export default function Step4MediaUpload({ data, onChange }: Props) {
       const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
       const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
+      const fail = (id: string, message: string) =>
+        onChange('media', (prev: MediaItem[]) =>
+          (Array.isArray(prev) ? prev : updated).map((m) => (m.id === id ? { ...m, upload_error: message } : m))
+        );
+
       if (!cloudName || !uploadPreset) {
-        alert("Cloudinary credentials are missing. Please add NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME and NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET to your .env.local file.");
+        newItems.forEach((item) => fail(item.id, 'Uploading is not set up (missing Cloudinary settings).'));
         return;
       }
 
@@ -100,13 +108,13 @@ export default function Step4MediaUpload({ data, onChange }: Props) {
                 );
               }).catch((err) => {
                 console.error('Backend link failed:', err);
-                alert(`Failed to save ${item.file_name} to database.`);
+                fail(item.id, errorMessage(err));
               });
             });
           })
           .catch((err) => {
             console.error('Upload failed:', err);
-            alert(`Failed to upload ${item.file_name} to cloud.`);
+            fail(item.id, errorMessage(err));
           });
       });
     },
@@ -129,8 +137,8 @@ export default function Step4MediaUpload({ data, onChange }: Props) {
 
   const removeMedia = (id: string) => {
     const item = media.find((m) => m.id === id);
-    // Backend UUIDs are 36 chars long, temporary frontend IDs are 8 chars
-    if (item && item.id.length > 10) {
+    // Only a file the server already knows (it has a real id) needs deleting on the server.
+    if (item && isServerId(item.id)) {
       import('@/services/api').then(({ mediaService }) => {
         mediaService.delete(item.id).catch((err) => {
           console.error('Failed to delete media from backend:', err);
@@ -149,6 +157,10 @@ export default function Step4MediaUpload({ data, onChange }: Props) {
         <h3 className="text-lg font-bold text-ink-900 dark:text-ivory-50 mb-1">Media Upload</h3>
         <p className="text-ink-700 dark:text-ivory-500 text-sm">Upload images and videos of your hostel.</p>
       </div>
+
+      {errors?.media && (
+        <p role="alert" className="text-sm font-medium" style={{ color: 'var(--color-error)' }}>{errors.media}</p>
+      )}
 
       {/* Category tabs */}
       <div className="flex gap-2 overflow-x-auto pb-1">
@@ -226,8 +238,15 @@ export default function Step4MediaUpload({ data, onChange }: Props) {
                   <img src={item.preview_url} alt={item.file_name} className="w-full h-full object-cover" />
                 )}
 
+                {/* Why it failed */}
+                {item.upload_error && (
+                  <div role="alert" className="absolute inset-0 bg-red-900/80 flex items-center justify-center p-2 text-center">
+                    <p className="text-[10px] font-semibold text-white leading-tight">{item.upload_error}</p>
+                  </div>
+                )}
+
                 {/* Upload progress overlay */}
-                {item.upload_progress < 100 && (
+                {!item.upload_error && item.upload_progress < 100 && (
                   <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
                     <div className="w-12 h-12 relative">
                       <svg className="w-12 h-12 -rotate-90" viewBox="0 0 36 36">

@@ -281,9 +281,26 @@ from apps.residents.models import Resident
 from apps.payments.models import Payment
 
 
+OWNER_STATS = inline_serializer('OwnerDashboardStats', {
+    'success': serializers.BooleanField(),
+    'data': inline_serializer('OwnerDashboardStatsData', {
+        'total_hostels': serializers.IntegerField(),
+        'total_residents': serializers.IntegerField(),
+        'total_beds': serializers.IntegerField(help_text="The beds entered on the owner's hostels; the number the occupancy rate divides by."),
+        'occupancy_rate': serializers.IntegerField(),
+        'bookings_by_status': serializers.DictField(child=serializers.IntegerField(), help_text='pending, confirmed, paid, cancelled, rejected: counted over ALL bookings.'),
+        'bookings_by_payment_mode': serializers.DictField(child=serializers.IntegerField(), help_text='offline, online.'),
+        'revenue_collected': serializers.FloatField(),
+        'revenue_pending': serializers.FloatField(),
+        'pending_bookings': serializers.IntegerField(),
+    }),
+})
+
+
 class DashboardStatsView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(responses=OWNER_STATS, summary="The signed-in owner's dashboard numbers")
     def get(self, request):
         user = request.user
 
@@ -320,12 +337,21 @@ class DashboardStatsView(APIView):
 
         pending_bookings = Booking.objects.filter(hostel__owner=user, status='pending').count()
 
+        # Counts over every booking of the owner's hostels, for the dashboard's donut charts. (The bookings
+        # list is paged, so counting what one page happens to hold would give wrong totals.)
+        owner_bookings = Booking.objects.filter(hostel__owner=user)
+        by_status = dict(owner_bookings.values_list('status').annotate(n=Count('id')))
+        by_mode = dict(owner_bookings.values_list('payment_mode').annotate(n=Count('id')))
+
         return Response({
             "success": True,
             "data": {
                 "total_hostels": total_hostels,
                 "total_residents": total_residents,
+                "total_beds": total_beds,
                 "occupancy_rate": occupancy_rate,
+                "bookings_by_status": {s: by_status.get(s, 0) for s in ('pending', 'confirmed', 'paid', 'cancelled', 'rejected')},
+                "bookings_by_payment_mode": {m: by_mode.get(m, 0) for m in ('offline', 'online')},
                 "revenue_collected": float(revenue_collected),
                 "revenue_pending": float(revenue_pending),
                 "pending_bookings": pending_bookings,

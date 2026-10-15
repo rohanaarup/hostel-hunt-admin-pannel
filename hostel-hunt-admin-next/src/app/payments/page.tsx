@@ -1,18 +1,16 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import DashboardLayout from '@/components/common/DashboardLayout';
 import StatusBadge from '@/components/ui/StatusBadge';
 import Icon from '@/components/ui/Icon';
 import type { Payment, PaymentStatus } from '@/types';
-import { paymentService } from '@/services/api';
+import ErrorState from '@/components/ui/ErrorState';
+import { usePayments } from '@/hooks/queries';
 import gsap from 'gsap';
 
 // Payments here are the online (Razorpay) payments students make for bookings, read from
 // GET /payments/admin-list/. The page is read-only: there is no offline rent ledger in the backend.
-
-const PAGE_SIZE = 100; // the largest page the API allows
 
 function formatDate(d: string | null | undefined) {
   if (!d) return '—';
@@ -32,17 +30,10 @@ export default function PaymentsPage() {
   const [filter, setFilter] = useState<PaymentStatus | 'all'>('all');
   const tableRef = useRef<HTMLTableSectionElement>(null);
 
-  const { data, isLoading, error } = useQuery<{ payments: Payment[]; total: number }>({
-    queryKey: ['payments', 'admin-list'],
-    queryFn: async () => {
-      const res = await paymentService.getPayments({ page_size: PAGE_SIZE });
-      const payments: Payment[] = Array.isArray(res?.results) ? res.results : Array.isArray(res) ? res : [];
-      return { payments, total: typeof res?.count === 'number' ? res.count : payments.length };
-    },
-  });
+  const { data, isLoading, error, refetch, isFetching } = usePayments();
 
-  const all = data?.payments ?? [];
-  const total = data?.total ?? 0;
+  const all = data?.items ?? [];
+  const total = data?.count ?? 0;
   const payments = filter === 'all' ? all : all.filter(p => p.status === filter);
 
   useEffect(() => {
@@ -114,12 +105,7 @@ export default function PaymentsPage() {
         </div>
 
         {error ? (
-          <div
-            className="rounded-2xl p-4 text-sm font-medium"
-            style={{ background: 'var(--color-error-light)', color: 'var(--color-error)' }}
-          >
-            Could not load payments. {(error as any)?.response?.status ? `The server answered ${(error as any).response.status}.` : 'Check your connection and try again.'}
-          </div>
+          <ErrorState error={error} what="payments" onRetry={() => refetch()} retrying={isFetching} />
         ) : null}
 
         {total > all.length ? (

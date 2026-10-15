@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/common/DashboardLayout';
-import { hostelService } from '@/services/api';
+import ErrorState from '@/components/ui/ErrorState';
+import { useHostels } from '@/hooks/queries';
 import Icon from '@/components/ui/Icon';
 import type { HostelEnrollmentState } from '@/types';
 import gsap from 'gsap';
@@ -17,24 +18,9 @@ const AMENITY_ICONS: Record<string, string> = {
 
 export default function MyHostelPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [hostel, setHostel] = useState<HostelEnrollmentState | null>(null);
+  const { data: hostels, isLoading: loading, error, refetch, isFetching } = useHostels();
+  const hostel = (hostels?.[0] ?? null) as HostelEnrollmentState | null;
   const contentRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const fetchHostel = async () => {
-      try {
-        const res = await hostelService.getHostels();
-        const hostels = Array.isArray(res) ? res : res.data || res.results;
-        if (hostels && hostels.length > 0) setHostel(hostels[0]);
-      } catch (error) {
-        console.error('Error fetching hostel:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchHostel();
-  }, []);
 
   useEffect(() => {
     if (!loading && hostel && contentRef.current) {
@@ -108,6 +94,8 @@ export default function MyHostelPage() {
           <div className="flex items-center justify-center py-20">
             <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--color-primary)' }} />
           </div>
+        ) : error ? (
+          <ErrorState error={error} what="your hostel" onRetry={() => refetch()} retrying={isFetching} />
         ) : !hostel ? (
           <div
             className="py-20 text-center rounded-2xl"

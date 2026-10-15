@@ -2,13 +2,16 @@
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from '@/components/common/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import Modal from '@/components/ui/Modal';
 import HostelEnrollmentWizard from '@/components/hostel/HostelEnrollmentWizard';
 import type { DashboardStats, ActivityItem, Booking } from '@/types';
-import { hostelService, bookingService } from '@/services/api';
+import { bookingService } from '@/services/api';
+import ErrorState from '@/components/ui/ErrorState';
+import { errorMessage } from '@/services/errors';
+import { useDashboardStats, useRecentActivity, usePendingBookings, useRecentBookings } from '@/hooks/queries';
 import NoticeBoard from '@/components/dashboard/NoticeBoard';
 import StatCard, { StatTone } from '@/components/ui/StatCard';
 import ChartCard from '@/components/ui/ChartCard';
@@ -112,27 +115,13 @@ export default function DashboardPage() {
   const statGridRef = useRef<HTMLDivElement>(null);
   const chartsRef = useRef<HTMLDivElement>(null);
 
-  // TanStack Query fetching
-  const { data: stats } = useQuery<DashboardStats>({
-    queryKey: ['dashboard', 'stats'],
-    queryFn: () => hostelService.getDashboardStats().then(r => r.data)
-  });
-
-  const { data: activity = [] as ActivityItem[] } = useQuery<ActivityItem[]>({
-    queryKey: ['dashboard', 'activity'],
-    queryFn: () => hostelService.getRecentActivity().then(r => r.data)
-  });
-
-  const { data: bookings = [] as Booking[] } = useQuery<Booking[]>({
-    queryKey: ['bookings'],
-    // The bookings list is paginated ({ count, results }); older responses used { data }.
-    queryFn: () => bookingService.getBookings()
-      .then(r => Array.isArray(r?.results) ? r.results : Array.isArray(r?.data) ? r.data : Array.isArray(r) ? r : [])
-  });
-
-  // Since we load quickly from cache, we can safely derive loading state.
-  // Actually wait, let's keep it simple: if stats isn't loaded, it's loading.
-  const loading = !stats;
+  // Every number and list comes from the shared hooks: each reads the server's reply through the unwrap
+  // helpers, and a failed request is an error with a Retry, never a skeleton that never goes away.
+  const { data: stats, isLoading: loading, error: statsError, refetch: refetchStats, isFetching: statsFetching } = useDashboardStats();
+  const { data: activity = [] as ActivityItem[], error: activityError, refetch: refetchActivity } = useRecentActivity();
+  // The requests waiting for an answer: the server filters them (status=pending), not this page.
+  const { data: pendingBookings = [] as Booking[], isLoading: pendingLoading, error: pendingError, refetch: refetchPending } = usePendingBookings();
+  const { data: bookings = [] as Booking[] } = useRecentBookings();
 
   useEffect(() => {
     if (isFirstTimeOwner) {
@@ -168,46 +157,37 @@ export default function DashboardPage() {
     }
   }, [loading]);
 
-  const pendingBookings = bookings.filter(b => b.status === 'pending');
-
+  // The charts use the server's totals over ALL bookings, not the rows of one page.
   const occupancyData = useMemo(() => {
-    const rate = stats?.occupancy_rate ?? 0;
     const residents = stats?.total_residents ?? 0;
-    if (rate === 0 || residents === 0) {
+    const beds = stats?.total_beds ?? 0;
+    if (beds === 0 && residents === 0) {
       return [
         { name: 'Available', value: 0 },
         { name: 'Occupied', value: 0 }
       ];
     }
-    const total = Math.round((residents / rate) * 100);
     return [
-      { name: 'Available', value: total - residents },
+      { name: 'Available', value: Math.max(beds - residents, 0) },
       { name: 'Occupied', value: residents }
     ];
-  }, [stats?.occupancy_rate, stats?.total_residents]);
+  }, [stats?.total_beds, stats?.total_residents]);
 
-  const bookingStatusData = useMemo(() => {
-    const groups: Record<string, number> = { pending: 0, approved: 0, confirmed: 0, paid: 0, rejected: 0, cancelled: 0 };
-    for (const b of bookings) {
-      const s = (b.status as string) || 'pending';
-      groups[s] = (groups[s] || 0) + 1;
-    }
-    return Object.entries(groups)
-      .filter(([, v]) => v > 0)
-      .map(([name, value]) => ({ name: name.replace(/_/g, ' '), value }));
-  }, [bookings]);
+  const bookingStatusData = useMemo(
+    () =>
+      Object.entries(stats?.bookings_by_status ?? {})
+        .filter(([, v]) => v > 0)
+        .map(([name, value]) => ({ name: name.replace(/_/g, ' '), value })),
+    [stats?.bookings_by_status]
+  );
 
-  const paymentModeData = useMemo(() => {
-    const groups: Record<string, number> = { offline: 0, online: 0 };
-    for (const b of bookings) {
-      const m = (b.payment_mode as string) || 'offline';
-      groups[m] = (groups[m] || 0) + 1;
-    }
-    return [
-      { name: 'Offline', value: groups.offline },
-      { name: 'Online',  value: groups.online },
-    ];
-  }, [bookings]);
+  const paymentModeData = useMemo(
+    () => [
+      { name: 'Offline', value: stats?.bookings_by_payment_mode?.offline ?? 0 },
+      { name: 'Online',  value: stats?.bookings_by_payment_mode?.online ?? 0 },
+    ],
+    [stats?.bookings_by_payment_mode]
+  );
 
   const handleQuickAction = async (id: string, action: 'approve' | 'reject') => {
     if (actingId) return;
@@ -223,7 +203,7 @@ export default function DashboardPage() {
       queryClient.invalidateQueries({ queryKey: ['dashboard', 'activity'] });
     } catch (err) {
       console.error('Quick action failed', err);
-      alert('Failed to update booking. Please try again.');
+      alert(`Could not update the booking. ${errorMessage(err)}`);
     } finally {
       setActingId(null);
     }
@@ -302,7 +282,7 @@ export default function DashboardPage() {
               <StatCard
                 key={s.title}
                 title={s.title}
-                value={loading ? '—' : s.value}
+                value={loading || statsError ? '—' : s.value}
                 prefix={(s as any).prefix}
                 badge={s.badge}
                 tone={s.tone}
@@ -312,7 +292,12 @@ export default function DashboardPage() {
             ))}
           </div>
 
+          {statsError && !stats && (
+            <ErrorState error={statsError} what="the dashboard numbers" onRetry={() => refetchStats()} retrying={statsFetching} />
+          )}
+
           {/* Charts row */}
+          {!statsError && (
           <div ref={chartsRef} className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <ChartCard
               title="Room Occupancy"
@@ -358,10 +343,11 @@ export default function DashboardPage() {
               />
             </ChartCard>
           </div>
+          )}
 
           {/* Booking Density Heatmap (Nivo) */}
           <div className="animate-fade-in-up mt-6" style={{ animationDelay: '300ms' }}>
-            <ChartCard title="Booking Volume" description="Daily booking request density over the past year">
+            <ChartCard title="Booking Volume" description="Daily booking request density (your latest 100 bookings)">
               {bookings.length > 0 ? (
                 <BookingDensityMap bookings={bookings} />
               ) : (
@@ -379,7 +365,7 @@ export default function DashboardPage() {
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-[17px] font-bold flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text-primary)' }}>
                     Booking Requests
-                    {pendingBookings.length > 0 && (
+                    {(stats?.pending_bookings ?? pendingBookings.length) > 0 && (
                       <span
                         className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                         style={{
@@ -388,7 +374,7 @@ export default function DashboardPage() {
                           border: '1px solid color-mix(in srgb, var(--color-warning) 30%, transparent)',
                         }}
                       >
-                        {pendingBookings.length} pending
+                        {stats?.pending_bookings ?? pendingBookings.length} pending
                       </span>
                     )}
                   </h2>
@@ -409,11 +395,15 @@ export default function DashboardPage() {
                     border: '1px solid var(--color-border)',
                   }}
                 >
-                  {loading ? (
+                  {pendingLoading ? (
                     <div className="p-6 space-y-3">
                       {[...Array(3)].map((_, i) => (
                         <div key={i} className="h-16 rounded-xl animate-pulse" style={{ background: 'var(--color-border)' }} />
                       ))}
+                    </div>
+                  ) : pendingError ? (
+                    <div className="p-4">
+                      <ErrorState error={pendingError} what="booking requests" onRetry={() => refetchPending()} />
                     </div>
                   ) : pendingBookings.length === 0 ? (
                     <div className="py-14 text-center">
@@ -467,6 +457,8 @@ export default function DashboardPage() {
                         </div>
                       ))}
                     </div>
+                  ) : activityError ? (
+                    <ErrorState error={activityError} what="recent activity" onRetry={() => refetchActivity()} />
                   ) : activity.length === 0 ? (
                     <div className="py-10 text-center">
                       <div

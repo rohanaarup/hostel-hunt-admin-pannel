@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '@/components/common/DashboardLayout';
 import Step1BasicDetails from '@/components/hostel/steps/Step1BasicDetails';
 import Step2HostelInfo from '@/components/hostel/steps/Step2HostelInfo';
@@ -12,6 +12,10 @@ import Icon from '@/components/ui/Icon';
 import { INITIAL_ENROLLMENT_STATE } from '@/types';
 import type { HostelEnrollmentState } from '@/types';
 import { hostelService } from '@/services/api';
+import ErrorState from '@/components/ui/ErrorState';
+import { unwrapList } from '@/services/unwrap';
+import { errorMessage } from '@/services/errors';
+import { mediaBlockMessage, serverMediaIds } from '@/components/hostel/mediaUpload';
 import gsap from 'gsap';
 
 const SECTIONS = [
@@ -31,31 +35,37 @@ export default function EditHostelPage() {
   const [loading, setLoading] = useState(true);
   const [showSaved, setShowSaved] = useState(false);
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
+  // If the hostel could not be loaded the form must NOT be shown empty: saving it would create a second hostel.
+  const [loadError, setLoadError] = useState<unknown>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const fetchHostel = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const hostels = unwrapList<any>(await hostelService.getHostels());
+      if (hostels.length > 0) {
+        const fetched = hostels[0];
+        if (fetched.rooms) {
+          fetched.rooms = fetched.rooms.map((r: any) => ({
+            ...r,
+            _draft_id: r._draft_id || r.room_id || Math.random().toString(36).slice(2, 10)
+          }));
+        }
+        setData({ ...INITIAL_ENROLLMENT_STATE, ...fetched });
+        setSavedData({ ...INITIAL_ENROLLMENT_STATE, ...fetched });
+      }
+    } catch (error) {
+      console.error("Error fetching hostel:", error);
+      setLoadError(error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchHostel = async () => {
-      try {
-        const res = await hostelService.getHostels();
-        const hostels = Array.isArray(res) ? res : res.data || res.results;
-        if (hostels && hostels.length > 0) {
-          const fetched = hostels[0];
-          if (fetched.rooms) {
-            fetched.rooms = fetched.rooms.map((r: any) => ({
-              ...r,
-              _draft_id: r._draft_id || r.room_id || Math.random().toString(36).slice(2, 10)
-            }));
-          }
-          setData({ ...INITIAL_ENROLLMENT_STATE, ...fetched });
-          setSavedData({ ...INITIAL_ENROLLMENT_STATE, ...fetched });
-        }
-      } catch (error) {
-        console.error("Error fetching hostel:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchHostel();
-  }, []);
+  }, [fetchHostel]);
 
   const isDirty = JSON.stringify(data) !== JSON.stringify(savedData);
 
@@ -68,6 +78,13 @@ export default function EditHostelPage() {
   };
 
   const handleSave = async () => {
+    setSaveError(null);
+    // Pictures still uploading (or failed) cannot be saved yet.
+    const blocked = mediaBlockMessage(data.media);
+    if (blocked) {
+      setSaveError(blocked);
+      return;
+    }
     setIsSaving(true);
     try {
       const payload: any = { ...data };
@@ -78,7 +95,7 @@ export default function EditHostelPage() {
       payload.amenities = Array.isArray(payload.amenities) ? payload.amenities : [];
       payload.latitude = payload.latitude ? String(payload.latitude) : null;
       payload.longitude = payload.longitude ? String(payload.longitude) : null;
-      payload.media_ids = payload.media ? payload.media.map((m: any) => m.id).filter(Boolean) : [];
+      payload.media_ids = serverMediaIds(data.media);
       payload.rooms_data = payload.rooms
         ? payload.rooms
             .filter((r: any) => r.room_name && r.sharing_type)
@@ -99,9 +116,8 @@ export default function EditHostelPage() {
         setData((prev: any) => ({...prev, hostel_id: created.hostel_id || created.data?.hostel_id}));
       }
 
-      const res = await hostelService.getHostels();
-      const hostels = Array.isArray(res) ? res : res.data || res.results;
-      if (hostels && hostels.length > 0) {
+      const hostels = unwrapList<any>(await hostelService.getHostels());
+      if (hostels.length > 0) {
         const fetched = hostels[0];
         if (fetched.rooms) {
           fetched.rooms = fetched.rooms.map((r: any) => ({
@@ -117,6 +133,7 @@ export default function EditHostelPage() {
       setTimeout(() => setShowSaved(false), 3000);
     } catch (err) {
       console.error('Error saving hostel:', err);
+      setSaveError(errorMessage(err));
     } finally {
       setIsSaving(false);
     }
@@ -141,6 +158,10 @@ export default function EditHostelPage() {
 
   return (
     <DashboardLayout title="Edit Hostel">
+      {loadError ? (
+        <ErrorState error={loadError} what="your hostel" onRetry={fetchHostel} retrying={loading} />
+      ) : (
+      <>
       <ConfirmDialog
         isOpen={showDiscardDialog}
         title="Discard changes?"
@@ -153,6 +174,16 @@ export default function EditHostelPage() {
       />
 
       <div className="w-full max-w-[1200px] mx-auto animate-fade-in-up space-y-8">
+
+        {saveError && (
+          <div
+            role="alert"
+            className="rounded-2xl p-4 text-sm font-medium"
+            style={{ background: 'var(--color-error-light)', color: 'var(--color-error)' }}
+          >
+            Could not save. {saveError}
+          </div>
+        )}
         
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -272,6 +303,8 @@ export default function EditHostelPage() {
           </div>
         </div>
       </div>
+      </>
+      )}
     </DashboardLayout>
   );
 }

@@ -78,3 +78,8 @@ Never print, log or commit secret values; refer to variables by name.
 ## Not verified
 - `gunicorn.conf.py` under a real gunicorn process, and the Render build/start/health-check settings (needs a Linux run or a Render deploy).
 - Python 3.13 (tests were run on 3.14.3).
+
+## Data safety (T4)
+- `/dashboard/stats/` (owner) also returns `total_beds`, `bookings_by_status` and `bookings_by_payment_mode`, counted over ALL the owner's bookings (the bookings list is paged, so the admin must not count one page).
+- Media: `file_url` must be an `https://res.cloudinary.com/<CLOUDINARY_CLOUD_NAME>/...` address (any cloud when the variable is unset). Creating or updating a hostel links `media_ids` only for media nobody has claimed yet or that is on the owner's own hostels; other owners' media is skipped, never moved.
+- `python manage.py link_legacy_bookings` (staging only; dry run by default, `--apply`, `--restore`): links old bookings with no student account only when the typed phone matches exactly one VERIFIED account. It prints counts only. Unmatched legacy bookings stay visible to the hostel owner and staff only.

@@ -13,6 +13,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { hostelService } from '@/services/api';
 import { INITIAL_ENROLLMENT_STATE } from '@/types';
 import type { HostelEnrollmentState } from '@/types';
+import { errorMessage } from '@/services/errors';
+import { mediaBlockMessage, serverMediaIds } from './mediaUpload';
 
 const STEPS = [
   { label: 'Details' },
@@ -61,6 +63,12 @@ export default function HostelEnrollmentWizard({ onClose }: Props) {
       if (!data.pincode.trim()) newErrors.pincode = 'Pincode is required';
     }
 
+    if (step === 3) {
+      // Pictures that are still uploading (or failed) cannot be saved with the hostel.
+      const blocked = mediaBlockMessage(data.media);
+      if (blocked) newErrors.media = blocked;
+    }
+
     if (step === 1) {
       if (!data.gender_type) newErrors.gender_type = 'Please select hostel type';
       if (!data.total_floors) newErrors.total_floors = 'Required';
@@ -103,8 +111,13 @@ export default function HostelEnrollmentWizard({ onClose }: Props) {
       payload.latitude = payload.latitude ? String(payload.latitude) : null;
       payload.longitude = payload.longitude ? String(payload.longitude) : null;
 
-      // Format media for backend
-      payload.media_ids = payload.media ? payload.media.map((m: any) => m.id).filter(Boolean) : [];
+      // Only pictures the server already has (real ids) are sent; never a temporary id.
+      const blocked = mediaBlockMessage(data.media);
+      if (blocked) {
+        setSubmitError(blocked);
+        return;
+      }
+      payload.media_ids = serverMediaIds(data.media);
 
       // Format rooms for backend and filter out incomplete rooms
       payload.rooms_data = payload.rooms
@@ -137,7 +150,8 @@ export default function HostelEnrollmentWizard({ onClose }: Props) {
       }, 2500);
     } catch (err) {
       console.error('Error creating hostel:', err);
-      setSubmitError('Something went wrong, please try again');
+      // The server's own reason (for example which field is wrong), not a guess.
+      setSubmitError(errorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -196,7 +210,7 @@ export default function HostelEnrollmentWizard({ onClose }: Props) {
         {currentStep === 0 && <Step1BasicDetails data={data} onChange={handleChange} errors={errors} />}
         {currentStep === 1 && <Step2HostelInfo data={data} onChange={handleChange} errors={errors} />}
         {currentStep === 2 && <Step3Amenities data={data} onChange={handleChange} />}
-        {currentStep === 3 && <Step4MediaUpload data={data} onChange={handleChange} />}
+        {currentStep === 3 && <Step4MediaUpload data={data} onChange={handleChange} errors={errors} />}
         {currentStep === 4 && <Step5RoomConfig data={data} onChange={handleChange} />}
         {currentStep === 5 && (
           <div className="flex flex-col gap-4">

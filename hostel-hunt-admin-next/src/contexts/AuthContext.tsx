@@ -5,6 +5,8 @@ import type { AuthUser } from '../types';
 
 interface AuthContextType {
   authUser: AuthUser | null;
+  /** False until the saved login has been read from storage: do not redirect to /login before this. */
+  isReady: boolean;
   isAuthenticated: boolean;
   isFirstTimeOwner: boolean;
   hasCompletedEnrollment: boolean;
@@ -31,16 +33,20 @@ function loadStoredUser(): AuthUser | null {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [hasCompletedEnrollment, setHasCompletedEnrollment] = useState<boolean>(false);
+  const [isReady, setIsReady] = useState<boolean>(false);
 
   useEffect(() => {
     const user = loadStoredUser();
-    if (user) {
+    // A saved user without any token is not a login (the tokens were cleared): treat it as logged out.
+    const hasToken = !!(localStorage.getItem('access_token') || localStorage.getItem('refresh_token'));
+    if (user && hasToken) {
       setAuthUser(user);
     }
     const enrollment = localStorage.getItem(ENROLLMENT_KEY) === 'true';
     if (enrollment) {
       setHasCompletedEnrollment(enrollment);
     }
+    setIsReady(true);
   }, []);
 
   const isAuthenticated = authUser !== null;
@@ -71,6 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <AuthContext.Provider value={{
       authUser,
+      isReady,
       isAuthenticated,
       isFirstTimeOwner,
       hasCompletedEnrollment,

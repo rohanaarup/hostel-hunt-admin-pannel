@@ -39,5 +39,12 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
+      - name: Tests
+        run: npm test
+
       - name: Production build
+        # The build refuses to run without an API address. This one is never called: the build only
+        # reads pages, and real addresses are set where the site is hosted.
+        env:
+          NEXT_PUBLIC_API_URL: https://api.invalid/api/v1
         run: npm run build

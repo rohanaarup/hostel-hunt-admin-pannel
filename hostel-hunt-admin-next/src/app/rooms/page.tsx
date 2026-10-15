@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import DashboardLayout from '@/components/common/DashboardLayout';
 import { useRouter } from 'next/navigation';
-import { hostelService, roomService } from '@/services/api';
+import ErrorState from '@/components/ui/ErrorState';
+import { useHostels, useRooms } from '@/hooks/queries';
 import Icon from '@/components/ui/Icon';
 import gsap from 'gsap';
 
@@ -25,20 +25,12 @@ interface Room {
 export default function RoomsPage() {
   const router = useRouter();
   const gridRef = useRef<HTMLDivElement>(null);
-  const { data: hostels = [] as any[], isLoading: isHostelsLoading } = useQuery<any[]>({
-    queryKey: ['hostels'],
-    queryFn: () => hostelService.getHostels()
-      .then(r => Array.isArray(r) ? r : r?.data || r?.results || [])
-  });
+  const { data: hostels = [] as any[], isLoading: isHostelsLoading, error: hostelsError, refetch: refetchHostels, isFetching: hostelsFetching } = useHostels();
 
   const hostelId = hostels[0]?.hostel_id || hostels[0]?.id || null;
 
-  const { data: rooms = [] as Room[], isLoading: isRoomsLoading } = useQuery<Room[]>({
-    queryKey: ['rooms', hostelId],
-    queryFn: () => roomService.getRooms(hostelId!)
-      .then(r => Array.isArray(r) ? r : r?.data || r?.results || []),
-    enabled: !!hostelId
-  });
+  const { data: rooms = [] as Room[], isLoading: isRoomsLoading, error: roomsError, refetch: refetchRooms, isFetching: roomsFetching } =
+    useRooms(hostelId) as { data: Room[] | undefined; isLoading: boolean; error: unknown; refetch: () => unknown; isFetching: boolean };
 
   const loading = isHostelsLoading || (!!hostelId && isRoomsLoading);
 
@@ -105,6 +97,10 @@ export default function RoomsPage() {
           <div className="flex items-center justify-center py-20">
             <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--color-primary)' }} />
           </div>
+        ) : hostelsError ? (
+          <ErrorState error={hostelsError} what="your hostels" onRetry={() => refetchHostels()} retrying={hostelsFetching} />
+        ) : roomsError ? (
+          <ErrorState error={roomsError} what="rooms" onRetry={() => refetchRooms()} retrying={roomsFetching} />
         ) : !hostelId ? (
           <div
             className="py-20 text-center rounded-2xl"
