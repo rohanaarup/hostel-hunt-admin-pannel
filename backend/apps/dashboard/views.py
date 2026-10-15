@@ -1,4 +1,9 @@
 from django.db.models import Count, Case, When, IntegerField, Q
+import uuid
+
+from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
+from rest_framework import serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -6,6 +11,9 @@ from rest_framework.permissions import IsAuthenticated
 from apps.bookings.models import Booking, Wishlist
 from apps.core.tenancy.querysets import user_scope_q
 from apps.core.tenancy.utils import get_scoped_object_or_404
+from apps.hostels.serializers import HostelListSerializer
+from apps.hostels.views import public_hostel_queryset
+from utils.pagination import CustomPageNumberPagination
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -123,56 +131,139 @@ class StudentDashboardStatsView(APIView):
 # Wishlist endpoints
 # ─────────────────────────────────────────────────────────────────────────────
 
+class WishlistPagination(CustomPageNumberPagination):
+    """{count, next, previous, wishlist: [...]}: the same flat shape as the other lists, under the
+    `wishlist` key the first version of this route already used."""
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 50
+
+    def get_paginated_response(self, data):
+        return Response({
+            'count': self.page.paginator.count,
+            'next': self.get_next_link(),
+            'previous': self.get_previous_link(),
+            'wishlist': data,
+        })
+
+
+def _saved_visible(user):
+    """The user's saved rows whose hostel is still listed (active, in an active city), newest first."""
+    return (
+        Wishlist.objects
+        .filter(user_scope_q(Wishlist, user), hostel__in=public_hostel_queryset().values('pk'))
+        .order_by('-created_at', 'id')
+    )
+
+
+WISHLIST_ROWS = inline_serializer('WishlistRow', {
+    'id': serializers.UUIDField(help_text='The saved row id (DELETE /wishlist/{id}/).'),
+    'hostel_id': serializers.UUIDField(),
+    'name': serializers.CharField(),
+    'city': serializers.CharField(),
+    'locality': serializers.CharField(),
+    'gender_type': serializers.CharField(),
+    'amenities': serializers.ListField(child=serializers.CharField()),
+    'cover_image': serializers.CharField(allow_null=True),
+    'price_from': serializers.FloatField(allow_null=True),
+    'saved_at': serializers.DateTimeField(),
+}, many=True)
+
+
 class WishlistView(APIView):
     """
-    GET  /api/v1/wishlist/        — list the authenticated user's wishlisted hostels
-    POST /api/v1/wishlist/        — add a hostel to wishlist  { "hostel_id": "<uuid>" }
-    DELETE /api/v1/wishlist/<pk>/ — remove a wishlist entry by wishlist row id
+    GET  /api/v1/wishlist/        - the signed-in user's saved hostels that are still listed, newest saved
+                                    first, paginated (page, page_size; default 20, max 50)
+    POST /api/v1/wishlist/        - save a hostel  { "hostel_id": "<uuid>" }. Saving twice is fine:
+                                    201 the first time, 200 after, the same row either way.
     """
     permission_classes = [IsAuthenticated]
+    pagination_class = WishlistPagination
 
+    @extend_schema(
+        parameters=[OpenApiParameter('page', int), OpenApiParameter('page_size', int)],
+        responses=inline_serializer('WishlistPage', {
+            'count': serializers.IntegerField(),
+            'next': serializers.CharField(allow_null=True),
+            'previous': serializers.CharField(allow_null=True),
+            'wishlist': WISHLIST_ROWS,
+        }),
+    )
     def get(self, request):
-        items = (
-            Wishlist.objects
-            .filter(user_scope_q(Wishlist, request.user))
-            .select_related('hostel')
-            .order_by('-created_at')
-        )
-        data = [
-            {
-                "id": str(item.id),
-                "hostel_id": str(item.hostel_id),
-                "hostel_name": item.hostel.name,
-                "hostel_city": item.hostel.city,
-                "hostel_locality": item.hostel.locality,
-                "gender_type": item.hostel.gender_type,
-                "saved_at": item.created_at.isoformat(),
-            }
-            for item in items
-        ]
-        return Response({"wishlist": data, "count": len(data)})
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(_saved_visible(request.user), request)
+        hostels = {h.pk: h for h in public_hostel_queryset().filter(pk__in=[item.hostel_id for item in page])}
+        rows = []
+        for item in page:
+            hostel = hostels.get(item.hostel_id)
+            if hostel is None:
+                continue
+            rows.append({
+                **HostelListSerializer(hostel).data,  # name, city, locality, amenities, cover_image, price_from...
+                'id': str(item.id),
+                'saved_at': item.created_at.isoformat(),
+                # the first version's keys, kept for older apps
+                'hostel_name': hostel.name,
+                'hostel_city': hostel.city,
+                'hostel_locality': hostel.locality,
+            })
+        return paginator.get_paginated_response(rows)
 
+    @extend_schema(
+        request=inline_serializer('WishlistSave', {'hostel_id': serializers.UUIDField()}),
+        responses={
+            200: inline_serializer('WishlistSaved', {
+                'id': serializers.UUIDField(), 'hostel_id': serializers.UUIDField(),
+                'created': serializers.BooleanField(), 'saved': serializers.BooleanField(),
+            }),
+        },
+    )
     def post(self, request):
-        hostel_id = request.data.get('hostel_id')
-        if not hostel_id:
-            return Response({"error": "hostel_id is required"}, status=400)
+        raw = request.data.get('hostel_id')
+        if not raw:
+            raise serializers.ValidationError({'hostel_id': 'This field is required.'})
+        try:
+            hostel_id = uuid.UUID(str(raw))
+        except ValueError:
+            raise serializers.ValidationError({'hostel_id': 'Enter a valid hostel id.'})
 
-        from apps.hostels.models import Hostel
-        from django.shortcuts import get_object_or_404
-        hostel = get_object_or_404(Hostel, pk=hostel_id)
-
-        item, created = Wishlist.objects.get_or_create(
-            user=request.user, hostel=hostel
-        )
+        hostel = get_object_or_404(public_hostel_queryset(), pk=hostel_id)
+        item, created = Wishlist.objects.get_or_create(user=request.user, hostel=hostel)
         return Response(
-            {"id": str(item.id), "hostel_id": str(hostel.id), "created": created},
+            {'id': str(item.id), 'hostel_id': str(hostel.id), 'created': created, 'saved': True},
             status=201 if created else 200,
         )
 
 
-class WishlistDetailView(APIView):
+class WishlistIdsView(APIView):
+    """GET /api/v1/wishlist/ids/ - just the hostel ids the user has saved, for the hearts in the app."""
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(responses=inline_serializer('WishlistIds', {
+        'ids': serializers.ListField(child=serializers.UUIDField()),
+        'count': serializers.IntegerField(),
+    }))
+    def get(self, request):
+        ids = [str(pk) for pk in _saved_visible(request.user).values_list('hostel_id', flat=True)[:2000]]
+        return Response({'ids': ids, 'count': len(ids)})
+
+
+class WishlistHostelView(APIView):
+    """DELETE /api/v1/wishlist/hostel/<hostel id>/ - un-save a hostel. Safe to repeat: it answers 200
+    whether or not the hostel was saved (`deleted` says which)."""
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses=inline_serializer('WishlistDeleted', {'deleted': serializers.BooleanField()}))
+    def delete(self, request, hostel_id):
+        removed, _ = Wishlist.objects.filter(user_scope_q(Wishlist, request.user), hostel_id=hostel_id).delete()
+        return Response({'deleted': removed > 0})
+
+
+class WishlistDetailView(APIView):
+    """DELETE /api/v1/wishlist/<saved row id>/ - the first version's way to un-save (404 if already gone)."""
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses=inline_serializer('WishlistRowDeleted', {'deleted': serializers.BooleanField()}))
     def delete(self, request, pk):
         item = get_scoped_object_or_404(Wishlist, pk, request, kind="user")
         item.delete()

@@ -17,8 +17,17 @@ def normalise_slug(value):
 
 
 def match_key(value):
-    """Comparison form: the slug with the hyphens removed, so spacing never matters."""
-    return normalise_slug(value).replace('-', '')
+    """Comparison form: the slug with the hyphens removed, so spacing never matters.
+
+    Text with no Latin letters (a Telugu or Hindi alias such as "కొండాపూర్") has an empty slug, so it
+    is compared by its own letters instead: lower-cased, with spaces, punctuation and zero-width
+    joiners removed. Latin text keeps exactly the old behaviour.
+    """
+    key = normalise_slug(value).replace('-', '')
+    if key:
+        return key
+    text = unicodedata.normalize('NFKC', value or '').casefold()
+    return ''.join(ch for ch in text if ch.isalnum() or unicodedata.category(ch).startswith('M'))
 
 
 def _as_uuid(value):

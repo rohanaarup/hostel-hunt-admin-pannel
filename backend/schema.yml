@@ -1751,32 +1751,65 @@ paths:
     get:
       operationId: wishlist_retrieve
       description: |-
-        GET  /api/v1/wishlist/        — list the authenticated user's wishlisted hostels
-        POST /api/v1/wishlist/        — add a hostel to wishlist  { "hostel_id": "<uuid>" }
-        DELETE /api/v1/wishlist/<pk>/ — remove a wishlist entry by wishlist row id
+        GET  /api/v1/wishlist/        - the signed-in user's saved hostels that are still listed, newest saved
+                                        first, paginated (page, page_size; default 20, max 50)
+        POST /api/v1/wishlist/        - save a hostel  { "hostel_id": "<uuid>" }. Saving twice is fine:
+                                        201 the first time, 200 after, the same row either way.
+      parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+      - in: query
+        name: page_size
+        schema:
+          type: integer
       tags:
       - wishlist
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WishlistPage'
+          description: ''
     post:
       operationId: wishlist_create
       description: |-
-        GET  /api/v1/wishlist/        — list the authenticated user's wishlisted hostels
-        POST /api/v1/wishlist/        — add a hostel to wishlist  { "hostel_id": "<uuid>" }
-        DELETE /api/v1/wishlist/<pk>/ — remove a wishlist entry by wishlist row id
+        GET  /api/v1/wishlist/        - the signed-in user's saved hostels that are still listed, newest saved
+                                        first, paginated (page, page_size; default 20, max 50)
+        POST /api/v1/wishlist/        - save a hostel  { "hostel_id": "<uuid>" }. Saving twice is fine:
+                                        201 the first time, 200 after, the same row either way.
       tags:
       - wishlist
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WishlistSave'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WishlistSave'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WishlistSave'
+        required: true
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WishlistSaved'
+          description: ''
   /api/v1/wishlist/{id}/:
     delete:
       operationId: wishlist_destroy
+      description: DELETE /api/v1/wishlist/<saved row id>/ - the first version's way
+        to un-save (404 if already gone).
       parameters:
       - in: path
         name: id
@@ -1791,6 +1824,42 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/wishlist/hostel/{hostel_id}/:
+    delete:
+      operationId: wishlist_hostel_destroy
+      description: |-
+        DELETE /api/v1/wishlist/hostel/<hostel id>/ - un-save a hostel. Safe to repeat: it answers 200
+        whether or not the hostel was saved (`deleted` says which).
+      parameters:
+      - in: path
+        name: hostel_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - wishlist
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/wishlist/ids/:
+    get:
+      operationId: wishlist_ids_retrieve
+      description: GET /api/v1/wishlist/ids/ - just the hostel ids the user has saved,
+        for the hearts in the app.
+      tags:
+      - wishlist
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WishlistIds'
+          description: ''
 components:
   schemas:
     AdminPayment:
@@ -3466,6 +3535,108 @@ components:
       required:
       - access
       - refresh
+    WishlistIds:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        count:
+          type: integer
+      required:
+      - count
+      - ids
+    WishlistPage:
+      type: object
+      properties:
+        wishlist:
+          type: array
+          items:
+            $ref: '#/components/schemas/WishlistRow'
+        count:
+          type: integer
+        next:
+          type: string
+          nullable: true
+        previous:
+          type: string
+          nullable: true
+      required:
+      - count
+      - next
+      - previous
+      - wishlist
+    WishlistRow:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The saved row id (DELETE /wishlist/{id}/).
+        hostel_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        city:
+          type: string
+        locality:
+          type: string
+        gender_type:
+          type: string
+        amenities:
+          type: array
+          items:
+            type: string
+        cover_image:
+          type: string
+          nullable: true
+        price_from:
+          type: number
+          format: double
+          nullable: true
+        saved_at:
+          type: string
+          format: date-time
+      required:
+      - amenities
+      - city
+      - cover_image
+      - gender_type
+      - hostel_id
+      - id
+      - locality
+      - name
+      - price_from
+      - saved_at
+    WishlistSave:
+      type: object
+      properties:
+        hostel_id:
+          type: string
+          format: uuid
+      required:
+      - hostel_id
+    WishlistSaved:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        hostel_id:
+          type: string
+          format: uuid
+        created:
+          type: boolean
+        saved:
+          type: boolean
+      required:
+      - created
+      - hostel_id
+      - id
+      - saved
   securitySchemes:
     jwtAuth:
       type: http
