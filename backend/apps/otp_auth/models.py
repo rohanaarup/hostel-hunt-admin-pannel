@@ -1,40 +1,13 @@
 """
-otp_auth/models.py — OTP Record Model
+otp_auth/models.py
 
-Matches Railway Postgres `otp_records` table schema exactly.
-Uses app_label='owners' to match Railway's content type `owners.otprecord`.
+The old second OTP path (routes, services, a different hash) was removed in F4: nothing called it, and the
+live OTP code is apps/owners (OTPService). Only the proxy model remains so no migration is needed here; it can
+be deleted together with this app in a later clean-up.
 """
-import hashlib
-from django.utils import timezone
 from apps.owners.models import OTPRecord as BaseOTPRecord
 
-class OTPRecord(BaseOTPRecord):
-    """
-    Proxy model extending owners.OTPRecord with methods needed by otp_auth services.
-    """
-    # Rate limit constants (enforced in service layer)
-    MAX_SENDS_PER_HOUR = 5
-    COOLDOWN_SECONDS = 60
-    MAX_ATTEMPTS = 5
-    VALIDITY_MINUTES = 5
 
+class OTPRecord(BaseOTPRecord):
     class Meta:
         proxy = True
-
-    def is_expired(self):
-        return timezone.now() > self.expires_at
-
-    @staticmethod
-    def hash_otp(otp_code: str) -> str:
-        return hashlib.sha256(otp_code.encode()).hexdigest()
-
-    def verify_code(self, otp_code: str) -> bool:
-        return self.otp_code == self.hash_otp(otp_code)
-
-    # Note: save() is inherited from BaseOTPRecord, but we can override it if needed.
-    # However, BaseOTPRecord doesn't auto-set expires_at in save, so we add it here.
-    def save(self, *args, **kwargs):
-        if not self.pk and not self.expires_at:
-            from datetime import timedelta
-            self.expires_at = timezone.now() + timedelta(minutes=self.VALIDITY_MINUTES)
-        super().save(*args, **kwargs)

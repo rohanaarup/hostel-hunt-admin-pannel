@@ -13,7 +13,7 @@ Design decisions:
 """
 
 from django.contrib import admin
-from .models import Payment, PaymentAttempt
+from .models import Payment, PaymentAttempt, PaymentRefund, PaymentWebhookEvent
 
 
 class PaymentAttemptInline(admin.TabularInline):
@@ -42,13 +42,14 @@ class PaymentAdmin(admin.ModelAdmin):
 
     list_display = (
         'id', 'razorpay_order_id', 'booking', 'amount', 'currency',
-        'status', 'verified_at', 'created_at',
+        'status', 'needs_review', 'refunded_amount', 'verified_at', 'created_at',
     )
-    list_filter = ('status', 'currency', 'created_at')
+    list_filter = ('needs_review', 'status', 'currency', 'created_at')
     search_fields = ('razorpay_order_id', 'booking__student_name', 'booking__student_phone')
     readonly_fields = (
         'id', 'booking', 'razorpay_order_id', 'amount', 'currency',
-        'status', 'verified_at', 'created_at', 'updated_at',
+        'status', 'verified_at', 'refunded_amount', 'needs_review', 'review_note',
+        'created_at', 'updated_at',
     )
     inlines = [PaymentAttemptInline]
     ordering = ['-created_at']
@@ -79,6 +80,40 @@ class PaymentAttemptAdmin(admin.ModelAdmin):
         'razorpay_signature', 'status', 'created_at',
     )
     ordering = ['-created_at']
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(PaymentRefund)
+class PaymentRefundAdmin(admin.ModelAdmin):
+    """Read-only. A RESERVED row that never resolves means the refund outcome is unknown: check Razorpay."""
+
+    list_display = ('id', 'payment', 'amount', 'status', 'razorpay_refund_id', 'created_at')
+    list_filter = ('status', 'created_at')
+    search_fields = ('razorpay_refund_id', 'payment__razorpay_order_id')
+    readonly_fields = ('id', 'payment', 'amount', 'status', 'razorpay_refund_id', 'created_at', 'updated_at')
+    ordering = ['-created_at']
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(PaymentWebhookEvent)
+class PaymentWebhookEventAdmin(admin.ModelAdmin):
+    """Read-only log of the Razorpay webhook deliveries already processed."""
+
+    list_display = ('event_id', 'event', 'razorpay_order_id', 'outcome', 'received_at')
+    list_filter = ('event', 'outcome')
+    search_fields = ('event_id', 'razorpay_order_id')
+    readonly_fields = ('event_id', 'event', 'razorpay_order_id', 'outcome', 'received_at')
+    ordering = ['-received_at']
 
     def has_add_permission(self, request):
         return False

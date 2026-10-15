@@ -47,7 +47,7 @@ class OtpExposureTests(APITestCase):
     @override_settings(DEBUG=False, EMAIL_HOST_USER='u', EMAIL_HOST_PASSWORD='p')
     def test_smtp_error_text_is_not_returned_to_the_client(self):
         boom = Exception('auth failed for smtp.secret-host.example')
-        with fixed_code(), mock.patch('apps.owners.services.send_mail', side_effect=boom):
+        with fixed_code(), mock.patch('apps.core.mailer.send_mail', side_effect=boom):
             response = self.client.post(URL, EMAIL, format='json')
         self.assertEqual(response.status_code, 503)
         self.assertNotIn(b'secret-host', response.content)

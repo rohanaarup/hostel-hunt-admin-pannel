@@ -18,7 +18,7 @@ NOTE: The old offline-payment model (amount_due/amount_paid/mode) has been
 import uuid
 from django.db import models
 from apps.bookings.models import Booking
-from apps.core.models import TenantScopedModel, UserScopedModel
+from apps.core.models import GlobalModel, TenantScopedModel, UserScopedModel
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -81,6 +81,17 @@ class Payment(TenantScopedModel, UserScopedModel):
         null=True, blank=True,
         help_text="Timestamp when signature verification succeeded.",
     )
+    # db_default keeps the old code able to insert rows while a migration is rolling out.
+    refunded_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0, db_default=0,
+        help_text="Total refunded so far in INR (sum of processed PaymentRefund rows).",
+    )
+    needs_review = models.BooleanField(
+        default=False, db_default=False, db_index=True,
+        help_text="Money moved but the system could not honour it (late capture, wrong amount, "
+                  "unknown refund outcome). A person must look at it; see review_note.",
+    )
+    review_note = models.CharField(max_length=200, blank=True, default='', db_default='')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -163,6 +174,68 @@ class PaymentAttempt(TenantScopedModel, UserScopedModel):
 
     def __str__(self):
         return f"Attempt {self.method} [{self.status}] — {self.payment_id}"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PaymentRefund
+# ─────────────────────────────────────────────────────────────────────────────
+
+class PaymentRefund(TenantScopedModel, UserScopedModel):
+    """
+    One refund request. The row is written (RESERVED) under the payment's row lock BEFORE Razorpay is
+    called, so two requests for the same money cannot both reach the gateway; it becomes PROCESSED when
+    Razorpay answers, or FAILED when Razorpay definitively rejects it. A RESERVED row that never resolves
+    means the outcome is unknown: check the Razorpay dashboard (the payment is flagged needs_review).
+    """
+
+    OWNER_LOOKUP = "payment__booking__hostel__owner"
+    USER_LOOKUP = "payment__booking__student"
+
+    class Status(models.TextChoices):
+        RESERVED = 'RESERVED', 'Reserved'
+        PROCESSED = 'PROCESSED', 'Processed'
+        FAILED = 'FAILED', 'Failed'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    payment = models.ForeignKey(Payment, on_delete=models.CASCADE, related_name='refunds')
+    amount = models.DecimalField(max_digits=10, decimal_places=2, help_text="INR")
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.RESERVED, db_index=True)
+    razorpay_refund_id = models.CharField(max_length=100, null=True, blank=True, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'payment_refunds'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Refund {self.amount} [{self.status}] — Payment {self.payment_id}"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PaymentWebhookEvent
+# ─────────────────────────────────────────────────────────────────────────────
+
+class PaymentWebhookEvent(GlobalModel):
+    """
+    Every Razorpay webhook delivery we have processed, keyed by Razorpay's event id (the
+    X-Razorpay-Event-Id header). A replay finds its row and is acknowledged without doing anything.
+    The row is written in the same transaction as the processing, so a delivery that failed halfway
+    leaves no row and Razorpay's retry is processed normally. Keyed by an id from outside, before any
+    account is involved, so it belongs to no owner or student.
+    """
+
+    event_id = models.CharField(max_length=100, unique=True)
+    event = models.CharField(max_length=60, blank=True, default='')
+    razorpay_order_id = models.CharField(max_length=100, blank=True, default='')
+    outcome = models.CharField(max_length=40, blank=True, default='')
+    received_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = 'payment_webhook_events'
+
+    def __str__(self):
+        return f"{self.event} {self.event_id}"
+
 
 # Module-level alias so the OpenAPI schema can name the enum (see SPECTACULAR_SETTINGS).
 PAYMENT_STATUS_CHOICES = Payment.Status
