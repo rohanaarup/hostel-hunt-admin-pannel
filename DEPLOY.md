@@ -9,7 +9,9 @@ Required (the server will not start without them, and says which are missing):
 
 Set `DEBUG` to `False` (an absent `DEBUG` also means off).
 
-Keep the ones already set: `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`.
+Keep the ones already set: `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`.
+
+OTP emails need ONE of: `EMAIL_API_PROVIDER` (`brevo` or `resend`) with `EMAIL_API_KEY` (an HTTPS call with a 6 second worst case, works on Render's free plan), or `EMAIL_HOST_USER` and `EMAIL_HOST_PASSWORD` (SMTP; blocked on Render's free plan). Set `DEFAULT_FROM_EMAIL` to a sender address the provider has verified. `TRUSTED_PROXY_COUNT` (default 1) is how many proxies sit in front of gunicorn; the request log's `xff_hops` shows what Render really sends. Without a provider, OTP emails answer 503 "Email service is not configured".
 
 Profile photo uploads need `CLOUDINARY_CLOUD_NAME` and `CLOUDINARY_UPLOAD_PRESET` (the cloud name and an UNSIGNED upload preset from the Cloudinary dashboard; no API secret). Without them `POST /auth/me/photo/` answers 503 "Photo upload is not configured". The upload holds one server thread while it talks to Cloudinary, so it is limited: 10 second timeout to Cloudinary, 5 MB (a larger request is refused with 413 before its body is read), 25 megapixels, and 10 uploads per hour per user (throttle scope `photo`, answers 429 with `Retry-After`).
 
@@ -93,3 +95,13 @@ python manage.py link_legacy_bookings --restore undo.json               # revers
 ```
 Bookings that cannot be matched stay unlinked and are visible to the hostel owner and staff only.
 
+## F4 migrations (safe request path and payments)
+Three additive migrations, applied by the build command's `migrate`: `owners.0006_otprecord_attempts` (wrong-guess counter), `rooms.0005_bed_hold_payment_id` (which payment placed a bed hold) and `payments.0005_payment_review_refunds_webhook_events` (refund and webhook-event tables, `refunded_amount`, `needs_review`, `review_note`). Every new column has a database default, so the previous release keeps working while the migration runs. Roll back by redeploying the previous commit: the new columns and tables are simply unused.
+
+Order: staging first (build runs the migrations), run the staging payment test (`backend/docs/PAYMENT_TEST.md`), then production only with the owner's approval. Production has not received any change since before F1, so a production deploy carries every migration since then.
+
+### Scheduled clean-up
+`python manage.py cleanup_expired` (every 5 minutes) closes payments whose bed hold lapsed, frees beds with no live hold, deletes OTP records older than a day and webhook event ids older than 30 days, and flushes expired JWT tokens. `render.yaml` has a production cron job for it (about $1 per month on Render; confirm the price). Nothing depends on it for correctness: a lapsed hold is also treated as lapsed whenever it is read or written. Check it any time with `python manage.py cleanup_expired --dry-run`.
+
+### Payments that need a person
+A payment with `needs_review` set means Razorpay captured money that the system could not honour (the bed was taken, the booking was cancelled, the amount differed, a duplicate capture, or a refund whose outcome is unknown). Nothing is refunded automatically. Filter Payments by "needs review" in `/admin/`, read the note, and refund in the Razorpay dashboard. The same event is logged at ERROR level (and reaches Sentry).

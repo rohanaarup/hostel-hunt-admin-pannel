@@ -679,17 +679,6 @@ paths:
       responses:
         '200':
           description: No response body
-  /api/v1/dev-verify/:
-    post:
-      operationId: dev_verify_create
-      tags:
-      - dev-verify
-      security:
-      - jwtAuth: []
-      - {}
-      responses:
-        '200':
-          description: No response body
   /api/v1/hostels/:
     get:
       operationId: hostels_list
@@ -1730,28 +1719,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/ResidentCreate'
           description: ''
-  /api/v1/send/:
-    post:
-      operationId: send_create
-      tags:
-      - send
-      security:
-      - jwtAuth: []
-      - {}
-      responses:
-        '200':
-          description: No response body
-  /api/v1/verify/:
-    post:
-      operationId: verify_create
-      tags:
-      - verify
-      security:
-      - jwtAuth: []
-      - {}
-      responses:
-        '200':
-          description: No response body
   /api/v1/wishlist/:
     get:
       operationId: wishlist_retrieve
