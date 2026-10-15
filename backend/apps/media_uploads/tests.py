@@ -56,7 +56,7 @@ class MediaItemTenantIsolationTests(APITestCase):
         self.client.force_authenticate(user=self.owner_a)
         resp = self.client.post(
             reverse("media-upload"),
-            {"hostel": str(self.hostel_b.id), "file_url": "https://example.com/x.jpg", "category": "hostel"},
+            {"hostel": str(self.hostel_b.id), "file_url": "https://res.cloudinary.com/democloud/image/upload/x.jpg", "category": "hostel"},
             format="json",
         )
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
@@ -65,7 +65,7 @@ class MediaItemTenantIsolationTests(APITestCase):
         self.client.force_authenticate(user=self.owner_a)
         resp = self.client.post(
             reverse("media-upload"),
-            {"room": str(self.room_b.id), "file_url": "https://example.com/x.jpg", "category": "room"},
+            {"room": str(self.room_b.id), "file_url": "https://res.cloudinary.com/democloud/image/upload/x.jpg", "category": "room"},
             format="json",
         )
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
@@ -74,7 +74,7 @@ class MediaItemTenantIsolationTests(APITestCase):
         self.client.force_authenticate(user=self.owner_a)
         resp = self.client.post(
             reverse("media-upload"),
-            {"hostel": str(self.hostel_a.id), "file_url": "https://example.com/x.jpg", "category": "hostel"},
+            {"hostel": str(self.hostel_a.id), "file_url": "https://res.cloudinary.com/democloud/image/upload/x.jpg", "category": "hostel"},
             format="json",
         )
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)

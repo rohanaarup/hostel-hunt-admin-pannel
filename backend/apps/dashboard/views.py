@@ -320,12 +320,21 @@ class DashboardStatsView(APIView):
 
         pending_bookings = Booking.objects.filter(hostel__owner=user, status='pending').count()
 
+        # Counts over every booking of the owner's hostels, for the dashboard's donut charts. (The bookings
+        # list is paged, so counting what one page happens to hold would give wrong totals.)
+        owner_bookings = Booking.objects.filter(hostel__owner=user)
+        by_status = dict(owner_bookings.values_list('status').annotate(n=Count('id')))
+        by_mode = dict(owner_bookings.values_list('payment_mode').annotate(n=Count('id')))
+
         return Response({
             "success": True,
             "data": {
                 "total_hostels": total_hostels,
                 "total_residents": total_residents,
+                "total_beds": total_beds,
                 "occupancy_rate": occupancy_rate,
+                "bookings_by_status": {s: by_status.get(s, 0) for s in ('pending', 'confirmed', 'paid', 'cancelled', 'rejected')},
+                "bookings_by_payment_mode": {m: by_mode.get(m, 0) for m in ('offline', 'online')},
                 "revenue_collected": float(revenue_collected),
                 "revenue_pending": float(revenue_pending),
                 "pending_bookings": pending_bookings,

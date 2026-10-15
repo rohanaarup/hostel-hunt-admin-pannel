@@ -1,5 +1,7 @@
+from django.db.models import Q
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
+from apps.core.tenancy.querysets import tenant_scope_q
 from .locations import resolve_city, resolve_localities
 from .models import City, Hostel, Locality
 from apps.rooms.serializers import RoomSerializer
@@ -159,9 +161,17 @@ class HostelSerializer(serializers.ModelSerializer):
             Room.objects.create(hostel=hostel, **room_data)
             
         if media_ids:
-            MediaItem.objects.filter(id__in=media_ids).update(hostel=hostel)
+            self._link_media(hostel, media_ids)
             
         return hostel
+
+    def _link_media(self, hostel, media_ids):
+        """Attach uploaded media to the hostel, but only media the signed-in owner may link: media that
+        nobody has claimed yet (uploaded before the hostel existed) or that is already on one of their
+        own hostels. Someone else's media is skipped, never moved."""
+        user = self.context['request'].user
+        allowed = Q(hostel__isnull=True, room__isnull=True) | tenant_scope_q(MediaItem, user)
+        MediaItem.objects.filter(allowed, id__in=media_ids).update(hostel=hostel)
 
     def update(self, instance, validated_data):
         rooms_data = validated_data.pop('rooms_data', None)
@@ -193,6 +203,6 @@ class HostelSerializer(serializers.ModelSerializer):
         if media_ids is not None:
             # Only link new ones; do not aggressively delete media missing from the list 
             # unless we explicitly want to. For safety, let's just update the ones passed.
-            MediaItem.objects.filter(id__in=media_ids).update(hostel=hostel)
+            self._link_media(hostel, media_ids)
             
         return hostel
