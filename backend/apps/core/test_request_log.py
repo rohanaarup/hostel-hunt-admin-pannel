@@ -142,7 +142,7 @@ class OtpLogLinesHoldNoIdentifierTests(TestCase):
         from django.test import override_settings
         from apps.owners.services import OTPService
         with override_settings(EMAIL_HOST_USER='u', EMAIL_HOST_PASSWORD='p'), \
-                mock.patch('apps.owners.services.send_mail'), \
+                mock.patch('apps.core.mailer.send_mail'), \
                 self.assertLogs('apps.owners.services', level='INFO') as logs:
             OTPService.send_otp(EMAIL, '123456', 'signup', 'email')
         self.assertFalse([line for line in logs.output if EMAIL in line], logs.output)
@@ -159,23 +159,26 @@ class OtpLogLinesHoldNoIdentifierTests(TestCase):
 
     def test_email_otp_service_logs_do_not_contain_the_recipient(self):
         from django.test import override_settings
-        from apps.otp_auth.services import OTPService
-        with override_settings(EMAIL_HOST_USER='u', EMAIL_HOST_PASSWORD='p'), \
-                mock.patch('apps.otp_auth.services.send_mail'), \
-                self.assertLogs('apps.otp_auth.services', level='INFO') as logs:
-            OTPService._send_email(EMAIL, '123456')
-        self.assertFalse([line for line in logs.output if EMAIL in line], logs.output)
+        from apps.core import mailer
+        with override_settings(EMAIL_HOST_USER='u', EMAIL_HOST_PASSWORD='p'),                 mock.patch('apps.core.mailer.send_mail'),                 self.assertLogs('apps.core.mailer', level='INFO') as logs:
+            mailer.send_email(EMAIL, 'Subject', 'Your code is 123456')
+        self.assertFalse([line for line in logs.output if EMAIL in line or '123456' in line], logs.output)
 
     def test_email_otp_failure_log_does_not_contain_the_recipient(self):
         from django.test import override_settings
-        from apps.otp_auth.services import OTPService
+        from apps.core import mailer
         boom = Exception(f'refused recipient {EMAIL}')
-        with override_settings(EMAIL_HOST_USER='u', EMAIL_HOST_PASSWORD='p'), \
-                mock.patch('apps.otp_auth.services.send_mail', side_effect=boom), \
-                self.assertLogs('apps.otp_auth.services', level='INFO') as logs, \
-                self.assertRaises(Exception):
-            OTPService._send_email(EMAIL, '123456')
-        self.assertFalse([line for line in logs.output if re.search(r'private\.person|@example', line)], logs.output)
+        with override_settings(EMAIL_HOST_USER='u', EMAIL_HOST_PASSWORD='p'),                 mock.patch('apps.core.mailer.send_mail', side_effect=boom),                 self.assertLogs('apps.core.mailer', level='INFO') as logs,                 self.assertRaises(mailer.EmailError):
+            mailer.send_email(EMAIL, 'Subject', 'Your code is 123456')
+        self.assertFalse([line for line in logs.output if re.search(r'private\.person|@example|123456', line)], logs.output)
+
+    def test_email_api_failure_log_does_not_contain_the_recipient(self):
+        from django.test import override_settings
+        from apps.core import mailer
+        refused = mock.Mock(status_code=422, text=f'invalid recipient {EMAIL}')
+        with override_settings(EMAIL_API_PROVIDER='brevo', EMAIL_API_KEY='k'),                 mock.patch('requests.post', return_value=refused),                 self.assertLogs('apps.core.mailer', level='INFO') as logs,                 self.assertRaises(mailer.EmailError):
+            mailer.send_email(EMAIL, 'Subject', 'Your code is 123456')
+        self.assertFalse([line for line in logs.output if re.search(r'private\.person|@example|123456', line)], logs.output)
 
 
 class PiiMaskFilterTests(TestCase):

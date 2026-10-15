@@ -171,6 +171,9 @@ class RequestLogMiddleware:
             'resp_bytes': _response_bytes(response) if response is not None else None,
             'inflight': inflight,
             'user_id': _user_id(request),
+            # How many entries X-Forwarded-For had (a count, never the addresses). Tells you whether
+            # TRUSTED_PROXY_COUNT matches the real number of proxies in front of gunicorn.
+            'xff_hops': len([part for part in request.META.get('HTTP_X_FORWARDED_FOR', '').split(',') if part.strip()]),
             'release': self.release,
             'pid': self.pid,
         }

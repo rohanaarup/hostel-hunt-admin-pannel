@@ -258,12 +258,18 @@ REST_FRAMEWORK = {
         # General public/browsing traffic (hostel list/search/localities, etc.)
         'anon': '60/min',
         'user': '120/min',
-        # Tighter scope for abuse-sensitive OTP send/verify endpoints.
-        # Sits alongside the existing per-email cooldown in OTPService, not a replacement.
-        'otp': '5/min',
+        # OTP send and verify are limited separately, per client address. These are generous on purpose
+        # (a campus or mobile network shares one address); the limits that protect a person live on the
+        # OTP record itself (cooldown, sends per hour, wrong-guess cap) and hold across workers.
+        'otp_send': '20/min',
+        'otp_verify': '30/min',
         # Profile photo uploads: each one holds a server thread while it talks to Cloudinary.
         'photo': '10/hour',
     },
+    # How many proxies sit between the internet and gunicorn (Render's edge = 1). The client address is the
+    # entry that many places from the END of X-Forwarded-For; entries before it are written by the client.
+    # Without this DRF keys the throttle on the whole header, so a spoofed header gets a fresh allowance.
+    'NUM_PROXIES': config('TRUSTED_PROXY_COUNT', default=1, cast=int),
 }
 
 # JWT lifetimes. Rotation stays off: the shipped app does not need it.
@@ -327,14 +333,18 @@ SPECTACULAR_SETTINGS = {
 # security.W004 because HSTS is deliberately off until HTTPS is proven.
 SILENCED_SYSTEM_CHECKS = ['drf_spectacular.W002'] + list(config('SILENCED_SYSTEM_CHECKS', default='', cast=Csv()))
 
-# Email Configuration (SMTP)
+# Email for OTP codes. Render's free plan blocks SMTP, so the default is an HTTPS email API
+# (EMAIL_API_PROVIDER = brevo | resend, with EMAIL_API_KEY); see apps/core/mailer.py. SMTP is the
+# fallback for a host that allows it. DEFAULT_FROM_EMAIL must be a sender the provider has verified.
+EMAIL_API_PROVIDER = config('EMAIL_API_PROVIDER', default='')
+EMAIL_API_KEY = config('EMAIL_API_KEY', default='')
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
-EMAIL_TIMEOUT = 15  # Prevent Gunicorn worker timeout if Render blocks SMTP ports
+EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=5, cast=int)  # SMTP socket timeout; must stay well under gunicorn's
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Hostel Hunt <noreply@hostelhunt.com>')
 
 # Cloudinary (profile photo uploads, unsigned preset: no API secret is used)
@@ -396,8 +406,8 @@ LOGGING = {
 }
 
 # Startup Validation
-if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
-    logger.warning("CRITICAL: EMAIL_HOST_USER and/or EMAIL_HOST_PASSWORD are not set. Email OTPs will fail.")
+if not (EMAIL_API_PROVIDER and EMAIL_API_KEY) and not (EMAIL_HOST_USER and EMAIL_HOST_PASSWORD):
+    logger.warning("CRITICAL: no email provider is configured (EMAIL_API_PROVIDER + EMAIL_API_KEY, or EMAIL_HOST_USER + EMAIL_HOST_PASSWORD). Email OTPs will fail.")
 if not TWILIO_ACCOUNT_SID or not TWILIO_AUTH_TOKEN or not TWILIO_FROM_NUMBER:
     logger.warning("CRITICAL: Twilio configuration is missing. SMS OTPs will fail and return a 503 error.")
 

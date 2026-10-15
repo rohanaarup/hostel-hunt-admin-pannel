@@ -58,6 +58,9 @@ class OTPRecord(models.Model):
     is_used = models.BooleanField(default=False)       # True = fully consumed or expired/invalidated
     is_verified = models.BooleanField(default=False)    # True = OTP code was verified, token is active
     verification_token = models.UUIDField(null=True, blank=True)
+    # Wrong guesses so far. The code is locked (is_used) once this reaches OTPService.MAX_ATTEMPTS.
+    # db_default keeps the old code able to insert rows while a migration is rolling out.
+    attempts = models.PositiveSmallIntegerField(default=0, db_default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
 
