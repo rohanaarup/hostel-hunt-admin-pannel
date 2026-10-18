@@ -3,6 +3,8 @@
 Django 5.2 (LTS) + Django REST Framework API for the Hostel Hunt mobile app. Python 3.13 (`backend/.python-version`).
 Everything below was checked against the code or run on 2026-10-10; things not run are listed under "Not verified".
 
+**Before starting any phase, read [KNOWN_GAPS.md](KNOWN_GAPS.md):** the register of what has not been built, not been verified, or been ignored on purpose, with its impact. Update it at the end of every phase.
+
 ## Layout
 - `backend/` – the Django project (`config/` settings and URLs, `apps/` feature apps, `utils/`). `manage.py` is here; run all commands from this folder.
 - `hostel-hunt-admin-next/` – Next.js owner admin. Separate project with its own docs; not covered here.
