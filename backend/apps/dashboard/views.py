@@ -304,14 +304,16 @@ class DashboardStatsView(APIView):
     def get(self, request):
         user = request.user
 
-        hostels = Hostel.objects.filter(owner=user)
-        total_hostels = hostels.count()
+        # Four queries in all, whatever the amount of data: one aggregate each over the owner's hostels,
+        # residents, bookings and online payments (it used to be nine, with the bed total added up in Python).
+        hostel_totals = Hostel.objects.filter(owner=user).aggregate(count=Count('id'), beds=Sum('total_beds'))
+        total_hostels = hostel_totals['count']
 
         # Total residents (active only)
         total_residents = Resident.objects.filter(hostel__owner=user, status='active').count()
 
         # Occupancy rate calculation
-        total_beds = sum(h.total_beds for h in hostels)
+        total_beds = hostel_totals['beds'] or 0
         occupancy_rate = 0
         if total_beds > 0:
             occupancy_rate = int((total_residents / total_beds) * 100)
@@ -326,22 +328,22 @@ class DashboardStatsView(APIView):
         online_collected = Payment.objects.filter(
             booking__hostel__owner=user, status=Payment.Status.SUCCESS,
         ).aggregate(Sum('amount'))['amount__sum'] or 0
-        offline_collected = Booking.objects.filter(
-            hostel__owner=user, payment_mode='offline', status='paid',
-        ).aggregate(Sum('amount'))['amount__sum'] or 0
-        revenue_collected = online_collected + offline_collected
-
-        revenue_pending = Booking.objects.filter(
-            hostel__owner=user, status__in=['pending', 'confirmed'],
-        ).aggregate(Sum('amount'))['amount__sum'] or 0
-
-        pending_bookings = Booking.objects.filter(hostel__owner=user, status='pending').count()
+        statuses = ('pending', 'confirmed', 'paid', 'cancelled', 'rejected')
+        modes = ('offline', 'online')
+        booking_totals = Booking.objects.filter(hostel__owner=user).aggregate(
+            offline_collected=Sum('amount', filter=Q(payment_mode='offline', status='paid')),
+            revenue_pending=Sum('amount', filter=Q(status__in=['pending', 'confirmed'])),
+            **{f'status_{s}': Count('id', filter=Q(status=s)) for s in statuses},
+            **{f'mode_{m}': Count('id', filter=Q(payment_mode=m)) for m in modes},
+        )
+        revenue_collected = online_collected + (booking_totals['offline_collected'] or 0)
+        revenue_pending = booking_totals['revenue_pending'] or 0
+        pending_bookings = booking_totals['status_pending']
 
         # Counts over every booking of the owner's hostels, for the dashboard's donut charts. (The bookings
         # list is paged, so counting what one page happens to hold would give wrong totals.)
-        owner_bookings = Booking.objects.filter(hostel__owner=user)
-        by_status = dict(owner_bookings.values_list('status').annotate(n=Count('id')))
-        by_mode = dict(owner_bookings.values_list('payment_mode').annotate(n=Count('id')))
+        by_status = {s: booking_totals[f'status_{s}'] for s in statuses}
+        by_mode = {m: booking_totals[f'mode_{m}'] for m in modes}
 
         return Response({
             "success": True,
@@ -366,7 +368,7 @@ class DashboardActivityView(APIView):
         user = request.user
         activities = []
 
-        recent_bookings = Booking.objects.filter(hostel__owner=user).order_by('-updated_at')[:10]
+        recent_bookings = Booking.objects.filter(hostel__owner=user).select_related('hostel').order_by('-updated_at')[:10]
         for b in recent_bookings:
             activity_type = 'booking_request'
             title = 'New Booking Request'

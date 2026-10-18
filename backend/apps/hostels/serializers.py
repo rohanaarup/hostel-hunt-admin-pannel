@@ -1,6 +1,9 @@
+from django.db import transaction
 from django.db.models import Q
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
+from apps.core.images import LIST_WIDTH, sized_image_url
 from apps.core.tenancy.querysets import tenant_scope_q
 from .locations import resolve_city, resolve_localities
 from .models import City, Hostel, Locality
@@ -41,7 +44,7 @@ class HostelListSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_cover_image(self, obj):
-        return getattr(obj, 'cover_image', None)
+        return sized_image_url(getattr(obj, 'cover_image', None), LIST_WIDTH)
 
     @extend_schema_field(serializers.FloatField(allow_null=True))
     def get_price_from(self, obj):
@@ -64,6 +67,11 @@ class HostelListSerializer(serializers.ModelSerializer):
         ret['hostel_id'] = ret.pop('id')
         return ret
 
+# What a hostel save may send for a room. Anything else is refused with a 400 instead of crashing the save.
+ROOM_WRITABLE = {f.name for f in Room._meta.concrete_fields} - {'id', 'hostel', 'created_at', 'updated_at'}
+ROOM_DRAFT_KEYS = {'_draft_id', 'photos', 'room_id', 'id'}  # sent by the admin wizard, never stored on the room
+
+
 class HostelSerializer(serializers.ModelSerializer):
     rooms = RoomSerializer(many=True, read_only=True)
     media = MediaItemSerializer(many=True, read_only=True)
@@ -82,6 +90,20 @@ class HostelSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'city': {'required': False}, 'locality': {'required': False}, 'state': {'required': False},
         }
+
+    def validate_rooms_data(self, rows):
+        for number, row in enumerate(rows, start=1):
+            unknown = sorted(set(row) - ROOM_WRITABLE - ROOM_DRAFT_KEYS)
+            if unknown:
+                raise serializers.ValidationError(f"Room {number} has fields that cannot be saved: {', '.join(unknown)}.")
+        return rows
+
+    @staticmethod
+    def _room_values(row):
+        values = {key: value for key, value in row.items() if key not in ROOM_DRAFT_KEYS}
+        if 'sharing_type' in values and not values['sharing_type']:
+            values.pop('sharing_type')
+        return values
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
@@ -144,25 +166,21 @@ class HostelSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError({field: 'This field is required.'})
         return attrs
 
+    @transaction.atomic
     def create(self, validated_data):
+        """The hostel, all its rooms (one INSERT) and its media links are saved together or not at all."""
         rooms_data = validated_data.pop('rooms_data', [])
         media_ids = validated_data.pop('media_ids', [])
-        
+
         hostel = super().create(validated_data)
-        
-        for room_data in rooms_data:
-            # Pop frontend-only draft id if present
-            room_data.pop('_draft_id', None)
-            room_data.pop('photos', None)
-            room_data.pop('room_id', None)
-            room_data.pop('id', None)
-            if 'sharing_type' in room_data and not room_data['sharing_type']:
-                room_data.pop('sharing_type')
-            Room.objects.create(hostel=hostel, **room_data)
-            
+
+        rooms = [Room(hostel=hostel, **self._room_values(row)) for row in rooms_data]
+        if rooms:
+            Room.objects.bulk_create(rooms)
+
         if media_ids:
             self._link_media(hostel, media_ids)
-            
+
         return hostel
 
     def _link_media(self, hostel, media_ids):
@@ -173,36 +191,50 @@ class HostelSerializer(serializers.ModelSerializer):
         allowed = Q(hostel__isnull=True, room__isnull=True) | tenant_scope_q(MediaItem, user)
         MediaItem.objects.filter(allowed, id__in=media_ids).update(hostel=hostel)
 
+    @transaction.atomic
     def update(self, instance, validated_data):
+        """One transaction. A room left out of the list is deleted only if nothing refers to it; a room that has
+        bookings is deactivated instead (it disappears from the public hostel but keeps its bookings and beds).
+        Sending a deactivated room again reactivates it."""
         rooms_data = validated_data.pop('rooms_data', None)
         media_ids = validated_data.pop('media_ids', None)
-        
+
         hostel = super().update(instance, validated_data)
-        
+
         if rooms_data is not None:
-            existing_room_ids = [str(r.id) for r in instance.rooms.all()]
-            incoming_ids = []
-            
-            for room_data in rooms_data:
-                room_data.pop('_draft_id', None)
-                room_data.pop('photos', None)
-                room_id = room_data.pop('room_id', None) or room_data.pop('id', None)
-                
-                if 'sharing_type' in room_data and not room_data['sharing_type']:
-                    room_data.pop('sharing_type')
-                
-                if room_id and str(room_id) in existing_room_ids:
-                    Room.objects.filter(id=room_id).update(**room_data)
-                    incoming_ids.append(str(room_id))
+            existing = {str(r.id): r for r in Room.objects.filter(hostel=hostel)}
+            kept_ids, new_rooms, changed, fields = set(), [], [], {'is_active', 'updated_at'}
+            now = timezone.now()
+
+            for row in rooms_data:
+                room_id = row.get('room_id') or row.get('id')
+                values = self._room_values(row)
+                values.setdefault('is_active', True)
+                room = existing.get(str(room_id)) if room_id else None
+                if room is not None:
+                    for name, value in values.items():
+                        setattr(room, name, value)
+                    room.updated_at = now
+                    fields.update(values)
+                    changed.append(room)
+                    kept_ids.add(str(room.id))
                 else:
-                    new_room = Room.objects.create(hostel=hostel, **room_data)
-                    incoming_ids.append(str(new_room.id))
-                    
-            Room.objects.filter(hostel=hostel).exclude(id__in=incoming_ids).delete()
-            
+                    new_rooms.append(Room(hostel=hostel, **values))
+
+            if changed:
+                Room.objects.bulk_update(changed, sorted(fields))  # one UPDATE for every changed room
+            if new_rooms:
+                kept_ids.update(str(room.id) for room in Room.objects.bulk_create(new_rooms))
+
+            left_out = Room.objects.filter(hostel=hostel).exclude(id__in=kept_ids)
+            with_bookings = list(left_out.filter(bookings__isnull=False).values_list('id', flat=True).distinct())
+            if with_bookings:
+                Room.objects.filter(id__in=with_bookings).update(is_active=False)
+            left_out.exclude(id__in=with_bookings).delete()
+
         if media_ids is not None:
-            # Only link new ones; do not aggressively delete media missing from the list 
+            # Only link new ones; do not aggressively delete media missing from the list
             # unless we explicitly want to. For safety, let's just update the ones passed.
             self._link_media(hostel, media_ids)
-            
+
         return hostel

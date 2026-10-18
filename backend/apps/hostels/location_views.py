@@ -11,6 +11,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import generics, serializers
 from rest_framework.permissions import AllowAny
 
+from . import places_cache
 from .locations import match_key
 from .models import City, Locality
 
@@ -37,7 +38,15 @@ def _include_empty(request):
     return request.query_params.get('include_empty', '').lower() in ('1', 'true', 'yes')
 
 
-class CityListView(generics.ListAPIView):
+class CachedListMixin:
+    # Serves the list from the short places cache (apps/hostels/places_cache.py). A comment, not a
+    # docstring, so it does not leak into the OpenAPI description of every view that uses it.
+
+    def list(self, request, *args, **kwargs):
+        return places_cache.cached_list(request, lambda: super(CachedListMixin, self).list(request, *args, **kwargs))
+
+
+class CityListView(CachedListMixin, generics.ListAPIView):
     permission_classes = [AllowAny]
     serializer_class = CitySerializer
     pagination_class = None
@@ -49,7 +58,7 @@ class CityListView(generics.ListAPIView):
         return qs.order_by('name', 'id')
 
 
-class CityLocalityListView(generics.ListAPIView):
+class CityLocalityListView(CachedListMixin, generics.ListAPIView):
     permission_classes = [AllowAny]
     serializer_class = LocalitySerializer
     pagination_class = None
