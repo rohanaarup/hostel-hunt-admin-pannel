@@ -551,6 +551,9 @@ class WebhookView(APIView):
     """
     authentication_classes = []  # Rule 5 — webhook comes from Razorpay, not from a user session
     permission_classes     = []  # Rule 5 — do NOT add auth here
+    # No per-address request limit: the signature is the protection, and a burst of genuine events from
+    # Razorpay's few addresses must never be answered with 429 (it would only delay them with retries).
+    throttle_classes       = []
 
     def post(self, request):
         # ── Signature verification (HMAC with WEBHOOK_SECRET) ─────────────────

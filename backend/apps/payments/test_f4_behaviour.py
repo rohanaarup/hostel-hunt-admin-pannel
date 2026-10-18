@@ -63,6 +63,15 @@ class WebhookEventTests(Base):
         self.assertEqual(response.json()['status'], 'unknown_order')
 
 
+class WebhookThrottleTests(Base):
+    def test_a_burst_of_genuine_webhooks_is_never_throttled(self):
+        statuses = [
+            repro.webhook('payment.captured', 'order_none', f'pay_{n}', 100, event_id=f'evt_burst_{n}').status_code
+            for n in range(80)
+        ]
+        self.assertEqual(set(statuses), {200})
+
+
 class FlaggedPaymentTests(Base):
     def test_a_wrong_amount_is_flagged_with_a_note(self):
         _, _, payment_id, order_id = repro.start_order(self.room, 1, 'a@example.test')

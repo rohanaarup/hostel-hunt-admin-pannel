@@ -12,6 +12,7 @@ from io import StringIO
 from unittest import mock, skipUnless
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.core.management import call_command
 from django.db import connection
 from django.test import TestCase, TransactionTestCase
@@ -68,6 +69,7 @@ def start_order(room, bed_number, email):
 
 class PaymentCase(TestCase):
     def setUp(self):
+        cache.clear()  # per-address throttle counters live in process memory and must not leak between tests
         self.owner = ensure_sample_catalog()
         self.room = Room.objects.order_by('room_name').first()  # the Double room, 6500 INR a month
         self.paise = int(self.room.price_per_month * 100)
@@ -187,6 +189,7 @@ class ConcurrencyTests(TransactionTestCase):
     ROUNDS = 6
 
     def setUp(self):
+        cache.clear()
         self.owner = ensure_sample_catalog()
         self.room = Room.objects.order_by('room_name').first()
         self.paise = int(self.room.price_per_month * 100)
