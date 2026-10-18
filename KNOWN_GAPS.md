@@ -65,7 +65,8 @@ Impact is judged **at launch with real users**. Today (pre-production, a few tes
 | T4 admin data safety | Merged | Not opened in a browser |
 | Lean Core F4 payments and OTP | Merged | Staging payment test **not run** |
 | Lean Core F5 data path | Built 2026-10-18 | Staging check after deploy; no production numbers yet |
-| F6 phone resilience, F7 launch gate | Not started | Not started |
+| Lean Core F6 phone resilience | Merged 2026-10-19 (app PR #12) | Tests and APK build only; **no phone run yet** (F6-05) |
+| Lean Core F7 launch gate | Not started | Not started |
 
 ## Top gaps to watch
 
@@ -80,7 +81,7 @@ These are the High items. Details are in the phase sections.
 | F3-02 | Laptop `.env` points at the production database | A local run can change real data. |
 | X-06 | No backups and no restore rehearsal | A data loss cannot be undone. |
 | X-08 | Android release blockers (application id `com.example...`, debug signing, cleartext) | The Play Store will reject the build, and the id cannot change after the first upload. |
-| F6-01 | Payment screen can start a second order while a payment may still succeed | Possible double payment. Planned in F6. |
+| F6-05 | F6 is proven by tests and a debug build only, never on a phone | The payment resume flow and the waking banner need one real device run (script in the app's `docs/F6-PHONE-RESILIENCE.md`). |
 
 ## What unlocks what
 
@@ -254,17 +255,22 @@ Columns: **ID** · what is missing or ignored · **why** · **impact** · **how 
 | F5-07 | Owner queries grow linearly with bookings (18 to 31 ms at 60,000 on a local database). No index helped. Revisit when one dashboard request shows `db_ms` above about 100 or bookings pass roughly 200,000. | DEFERRED | Low | Slower dashboards at larger sizes. | Open |
 | F5-08 | The database pool has 3 to 4 slots of headroom (11 to 12 of 15 in use). Any extra script or a second cron job uses it. | DEFERRED | Moderate | An earlier `EMAXCONNSESSION` error can return. | Open |
 
-## F6 and F7. Not started (playbook gaps still open)
+## F6 and F7 (F6 built 2026-10-19; F7 not started)
 
-| ID | Gap | Why | Impact | Effect |
-|---|---|---|---|---|
-| F6-01 | The payment confirming screen can overlap polls, gives up at 75 s, "Try Again" can create a second order, and a killed app forgets a pending payment (playbook G29). | DEFERRED | High | Possible double charge or a lost payment. |
-| F6-02 | No shared HTTP client, no retry or backoff, one 60 s timeout, no "waking server" message, no offline cache (G26, G27, G31). | DEFERRED | Moderate | Poor experience on slow networks and after Render sleeps. |
-| F6-03 | Full-size images decode in memory, no disk cache (G12 client side). | DEFERRED | Moderate | Memory use and slow scrolling. |
-| F6-04 | Heavy card rendering is a hypothesis until profiled (G34). | DEFERRED | Low | Possible dropped frames. |
-| F7-01 | No load test has ever run, so "thousands of users" is unmeasured (G25). | DEFERRED | Moderate | Capacity unknown. |
-| F7-02 | Android release blockers: cleartext traffic allowed, debug signing, `com.example` application id, no minify or ABI split, 7.9 MB of assets (G33). | DEFERRED | High | The Play Store rejects the build; the id cannot change after the first upload. |
-| F7-03 | No `RELEASE.md`, backup, restore or rollback rehearsal. | DEFERRED | High | Same as X-06. |
+F6-01 and F6-02 are closed (see Closed gaps C-14, C-15). C-16 closed the decode and asset part of F6-03.
+
+| ID | Gap | Why | Impact | Effect | Status |
+|---|---|---|---|---|---|
+| F6-03 | Pictures have no disk cache: `Image.network` keeps decoded pictures in memory only, so a cold start downloads them again. `cached_network_image` was deliberately not added (new dependency, disk growth to manage). | DEFERRED | Low to Moderate | More data use and slower first scroll after a restart. | Open |
+| F6-04 | Heavy card rendering (blur, shadows) is a hypothesis until profiled (G34). Nothing was changed. Needs profile-mode numbers from a phone (steps in `docs/F6-PHONE-RESILIENCE.md`). | HUMAN | Low | Possible dropped frames. | Open |
+| F6-05 | F6 was proven by tests and a debug APK build only. The payment resume, the waking banner and the offline copy were never run on a phone or against staging. | HUMAN | Moderate | Bugs tests cannot see (Android back stack, process kill timing, UPI app return). | Open |
+| F6-06 | Saved copies cover only the hostel list, cities and localities. Search results, hostel detail, rooms, saved list and bookings show an error with Retry when offline. Personal data is deliberately never cached. | CHOICE | Low | Offline browsing is partial. | Open, accepted |
+| F6-07 | A card payment whose verify answer is lost relies on the Razorpay webhook to confirm. Until the webhook is configured on staging (L4-01) the status screen stays at "Still Waiting" for such a payment. | HUMAN | Moderate | A paid student sees "Still Waiting" until the webhook arrives. | Open |
+| F6-08 | The payment method icons load from three third-party sites (flaticon, uxwing, iconscout). If one moves or blocks, the app falls back to a built-in icon. | DEFERRED | Low | Cosmetic. | Open |
+| F6-09 | The "payment waiting" banner shows on the home screen only, and a note older than 24 hours is dropped. A student who never returns to home sees it only on the payment screen. | CHOICE | Low | A late confirmation is found the next time home opens. | Open, accepted |
+| F7-01 | No load test has ever run, so "thousands of users" is unmeasured (G25). | DEFERRED | Moderate | Capacity unknown. | Open |
+| F7-02 | Android release blockers: cleartext traffic allowed, debug signing, `com.example` application id, no minify or ABI split, assets still 4.7 MB after F6 cleanup (G33). | DEFERRED | High | The Play Store rejects the build; the id cannot change after the first upload. | Open |
+| F7-03 | No `RELEASE.md`, backup, restore or rollback rehearsal. | DEFERRED | High | Same as X-06. | Open |
 
 ---
 
@@ -299,6 +305,9 @@ Columns: **ID** · what is missing or ignored · **why** · **impact** · **how 
 | C-11 | A hostel save was not one transaction, crashed with a 500 on an unknown room field, inserted rooms one by one, and an update deleted left-out rooms (with their beds, and their bookings lost the room). | 2026-10-18 (F5) | `test_f5.HostelSaveTests`. Rooms with bookings are deactivated, never deleted. |
 | C-12 | No compression or cache headers in Django; public photos were raw originals; the places lists hit the database every time. | 2026-10-18 (F5) | `test_f5.HttpHeaderTests`, `ImageTests`, `ImageSerializerTests`. Byte saving unmeasured (F5-03). |
 | C-13 | No database connect timeout. | 2026-10-18 (F5) | `DatabaseOptionTests`. |
+| C-14 | (F6-01) The payment confirming screen could overlap polls, gave up at 75 s, "Try Again" could create a second order, and a killed app forgot a pending payment. | 2026-10-19 (F6) | `test/features/payments/` (27 tests): one question at a time with a time budget, Try Again asks the server first, no order while the first is undecided, note survives a simulated restart, cleared at Log Out. Not yet run on a phone (F6-05). |
+| C-15 | (F6-02) No shared HTTP client, no retry or backoff, a timeout that did not close the socket, no waking message, a network error during token refresh logged the person out, concurrent 401s refreshed several times, no offline copy, every chip refetched. | 2026-10-19 (F6) | `test/core/http_transport_test.dart`, `api_service_resilience_test.dart`, `last_good_cache_test.dart`, `test/features/f6_resilience_test.dart`. GET retried and POST not; one refresh for concurrent 401s; refresh network error keeps the session. |
+| C-16 | (part of F6-03) Pictures decoded at full size; 4 unused or duplicate bundled pictures; card entrance delay grew with list position. | 2026-10-19 (F6) | `cacheWidth` on every network picture (tests assert `ResizeImage`), `images/` 7.9 MB to 4.7 MB, a test fails if a bundled picture is unused or duplicated. Disk cache still open (F6-03). |
 | C-09 | Debug routes, tracebacks and OTP values leaked in responses. | 2026-10-10 (F1) on `main` and staging | Tests. Still live on production (F1-01). |
 
 # Changing this file
