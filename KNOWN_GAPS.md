@@ -1,6 +1,6 @@
 # Known gaps register (Hostel Hunt)
 
-**Started:** 2026-10-18 · **Last reviewed:** 2026-10-18 · **Owner:** the developer and Claude, together
+**Started:** 2026-10-18 · **Last reviewed:** 2026-10-18 (after F5) · **Owner:** the developer and Claude, together
 
 This file lists what we have **not** built, **not** verified, or **chosen to ignore**, phase by phase, and how much each
 item matters. It exists because no phase gets finished at 100%: many things need a paid service, infrastructure that
@@ -64,7 +64,7 @@ Impact is judged **at launch with real users**. Today (pre-production, a few tes
 | T3 voice, saved, detail | Merged | Not run on a phone |
 | T4 admin data safety | Merged | Not opened in a browser |
 | Lean Core F4 payments and OTP | Merged | Staging payment test **not run** |
-| Lean Core F5 data path | Part 1 plan only | Not approved, not built |
+| Lean Core F5 data path | Built 2026-10-18 | Staging check after deploy; no production numbers yet |
 | F6 phone resilience, F7 launch gate | Not started | Not started |
 
 ## Top gaps to watch
@@ -241,19 +241,18 @@ Columns: **ID** · what is missing or ignored · **why** · **impact** · **how 
 | L4-11 | The second OTP app (`apps.otp_auth`) is reduced to a proxy model and still installed. | DEFERRED | Low | Dead code to delete later. | Open |
 | L4-12 | **A paid bed never becomes free again.** Nothing releases the bed or updates the booking after a full refund, a cancellation or a checkout (no vacate flow exists). Offline "mark paid" now also takes a bed. | FUTURE | High at launch | Beds stay unavailable forever; owners cannot re-let them. Found by reading the code on 2026-10-18; not yet reproduced by a test. | Open |
 
-## F5. Data path and payload (Part 1 only, 2026-10-18; nothing built)
-
-These are planned, not built. Numbers come from a local measurement with 30 hostels.
+## F5. Data path and payload (built 2026-10-18; evidence in `backend/docs/AFTER-F5.md`)
 
 | ID | Gap | Why | Impact | Effect | Status |
 |---|---|---|---|---|---|
-| F5-01 | Owner dashboard stats take 9 queries, activity takes 12 for 10 rows (lazy joins). | DEFERRED | Moderate | Each query pays the database distance (see F5-05). | Planned |
-| F5-02 | No Django compression and no cache headers. Render's edge gzips large responses, but your own server would not. | DEFERRED | Low | Slower on your own server. | Planned |
-| F5-03 | Public images are raw Cloudinary originals. | DEFERRED | Moderate | Slow lists and high data use on mobile. | Planned |
-| F5-04 | Saving a hostel is not one transaction; an update deletes rooms left out (cascades to beds and nulls bookings). | DEFERRED | Moderate | A partial save, or rooms with bookings lost. | Planned |
-| F5-05 | The distance from Render (Singapore) to the production database (Mumbai) is **unmeasured**; production has no request log yet (F2-04). | HUMAN | Moderate | We cannot decide whether to move the database. | Open |
-| F5-06 | Indexes on bookings and payments are unproven (no realistic data, no `pg_stat_statements`). | DEFERRED | Low | Possible slow scans at larger sizes. | Open |
-| F5-07 | The database connection pool (15 slots, session mode) has about 5 slots of headroom. Any extra script or cron job eats it. | DEFERRED | Moderate | An earlier exhaustion error (`EMAXCONNSESSION`) can return. | Open |
+| F5-01 | The distance from Render (Singapore) to the production database (Mumbai) is **unmeasured**, because production has no request log yet (F2-04). The rule to decide is written in AFTER-F5.md (40 ms or more per query and database time above half of the request means move it). | HUMAN | Moderate | The query cuts help whatever the distance is, but we cannot say whether moving the database is worth it. | Open |
+| F5-02 | The statement timeout (`DB_STATEMENT_TIMEOUT_MS=25000`) is in `render.yaml` only. Render's dashboard start command must be edited by hand on staging and production (same drift risk as F3-09). | HUMAN | Low | A runaway query is not cut off until then. | Open |
+| F5-03 | Image savings were **not measured** (no staging photo, no Cloudinary access). The sized URLs are tested; the byte saving is an expectation. Cloudinary credits will be used by the transformations (X-09). | HUMAN, UNVERIFIED | Low | Possible surprise in data use or credits. | Open |
+| F5-04 | The cities and localities cache is per worker for 60 s: a bulk update (the deactivate command) or a change saved on the other worker shows after up to a minute. | CHOICE | Low | A just-added locality can be missing briefly on one worker. | Open, accepted |
+| F5-05 | Cache headers (`ETag`, `max-age`) only help once something caches: a browser, a CDN, or the app's HTTP cache (F6). Render's edge does not cache JSON by itself. | DEFERRED | Low | No bandwidth saving yet. | Open |
+| F5-06 | A room deactivated by a hostel update (it had bookings) still counts in the owner's own views and in the stored `total_rooms`/`total_beds` numbers, and the admin site has no button to reactivate it other than sending it again. | DEFERRED | Low | Owners may wonder where a room went. | Open |
+| F5-07 | Owner queries grow linearly with bookings (18 to 31 ms at 60,000 on a local database). No index helped. Revisit when one dashboard request shows `db_ms` above about 100 or bookings pass roughly 200,000. | DEFERRED | Low | Slower dashboards at larger sizes. | Open |
+| F5-08 | The database pool has 3 to 4 slots of headroom (11 to 12 of 15 in use). Any extra script or a second cron job uses it. | DEFERRED | Moderate | An earlier `EMAXCONNSESSION` error can return. | Open |
 
 ## F6 and F7. Not started (playbook gaps still open)
 
@@ -296,6 +295,10 @@ These are planned, not built. Numbers come from a local measurement with 30 host
 | C-06 | Double tap on Pay returned 500; two confirmations could race; refunds and webhooks were not idempotent; late captures could pay one bed twice. | 2026-10-18 (F4) | 20 reproducing tests failing before, passing after; CI green. |
 | C-07 | OTP hashing took about 0.6 s each; no attempt cap; spoofable throttle; send and verify shared one limit. | 2026-10-18 (F4) | Same. |
 | C-08 | Outbound calls had no timeouts. | 2026-10-18 (F4) | Source-scan test in CI. |
+| C-10 | Owner dashboard needed 9 queries, activity 12 (a lazy join per row). | 2026-10-18 (F5) | 4 and 2 queries, held by `assertNumQueries`-style tests that also compare every number. |
+| C-11 | A hostel save was not one transaction, crashed with a 500 on an unknown room field, inserted rooms one by one, and an update deleted left-out rooms (with their beds, and their bookings lost the room). | 2026-10-18 (F5) | `test_f5.HostelSaveTests`. Rooms with bookings are deactivated, never deleted. |
+| C-12 | No compression or cache headers in Django; public photos were raw originals; the places lists hit the database every time. | 2026-10-18 (F5) | `test_f5.HttpHeaderTests`, `ImageTests`, `ImageSerializerTests`. Byte saving unmeasured (F5-03). |
+| C-13 | No database connect timeout. | 2026-10-18 (F5) | `DatabaseOptionTests`. |
 | C-09 | Debug routes, tracebacks and OTP values leaked in responses. | 2026-10-10 (F1) on `main` and staging | Tests. Still live on production (F1-01). |
 
 # Changing this file
