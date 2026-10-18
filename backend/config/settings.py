@@ -19,6 +19,8 @@ from decouple import config, Csv
 from django.core.exceptions import ImproperlyConfigured
 import dj_database_url
 
+from apps.core.db_options import postgres_options
+
 logger = logging.getLogger('apps.startup')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -103,6 +105,13 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+# Cache headers for the anonymous public reads (apps/core/http_cache.py), then compression outside it, so the
+# ETag is computed on the plain body. Both sit after the health check, which must stay untouched.
+MIDDLEWARE.insert(2, 'apps.core.http_cache.PublicCacheMiddleware')
+if config('GZIP_RESPONSES', default=True, cast=bool):
+    # Render's edge already compresses large responses; your own server would not. A response the edge
+    # compressed is never compressed twice.
+    MIDDLEWARE.insert(2, 'django.middleware.gzip.GZipMiddleware')
 
 ROOT_URLCONF = 'config.urls'
 
@@ -182,6 +191,19 @@ if _missing_env:
         "Missing required environment variables: " + ", ".join(_missing_env)
         + ". Set them in the process environment (see .env.example for the full list)."
     )
+
+
+# Connection timeouts (see apps/core/db_options.py). The statement timeout is 0 (off) here and is set only on the
+# web process through its start command, so migrations and the clean-up job are never cut short.
+DB_CONNECT_TIMEOUT = config('DB_CONNECT_TIMEOUT', default=5, cast=int)
+DB_STATEMENT_TIMEOUT_MS = config('DB_STATEMENT_TIMEOUT_MS', default=0, cast=int)
+if DATABASES['default']['ENGINE'].endswith('postgresql'):
+    DATABASES['default']['OPTIONS'] = postgres_options(DATABASES['default'].get('OPTIONS'), DB_CONNECT_TIMEOUT)
+
+# Per-process memory cache. Used for the short public places cache (apps/hostels/places_cache.py) and the
+# per-worker request throttle counters. 0 turns the places cache off.
+CACHES = {'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}}
+PUBLIC_LIST_CACHE_SECONDS = config('PUBLIC_LIST_CACHE_SECONDS', default=60, cast=int)
 
 
 # Password validation

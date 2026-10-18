@@ -10,16 +10,24 @@ from rest_framework.response import Response
 from apps.core.tenancy.permissions import IsTenantOwner
 from apps.core.tenancy.querysets import tenant_scope_q
 from apps.media_uploads.models import MediaItem
+from apps.media_uploads.serializers import PublicMediaItemSerializer
 from apps.rooms.models import Room
 from utils.pagination import CustomPageNumberPagination
 
+from . import places_cache
 from .locations import match_key, resolve_city, resolve_localities
 from .models import Hostel, Locality
+from rest_framework.serializers import ModelSerializer  # noqa: F401
+from apps.rooms.serializers import RoomSerializer
 from .serializers import HostelListSerializer, HostelSerializer
 
 
 class PublicHostelSerializer(HostelSerializer):
-    """Safe read-only serializer for the public hostel detail."""
+    """Safe read-only serializer for the public hostel detail. Shows only active rooms (`public_rooms`, set by
+    the view) and photos sized for a phone screen."""
+    rooms = RoomSerializer(many=True, read_only=True, source='public_rooms')
+    media = PublicMediaItemSerializer(many=True, read_only=True)
+
     class Meta(HostelSerializer.Meta):
         # Explicitly list public-safe fields (exclude 'owner' UUID)
         fields = [
@@ -53,7 +61,7 @@ class HostelPagination(CustomPageNumberPagination):
 def _room_stat(aggregate):
     """A per-hostel room aggregate as a subquery. Unlike a JOIN + GROUP BY it leaves the hostels query
     ungrouped, so the pagination count is a plain COUNT over the filtered hostels."""
-    rooms = Room.objects.filter(hostel=OuterRef('pk')).order_by().values('hostel')
+    rooms = Room.objects.filter(hostel=OuterRef('pk'), is_active=True).order_by().values('hostel')
     return rooms.annotate(value=aggregate).values('value')[:1]
 
 
@@ -188,6 +196,9 @@ class HostelViewSet(viewsets.ModelViewSet):
         owns = request.user.is_authenticated and Hostel.objects.filter(
             tenant_scope_q(Hostel, request.user), pk=hostel.pk
         ).exists()
+        if not owns:
+            # The rooms were prefetched with the hostel; filtering the loaded list costs no query.
+            hostel.public_rooms = [room for room in hostel.rooms.all() if room.is_active]
         serializer_class = HostelSerializer if owns else PublicHostelSerializer
         return Response(serializer_class(hostel, context=self.get_serializer_context()).data)
 
@@ -201,6 +212,9 @@ class HostelViewSet(viewsets.ModelViewSet):
         GET /api/v1/hostels/localities/?city=Hyderabad   (kept for older apps; prefer /cities/{slug}/localities/)
         Response: [{"locality": "Kondapur", "count": 6}, ...] sorted by count descending, active hostels only.
         """
+        return places_cache.cached_list(request, lambda: self._localities(request))
+
+    def _localities(self, request):
         city_value = (request.query_params.get('city') or '').strip()
         city = resolve_city(city_value) if city_value else None
 

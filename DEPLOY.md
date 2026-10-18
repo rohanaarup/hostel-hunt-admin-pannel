@@ -105,3 +105,10 @@ Order: staging first (build runs the migrations), run the staging payment test (
 
 ### Payments that need a person
 A payment with `needs_review` set means Razorpay captured money that the system could not honour (the bed was taken, the booking was cancelled, the amount differed, a duplicate capture, or a refund whose outcome is unknown). Nothing is refunded automatically. Filter Payments by "needs review" in `/admin/`, read the note, and refund in the Razorpay dashboard. The same event is logged at ERROR level (and reaches Sentry).
+
+## F5 (data path): nothing to migrate
+No migration and no required variable. Optional on the **web service only**: `DB_STATEMENT_TIMEOUT_MS=25000` in front of the
+start command (see `render.yaml`) caps one database statement; leave it off the build command and the cron job.
+`DB_CONNECT_TIMEOUT` (default 5), `PUBLIC_LIST_CACHE_SECONDS` (default 60, 0 = off) and `GZIP_RESPONSES` (default on) are
+optional too. The measurements and the reasoning (why no indexes, connection arithmetic, how to decide whether to move the
+database) are in `backend/docs/AFTER-F5.md`.

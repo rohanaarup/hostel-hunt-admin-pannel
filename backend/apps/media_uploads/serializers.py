@@ -1,5 +1,7 @@
 from django.conf import settings
 from rest_framework import serializers
+
+from apps.core.images import DETAIL_WIDTH, sized_image_url
 from .models import MediaItem
 
 CLOUDINARY_HOST = 'https://res.cloudinary.com/'
@@ -21,3 +23,14 @@ class MediaItemSerializer(serializers.ModelSerializer):
         if not value.startswith(required):
             raise serializers.ValidationError('Upload the file through the site; this address is not accepted.')
         return value
+
+
+class PublicMediaItemSerializer(MediaItemSerializer):
+    """The same media row for the public hostel detail: the address is a Cloudinary version sized for a phone
+    screen (automatic format and quality, at most DETAIL_WIDTH wide). Owners and staff keep the original."""
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        for key in ('file_url', 'remote_url'):
+            data[key] = sized_image_url(data.get(key), DETAIL_WIDTH)
+        return data
