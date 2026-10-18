@@ -90,6 +90,12 @@ class Bed(TenantScopedModel):
         db_index=True,
         help_text="Set while payment is in-flight; cleared on capture or expiry.",
     )
+    hold_payment_id = models.UUIDField(
+        null=True,
+        blank=True,
+        help_text="The Payment that placed the current hold (no FK on purpose: no cross-app dependency or lock). "
+                  "Lets a late webhook for an old order tell its own hold from someone else's.",
+    )
 
     class Meta:
         db_table = 'beds'

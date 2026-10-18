@@ -20,11 +20,14 @@ KEY RULE: Amount is ALWAYS computed server-side from Room.price_per_month.
           Client-supplied amounts are IGNORED. See line marked '← server-side amount'.
 """
 
+import hashlib
 import logging
 from datetime import timedelta
+from decimal import Decimal, InvalidOperation
 
 from django.conf import settings as django_settings
-from django.db import transaction
+from django.db import IntegrityError, transaction
+from django.db.models import Sum
 from django.utils import timezone
 
 from rest_framework import generics, status
@@ -37,7 +40,9 @@ from apps.rooms.models import Bed
 from apps.core.querysets import TenantScopedQuerysetMixin
 from apps.core.utils import get_tenant_scoped_object_or_404
 
-from .models import Payment, PaymentAttempt
+from . import holds
+from .confirm import Outcome, confirm_payment
+from .models import Payment, PaymentAttempt, PaymentRefund, PaymentWebhookEvent
 from apps.core.tenancy.permissions import IsTenantOwner, IsResourceUser
 from .serializers import PaymentSerializer, AdminPaymentSerializer
 from .services import razorpay_client
@@ -46,7 +51,7 @@ logger = logging.getLogger('apps.payments')
 
 # ─── Constants ─────────────────────────────────────────────────────────────────
 
-BED_HOLD_MINUTES = 15
+BED_HOLD_MINUTES = holds.BED_HOLD_MINUTES
 
 # Map Flutter-facing app names → PaymentAttempt.Method enum values
 UPI_APP_TO_METHOD = {
@@ -56,56 +61,37 @@ UPI_APP_TO_METHOD = {
 }
 
 
-# ─── Shared helper ─────────────────────────────────────────────────────────────
+# ─── Shared helpers ────────────────────────────────────────────────────────────
+# Confirming a payment lives in confirm.py (one function, used by verify and the webhook).
 
-def _confirm_payment_atomic(payment, attempt, razorpay_payment_id, signature):
-    """
-    Single atomic transaction that confirms a payment as fully captured.
+def _flagged_reply():
+    return Response(
+        {'error': 'We received your payment, but this bed could not be reserved for you. '
+                  'Our team has been told and will refund you. Please contact support if it takes long.'},
+        status=status.HTTP_409_CONFLICT,
+    )
 
-    Steps (all-or-nothing):
-      1. PaymentAttempt → SUCCESS + set razorpay_payment_id + signature
-      2. Payment        → SUCCESS + set verified_at
-      3. Booking        → status='paid' + marked_paid_at
-      4. Bed            → held_until=None, is_available=False
 
-    Called by both VerifyPaymentView (card callback) and WebhookView
-    (payment.captured / order.paid events) to ensure identical behaviour
-    regardless of which path triggered the confirmation.
-    """
+def _session_expired_reply():
+    return Response({'error': 'This payment session expired. Please start the booking again.'},
+                    status=status.HTTP_409_CONFLICT)
+
+
+def _open_attempt(payment, method):
+    """The open attempt for this method, created if there is none: tapping Pay twice must not make two."""
     with transaction.atomic():
-        now = timezone.now()
-
-        # 1. Attempt
-        attempt.razorpay_payment_id = razorpay_payment_id
-        attempt.razorpay_signature  = signature or ''
-        attempt.status = PaymentAttempt.Status.SUCCESS
-        attempt.save(update_fields=['razorpay_payment_id', 'razorpay_signature', 'status'])
-
-        # 2. Payment
-        payment.status      = Payment.Status.SUCCESS
-        payment.verified_at = now
-        payment.save(update_fields=['status', 'verified_at', 'updated_at'])
-
-        # 3. Booking
-        booking = payment.booking
-        booking.status         = 'paid'
-        booking.marked_paid_at = now
-        booking.save(update_fields=['status', 'marked_paid_at', 'updated_at'])
-
-        # 4. Bed — release hold into a confirmed (unavailable) booking
-        if booking.room and booking.bed_number:
-            try:
-                Bed.objects.filter(
-                    room=booking.room,
-                    bed_number=int(booking.bed_number),
-                ).update(is_available=False, held_until=None)
-            except (ValueError, TypeError):
-                logger.warning(
-                    "Could not update Bed for booking %s: invalid bed_number '%s'",
-                    booking.id, booking.bed_number,
-                )
-
-    logger.info("Payment %s confirmed SUCCESS (razorpay_payment_id=%s)", payment.id, razorpay_payment_id)
+        locked = Payment.objects.select_for_update(of=('self',)).get(pk=payment.pk)
+        attempt = locked.attempts.filter(
+            method=method, status=PaymentAttempt.Status.INITIATED,
+        ).order_by('-created_at').first()
+        if attempt is None:
+            attempt = PaymentAttempt.objects.create(
+                payment=locked, method=method, status=PaymentAttempt.Status.INITIATED,
+            )
+        if locked.status == Payment.Status.CREATED:
+            locked.status = Payment.Status.PENDING
+            locked.save(update_fields=['status', 'updated_at'])
+    return attempt
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -197,7 +183,10 @@ class CreateOrderView(APIView):
         )
         if existing_payment:
             existing_bed = Bed.objects.filter(room=booking.room, bed_number=bed_number).first()
-            if existing_bed and existing_bed.held_until and existing_bed.held_until > now:
+            if (
+                existing_bed and existing_bed.held_until and existing_bed.held_until > now
+                and existing_bed.hold_payment_id in (None, existing_payment.id)
+            ):
                 return Response({
                     'payment_id':        str(existing_payment.id),
                     'razorpay_order_id': existing_payment.razorpay_order_id,
@@ -268,9 +257,6 @@ class CreateOrderView(APIView):
             )
 
             if not lost_race:
-                bed.held_until = recheck_now + timedelta(minutes=BED_HOLD_MINUTES)
-                bed.save(update_fields=['held_until'])
-
                 payment = Payment.objects.create(
                     booking=booking,
                     razorpay_order_id=order['id'],
@@ -278,6 +264,9 @@ class CreateOrderView(APIView):
                     currency=order.get('currency', 'INR'),
                     status=Payment.Status.CREATED,
                 )
+                bed.held_until = recheck_now + timedelta(minutes=BED_HOLD_MINUTES)
+                bed.hold_payment_id = payment.id
+                bed.save(update_fields=['held_until', 'hold_payment_id'])
 
         # ── Step 4: compensation path — lost the race after the order was
         #    already created ───────────────────────────────────────────────
@@ -362,6 +351,9 @@ class InitiateUpiIntentView(APIView):
             return Response({'error': f'Payment is {payment.status}. Cannot initiate new attempt.'},
                             status=status.HTTP_409_CONFLICT)
 
+        if holds.expire_if_lapsed(payment.id):
+            return _session_expired_reply()
+
         method       = UPI_APP_TO_METHOD[app]
         amount_paise = int(payment.amount * 100)
 
@@ -384,15 +376,7 @@ class InitiateUpiIntentView(APIView):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
-        with transaction.atomic():
-            attempt = PaymentAttempt.objects.create(
-                payment=payment,
-                method=method,
-                status=PaymentAttempt.Status.INITIATED,
-            )
-            if payment.status == Payment.Status.CREATED:
-                payment.status = Payment.Status.PENDING
-                payment.save(update_fields=['status', 'updated_at'])
+        attempt = _open_attempt(payment, method)
 
         return Response({
             'attempt_id': str(attempt.id),
@@ -431,17 +415,14 @@ class InitiateCardCheckoutView(APIView):
         if payment.status == Payment.Status.SUCCESS:
             return Response({'error': 'Payment already successful.'}, status=status.HTTP_409_CONFLICT)
 
-        card_config = razorpay_client.get_card_checkout_session(payment.razorpay_order_id)
+        if payment.status in (Payment.Status.FAILED, Payment.Status.REFUNDED):
+            return Response({'error': f'Payment is {payment.status}. Cannot initiate new attempt.'},
+                            status=status.HTTP_409_CONFLICT)
+        if holds.expire_if_lapsed(payment.id):
+            return _session_expired_reply()
 
-        with transaction.atomic():
-            attempt = PaymentAttempt.objects.create(
-                payment=payment,
-                method=PaymentAttempt.Method.CARD,
-                status=PaymentAttempt.Status.INITIATED,
-            )
-            if payment.status == Payment.Status.CREATED:
-                payment.status = Payment.Status.PENDING
-                payment.save(update_fields=['status', 'updated_at'])
+        card_config = razorpay_client.get_card_checkout_session(payment.razorpay_order_id)
+        attempt = _open_attempt(payment, PaymentAttempt.Method.CARD)
 
         return Response({
             'attempt_id':     str(attempt.id),
@@ -469,6 +450,11 @@ class PaymentStatusPollView(APIView):
         except Payment.DoesNotExist:
             return Response({'error': 'Payment not found.'}, status=status.HTTP_404_NOT_FOUND)
         self.check_object_permissions(request, payment)
+
+        # A hold that lapsed reads as lapsed even if the clean-up job has not run.
+        if payment.status in holds.OPEN_STATUSES and holds.peek_hold_has_lapsed(payment):
+            if holds.expire_if_lapsed(payment.id):
+                payment.refresh_from_db()
 
         return Response({
             'payment_id':        str(payment.id),
@@ -531,16 +517,14 @@ class VerifyPaymentView(APIView):
             return Response({'error': 'Payment signature verification failed.'},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        # Find or create the CARD attempt to attach the ids to
-        attempt, _ = PaymentAttempt.objects.get_or_create(
-            payment=payment,
-            method=PaymentAttempt.Method.CARD,
-            status=PaymentAttempt.Status.INITIATED,
+        outcome = confirm_payment(
+            payment.id, razorpay_payment_id, razorpay_signature, method=PaymentAttempt.Method.CARD,
         )
-
-        _confirm_payment_atomic(payment, attempt, razorpay_payment_id, razorpay_signature)
-
-        return Response({'success': True, 'status': Payment.Status.SUCCESS})
+        if outcome in (Outcome.CONFIRMED, Outcome.ALREADY_CONFIRMED):
+            return Response({'success': True, 'status': Payment.Status.SUCCESS})
+        if outcome == Outcome.IGNORED_REFUNDED:
+            return Response({'error': 'This payment was refunded.'}, status=status.HTTP_409_CONFLICT)
+        return _flagged_reply()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -567,6 +551,9 @@ class WebhookView(APIView):
     """
     authentication_classes = []  # Rule 5 — webhook comes from Razorpay, not from a user session
     permission_classes     = []  # Rule 5 — do NOT add auth here
+    # No per-address request limit: the signature is the protection, and a burst of genuine events from
+    # Razorpay's few addresses must never be answered with 429 (it would only delay them with retries).
+    throttle_classes       = []
 
     def post(self, request):
         # ── Signature verification (HMAC with WEBHOOK_SECRET) ─────────────────
@@ -591,71 +578,46 @@ class WebhookView(APIView):
             logger.info("Webhook event '%s' has no order_id — ignoring", event)
             return Response({'status': 'ignored'})
 
-        # ── Find our Payment ──────────────────────────────────────────────────
-        try:
-            payment = Payment.objects.select_related(
-                'booking__room', 'booking__student'
-            ).get(razorpay_order_id=razorpay_order_id)
-        except Payment.DoesNotExist:
-            logger.warning("Webhook: no Payment found for order_id=%s", razorpay_order_id)
-            return Response({'status': 'unknown_order'})
+        # Razorpay sends a unique id with every event (and the same id again on a retry or replay).
+        event_id = request.META.get('HTTP_X_RAZORPAY_EVENT_ID') or hashlib.sha256(payload_bytes).hexdigest()
 
-        # ── Handle event ──────────────────────────────────────────────────────
-        if event in ('payment.captured', 'order.paid'):
-            # Idempotency check — if already SUCCESS, do nothing
-            if payment.status == Payment.Status.SUCCESS:
-                logger.info(
-                    "Webhook: Payment %s already SUCCESS — idempotent 200", payment.id
-                )
-                return Response({'status': 'already_processed'})
-
-            # Find an existing INITIATED attempt or create one
-            # (the attempt may not exist yet if the webhook arrives before
-            #  the client even calls InitiateUpiIntentView/InitiateCardCheckoutView)
-            attempt = PaymentAttempt.objects.filter(
-                payment=payment,
-                status=PaymentAttempt.Status.INITIATED,
-            ).first()
-
-            if attempt is None:
-                attempt = PaymentAttempt.objects.create(
-                    payment=payment,
-                    method=PaymentAttempt.Method.CARD,  # Best guess; webhook lacks method info
-                    status=PaymentAttempt.Status.INITIATED,
-                )
-
-            signature = payment_entity.get('razorpay_signature', '')
-            _confirm_payment_atomic(payment, attempt, razorpay_payment_id, signature)
-            logger.info("Webhook: Payment %s → SUCCESS via %s", payment.id, event)
-
-        elif event == 'payment.failed':
-            if payment.status not in (Payment.Status.SUCCESS, Payment.Status.REFUNDED):
+        # The event row, the lookup and the processing are ONE transaction: a delivery that fails halfway leaves
+        # no row, so Razorpay's retry is processed normally; a delivery that completed is never processed twice.
+        with transaction.atomic():
+            try:
                 with transaction.atomic():
-                    # Mark all open attempts as FAILED
-                    PaymentAttempt.objects.filter(
-                        payment=payment,
-                        status=PaymentAttempt.Status.INITIATED,
-                    ).update(status=PaymentAttempt.Status.FAILED)
+                    record = PaymentWebhookEvent.objects.create(
+                        event_id=event_id[:100], event=str(event)[:60], razorpay_order_id=str(razorpay_order_id)[:100],
+                    )
+            except IntegrityError:
+                logger.info("Webhook: event %s already processed — acknowledged", event_id[:40])
+                return Response({'status': 'duplicate'})
 
-                    payment.status = Payment.Status.FAILED
-                    payment.save(update_fields=['status', 'updated_at'])
+            payment_id = Payment.objects.filter(razorpay_order_id=razorpay_order_id).values_list('id', flat=True).first()
+            if payment_id is None:
+                logger.warning("Webhook: no Payment found for order_id=%s", razorpay_order_id)
+                record.outcome = 'unknown_order'
+                record.save(update_fields=['outcome'])
+                return Response({'status': 'unknown_order'})
 
-                    # Release bed hold
-                    booking = payment.booking
-                    if booking.room and booking.bed_number:
-                        try:
-                            Bed.objects.filter(
-                                room=booking.room,
-                                bed_number=int(booking.bed_number),
-                            ).update(held_until=None)
-                        except (ValueError, TypeError):
-                            pass
+            if event in ('payment.captured', 'order.paid'):
+                outcome = confirm_payment(
+                    payment_id, razorpay_payment_id, payment_entity.get('razorpay_signature', ''),
+                    amount_paise=payment_entity.get('amount'), currency=payment_entity.get('currency'),
+                    method=PaymentAttempt.Method.CARD,  # Best guess; the webhook lacks method info
+                )
+                record.outcome = outcome.value
+                logger.info("Webhook: Payment %s %s via %s", payment_id, outcome.value, event)
+            elif event == 'payment.failed':
+                changed = holds.fail_payment(payment_id)
+                record.outcome = 'failed' if changed else 'no_change'
+            else:
+                record.outcome = 'ignored'
+                logger.info("Webhook: unhandled event '%s' — ignoring", event)
+            record.save(update_fields=['outcome'])
 
-                logger.info("Webhook: Payment %s → FAILED via payment.failed event", payment.id)
-        else:
-            logger.info("Webhook: unhandled event '%s' — ignoring", event)
-
-        return Response({'status': 'ok'})
+        # Always 200 once handled, so Razorpay stops retrying (flagged cases are for a person, not for retries).
+        return Response({'status': record.outcome})
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -740,48 +702,83 @@ class RefundView(APIView):
         payment = get_tenant_scoped_object_or_404(Payment, payment_id, request)
         self.check_object_permissions(request, payment)
 
-        if payment.status != Payment.Status.SUCCESS:
-            return Response(
-                {'error': 'Only successful payments can be refunded.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Default to full refund if amount not specified
-        amount_inr = request.data.get('amount', payment.amount)
+        # Default to the full amount if none is given. Money is handled as Decimal, never float.
         try:
-            amount_paise = int(float(amount_inr) * 100)
-        except (ValueError, TypeError):
+            amount = Decimal(str(request.data.get('amount', payment.amount))).quantize(Decimal('0.01'))
+        except (InvalidOperation, ValueError, TypeError):
             return Response({'error': 'Invalid refund amount.'}, status=status.HTTP_400_BAD_REQUEST)
+        if not amount.is_finite() or amount <= 0:
+            return Response({'error': 'The refund amount must be more than zero.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Find the successful attempt to get the Razorpay payment ID
-        success_attempt = payment.attempts.filter(
-            status=PaymentAttempt.Status.SUCCESS
-        ).first()
+        # Step 1 (locked, no outside calls): check what is left to refund and reserve it. A second request for
+        # the same money finds it reserved and never reaches Razorpay.
+        with transaction.atomic():
+            locked = Payment.objects.select_for_update(of=('self',)).get(pk=payment.pk)
+            if locked.status == Payment.Status.REFUNDED:
+                return Response({'error': 'This payment was already refunded in full.'},
+                                status=status.HTTP_409_CONFLICT)
+            if locked.status != Payment.Status.SUCCESS:
+                return Response({'error': 'Only successful payments can be refunded.'},
+                                status=status.HTTP_400_BAD_REQUEST)
 
-        if not success_attempt or not success_attempt.razorpay_payment_id:
-            return Response(
-                {'error': 'No captured Razorpay payment ID found. Cannot initiate refund.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            success_attempt = locked.attempts.filter(status=PaymentAttempt.Status.SUCCESS).first()
+            if not success_attempt or not success_attempt.razorpay_payment_id:
+                return Response(
+                    {'error': 'No captured Razorpay payment ID found. Cannot initiate refund.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
+            reserved = locked.refunds.filter(
+                status__in=[PaymentRefund.Status.RESERVED, PaymentRefund.Status.PROCESSED],
+            ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+            remaining = locked.amount - reserved
+            if amount > remaining:
+                return Response({'error': f'Only Rs {remaining} can still be refunded on this payment.'},
+                                status=status.HTTP_409_CONFLICT)
+            refund = PaymentRefund.objects.create(payment=locked, amount=amount)
+            razorpay_payment_id = success_attempt.razorpay_payment_id
+
+        # Step 2: the Razorpay call, with no lock held.
         try:
             refund_response = razorpay_client.initiate_refund(
-                payment_id   = success_attempt.razorpay_payment_id,
-                amount_paise = amount_paise,
+                payment_id   = razorpay_payment_id,
+                amount_paise = int(amount * 100),
+                reference    = str(refund.id),
             )
-        except Exception as exc:
-            logger.exception("Razorpay refund failed for payment %s: %s", payment.id, exc)
+        except razorpay_client.RefundRejected:
+            refund.status = PaymentRefund.Status.FAILED
+            refund.save(update_fields=['status', 'updated_at'])
+            logger.exception("Razorpay rejected refund %s for payment %s", refund.id, payment.id)
+            return Response({'error': 'The payment gateway rejected the refund.'}, status=status.HTTP_502_BAD_GATEWAY)
+        except Exception:
+            # Unknown outcome (timeout, gateway error): Razorpay may or may not have refunded. The reservation
+            # stays so nobody can refund the same money again, and a person checks the dashboard.
+            logger.exception("Razorpay refund %s for payment %s: outcome unknown", refund.id, payment.id)
+            Payment.objects.filter(pk=payment.pk).update(
+                needs_review=True,
+                review_note=f'Refund request {refund.id} has an unknown outcome. Check the Razorpay dashboard.'[:200],
+            )
             return Response(
-                {'error': 'Refund initiation failed. Please try again.'},
+                {'error': 'The refund request could not be confirmed. Please check again before retrying.'},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
-        payment.status = Payment.Status.REFUNDED
-        payment.save(update_fields=['status', 'updated_at'])
+        # Step 3: record the result.
+        with transaction.atomic():
+            locked = Payment.objects.select_for_update(of=('self',)).get(pk=payment.pk)
+            refund.status = PaymentRefund.Status.PROCESSED
+            refund.razorpay_refund_id = refund_response.get('id')
+            refund.save(update_fields=['status', 'razorpay_refund_id', 'updated_at'])
+            locked.refunded_amount = locked.refunds.filter(
+                status=PaymentRefund.Status.PROCESSED,
+            ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+            if locked.refunded_amount >= locked.amount:
+                locked.status = Payment.Status.REFUNDED
+            locked.save(update_fields=['refunded_amount', 'status', 'updated_at'])
 
         return Response({
             'success':         True,
             'refund_id':       refund_response.get('id'),
-            'amount_refunded': str(amount_inr),
-            'status':          payment.status,
+            'amount_refunded': str(amount),
+            'status':          locked.status,
         })

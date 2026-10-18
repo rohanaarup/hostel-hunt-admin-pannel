@@ -5,8 +5,8 @@ so the same file works on Render, a VPS or in a container.
 Start: gunicorn config.wsgi:application -c gunicorn.conf.py
 
 Defaults are sized for a small host (512 MB RAM): 2 workers x 4 threads.
-`preload_app` is deliberately off: apps/core/async_utils.py creates a
-ThreadPoolExecutor at import time, and threads do not survive a fork.
+`preload_app` stays off: each worker imports the app itself, so a thread or connection created at import
+time is never shared across a fork.
 """
 import os
 
@@ -16,7 +16,7 @@ worker_class = 'gthread'
 workers = int(os.environ.get('WEB_CONCURRENCY', '2'))
 threads = int(os.environ.get('GUNICORN_THREADS', '4'))
 
-# The mobile app's HTTP timeout is 60 s; SMTP is capped at 15 s (EMAIL_TIMEOUT).
+# The mobile app's HTTP timeout is 60 s; outbound calls are capped at 13 s (apps/core/outbound.py).
 timeout = int(os.environ.get('GUNICORN_TIMEOUT', '60'))
 graceful_timeout = int(os.environ.get('GUNICORN_GRACEFUL_TIMEOUT', '30'))
 keepalive = int(os.environ.get('GUNICORN_KEEPALIVE', '5'))

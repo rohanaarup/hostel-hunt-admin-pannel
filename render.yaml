@@ -37,6 +37,14 @@ services:
         sync: false
       - key: EMAIL_HOST_PASSWORD
         sync: false
+      # OTP email over HTTPS (Render's free plan blocks SMTP). brevo or resend; the key is a secret.
+      # DEFAULT_FROM_EMAIL must be a sender address the provider has verified.
+      - key: EMAIL_API_PROVIDER
+        sync: false
+      - key: EMAIL_API_KEY
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
       - key: RAZORPAY_KEY_ID
         sync: false
       - key: RAZORPAY_KEY_SECRET
@@ -85,6 +93,14 @@ services:
         sync: false
       - key: DATABASE_URL
         sync: false
+      # OTP email over HTTPS (Render's free plan blocks SMTP). brevo or resend; the key is a secret.
+      # DEFAULT_FROM_EMAIL must be a sender address the provider has verified.
+      - key: EMAIL_API_PROVIDER
+        sync: false
+      - key: EMAIL_API_KEY
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
       # Use Razorpay TEST-mode keys here.
       - key: RAZORPAY_KEY_ID
         sync: false
@@ -99,4 +115,28 @@ services:
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_UPLOAD_PRESET
+        sync: false
+
+  # Scheduled clean-up for PRODUCTION (a Render cron job costs at least about $1 per month; confirm on the
+  # pricing page). Correctness never depends on it: a lapsed bed hold is also treated as lapsed when it is
+  # read or written. It closes stale payments, deletes old OTP records and webhook ids, and flushes expired
+  # tokens. Safe to run twice. Staging does not need one.
+  - type: cron
+    name: hostel-hunt-cleanup
+    runtime: python
+    region: singapore
+    plan: starter
+    rootDir: backend
+    schedule: "*/5 * * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python manage.py cleanup_expired
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      # Same values as the production web service (it needs the database and the settings that must be present).
+      - key: SECRET_KEY
+        sync: false
+      - key: ALLOWED_HOSTS
+        sync: false
+      - key: DATABASE_URL
         sync: false

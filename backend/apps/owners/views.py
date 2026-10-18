@@ -8,7 +8,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Owner
-from .services import OTPService
+from .services import OTPService, OTPRateLimited
 from .serializers import (
     OwnerProfileSerializer, SendOtpSerializer, VerifyOtpSerializer,
     SignupSerializer, LoginSerializer, ResetPasswordSerializer, OwnerProfileUpdateSerializer
@@ -54,7 +54,7 @@ def error_response(errors, message="Error", status_code=status.HTTP_400_BAD_REQU
 class SendOtpView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'otp'
+    throttle_scope = 'otp_send'
 
     def post(self, request):
         try:
@@ -75,11 +75,17 @@ class SendOtpView(APIView):
                     if not exists:
                         return error_response({"identifier": "User not found."})
 
-                code, record = OTPService.create_otp(identifier, purpose)
-                
+                try:
+                    code, record = OTPService.create_otp(identifier, purpose)
+                except OTPRateLimited as limited:
+                    response = error_response({"identifier": limited.message}, limited.message, status.HTTP_429_TOO_MANY_REQUESTS)
+                    response['Retry-After'] = str(limited.retry_after)
+                    return response
+
                 sent, msg = OTPService.send_otp(identifier, code, purpose, identifier_type)
                 if sent:
                     return success_response(message=msg)
+                OTPService.discard(record)  # nothing was delivered, so it must not count against the sender
                 return error_response({"identifier": msg}, "Failed to send OTP.", status.HTTP_503_SERVICE_UNAVAILABLE)
                 
             return error_response(serializer.errors)
@@ -95,7 +101,7 @@ class SendOtpView(APIView):
 class VerifyOtpView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'otp'
+    throttle_scope = 'otp_verify'
 
     def post(self, request):
         serializer = VerifyOtpSerializer(data=request.data)

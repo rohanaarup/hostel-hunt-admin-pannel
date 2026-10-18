@@ -21,8 +21,9 @@ import logging
 
 import razorpay
 import razorpay.errors
-import requests as _requests
 from django.conf import settings
+
+from apps.core import outbound
 
 logger = logging.getLogger('apps.payments')
 
@@ -41,12 +42,22 @@ class RazorpayAuthError(Exception):
     pass
 
 
+class RefundRejected(Exception):
+    """Razorpay definitively refused the refund (a 4xx answer): nothing was refunded, so the amount can be retried."""
+
+
 # ─── SDK client factory ────────────────────────────────────────────────────────
 
 def _get_client() -> razorpay.Client:
-    """Return a lazily-initialised Razorpay SDK client using server-side credentials."""
+    """
+    Return a Razorpay SDK client using server-side credentials.
+
+    The SDK has no timeout of its own, so it is given a shared session that applies one (connect 3 s,
+    read 10 s) to every call: a hung gateway can no longer hold a worker thread until gunicorn kills it.
+    """
     return razorpay.Client(
-        auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET)
+        auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET),
+        session=outbound.gateway_session(),
     )
 
 
@@ -133,11 +144,11 @@ def create_upi_intent(
         "referer": "https://hostelhunt.com",
         "user_agent": "HostelHuntFlutterApp/1.0",
     }
-    response = _requests.post(
+    response = outbound.post(
         api_url,
         json=payload,
         auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET),
-        timeout=30,
+        timeout=outbound.GATEWAY,
     )
     response.raise_for_status()
     data = response.json()
@@ -248,7 +259,7 @@ def verify_webhook_signature(payload_bytes: bytes, signature_header: str) -> boo
         return False
 
 
-def initiate_refund(payment_id: str, amount_paise: int) -> dict:
+def initiate_refund(payment_id: str, amount_paise: int, reference: str = '') -> dict:
     """
     Initiate a refund via Razorpay's Refunds API.
 
@@ -256,19 +267,25 @@ def initiate_refund(payment_id: str, amount_paise: int) -> dict:
         payment_id:   Razorpay payment ID (pay_XXXX) of the original charge.
         amount_paise: Amount to refund in paise. Pass the full amount for a
                       complete refund, or a smaller value for partial refund.
+        reference:    Our PaymentRefund id, stored in the refund's notes so a refund seen
+                      in the Razorpay dashboard can be matched to our record.
 
     Returns:
         Razorpay refund object dict (contains refund['id'] etc.).
 
     Raises:
-        Exception on Razorpay API failure — caller should handle.
+        RefundRejected when Razorpay refuses the request (nothing was refunded).
+        Exception on any other failure (timeout, gateway error): the outcome is UNKNOWN.
     """
     client = _get_client()
-    refund = client.payment.refund(payment_id, {
-        "amount": amount_paise,
-        "speed": "normal",
-        "notes": {"source": "HostelHunt Admin Refund"},
-    })
+    try:
+        refund = client.payment.refund(payment_id, {
+            "amount": amount_paise,
+            "speed": "normal",
+            "notes": {"source": "HostelHunt Admin Refund", "refund_ref": reference},
+        })
+    except razorpay.errors.BadRequestError as exc:
+        raise RefundRejected(str(exc)) from exc
     logger.info(
         "Refund initiated: refund_id=%s payment=%s amount=%s paise",
         refund.get('id'), payment_id, amount_paise,
