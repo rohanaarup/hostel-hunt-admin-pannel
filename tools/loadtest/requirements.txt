@@ -1,0 +1,2 @@
+# Load-test tool only. Never installed on the server (not in backend/requirements.txt).
+locust==2.46.7

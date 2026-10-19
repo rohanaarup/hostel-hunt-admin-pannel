@@ -1,0 +1,4 @@
+.venv/
+loadtest-results/
+*.csv
+__pycache__/

@@ -1,0 +1,47 @@
+name: backup
+
+# A daily encrypted copy of the database, kept for 30 days, so a loss on Supabase is not permanent.
+#
+# It does nothing until two repository secrets exist (Settings > Secrets and variables > Actions):
+#   BACKUP_DATABASE_URL     the database's session-pooler URL (a secret; never put it in a file)
+#   BACKUP_AGE_PUBLIC_KEY   the PUBLIC half of an age key pair (starts with age1)
+# The private half stays with you, outside GitHub: it is the only way to read a backup.
+#
+# This repository is public, and anyone with a GitHub login can download a public repository's artifacts.
+# That is why the dump is encrypted before it is uploaded: the file is useless without your private key.
+# See RELEASE.md for the restore steps and the rehearsal.
+on:
+  schedule:
+    - cron: '30 21 * * *'   # 03:00 India time
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dump:
+    name: dump
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+      BACKUP_AGE_PUBLIC_KEY: ${{ secrets.BACKUP_AGE_PUBLIC_KEY }}
+    steps:
+      - name: Say so when the secrets are missing
+        if: ${{ env.BACKUP_DATABASE_URL == '' || env.BACKUP_AGE_PUBLIC_KEY == '' }}
+        run: echo "::warning::Backup skipped: BACKUP_DATABASE_URL and BACKUP_AGE_PUBLIC_KEY are not set. No backup exists (gap X-06)."
+
+      - uses: actions/checkout@v4
+        if: ${{ env.BACKUP_DATABASE_URL != '' && env.BACKUP_AGE_PUBLIC_KEY != '' }}
+
+      - name: Encrypted dump
+        if: ${{ env.BACKUP_DATABASE_URL != '' && env.BACKUP_AGE_PUBLIC_KEY != '' }}
+        run: bash backend/ops/backup.sh hh-backup.dump.age
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ env.BACKUP_DATABASE_URL != '' && env.BACKUP_AGE_PUBLIC_KEY != '' }}
+        with:
+          name: hh-backup-${{ github.run_id }}
+          path: hh-backup.dump.age
+          retention-days: 30
+          if-no-files-found: error

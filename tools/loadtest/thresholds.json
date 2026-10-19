@@ -1,0 +1,15 @@
+{
+  "_comment": "Proposed pass/fail limits for Pass B (throttle raised on staging). Edit after the first real run, with the instance size in mind. Times are milliseconds measured by the load machine; the server's own duration_ms comes from the request log.",
+  "p95_ms": {
+    "public": 800,
+    "detail": 800,
+    "search": 1000,
+    "auth": 1000,
+    "write": 2000,
+    "login": 2500
+  },
+  "max_error_ratio": 0.01,
+  "max_5xx_ratio": 0.001,
+  "max_throttled_ratio": 0.01,
+  "min_requests": 200
+}
