@@ -1,5 +1,6 @@
 from unittest import mock
 
+from django.conf import settings
 from django.db import OperationalError
 from django.test import Client, SimpleTestCase, TestCase, override_settings
 
@@ -10,7 +11,7 @@ class HealthzTests(SimpleTestCase):
     def test_healthz_is_ok_with_the_database_blocked(self):
         response = Client().get('/healthz')
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {'status': 'ok'})
+        self.assertEqual(response.json(), {'status': 'ok', 'env': settings.APP_ENV})
 
     @override_settings(ALLOWED_HOSTS=['api.example.com'])
     def test_healthz_ignores_allowed_hosts(self):

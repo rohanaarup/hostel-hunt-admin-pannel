@@ -66,7 +66,7 @@ Impact is judged **at launch with real users**. Today (pre-production, a few tes
 | Lean Core F4 payments and OTP | Merged | Staging payment test **not run** |
 | Lean Core F5 data path | Built 2026-10-18 | Staging check after deploy; no production numbers yet |
 | Lean Core F6 phone resilience | Merged 2026-10-19 (app PR #12) | Tests and APK build only; **no phone run yet** (F6-05) |
-| Lean Core F7 launch gate | Not started | Not started |
+| Lean Core F7 launch gate | Tooling built 2026-10-19 (backend PR and app PR, see Closed gaps C-17 to C-19) | **No staging load run, no backup running, no signed release in use** (F7-04 to F7-09) |
 
 ## Top gaps to watch
 
@@ -92,7 +92,9 @@ These are the High items. Details are in the phase sections.
 | X-01, F1-01, T1-01, A-06 (production current) | Your explicit OK for a production deploy, a backup first (X-06), `ALLOWED_HOSTS` and `DEBUG` set on Render, then staging-first checks. |
 | F2-01, F2-02, L4-07 (see failures) | A free Sentry account (two projects) and two uptime monitors. Free. |
 | T4-01 (owners can use the admin site) | A host for the Next.js admin and three build variables (names in DEPLOY.md). |
-| X-06, X-07 (backups, always-on) | **PAID:** Supabase Pro (backups, about $25/month, confirm) and Render always-on (about $7/month, confirm). |
+| X-06, X-07 (backups, always-on) | **PAID:** Supabase Pro (backups, from $25/month per its pricing page) and Render always-on (Starter about $7/month, confirm). Free alternative for backups: an `age` key pair and two GitHub secrets (RELEASE.md). |
+| F7-01, F7-04, F7-05 (a measured capacity) | Your decision on the instance size to test; the staging database URL on your laptop for the seed (never the production one); two staging variables for Pass B (LOADTEST.md). |
+| F7-02, F7-06 (Play) | An application id you choose, an upload keystore you make and back up, a Google Play account, a privacy-policy page (docs/ANDROID_RELEASE.md in the app repo). |
 | L4-05 (clean-up job) | **PAID:** a Render cron job (about $1/month, confirm). |
 | X-08 (Play Store) | A final application id, a signing keystore kept outside git, a Play Console account (one-time fee, confirm), F7. |
 | L4-06 | One log line from production or staging showing `xff_hops` (no addresses in it). |
@@ -268,9 +270,16 @@ F6-01 and F6-02 are closed (see Closed gaps C-14, C-15). C-16 closed the decode 
 | F6-07 | A card payment whose verify answer is lost relies on the Razorpay webhook to confirm. Until the webhook is configured on staging (L4-01) the status screen stays at "Still Waiting" for such a payment. | HUMAN | Moderate | A paid student sees "Still Waiting" until the webhook arrives. | Open |
 | F6-08 | The payment method icons load from three third-party sites (flaticon, uxwing, iconscout). If one moves or blocks, the app falls back to a built-in icon. | DEFERRED | Low | Cosmetic. | Open |
 | F6-09 | The "payment waiting" banner shows on the home screen only, and a note older than 24 hours is dropped. A student who never returns to home sees it only on the payment screen. | CHOICE | Low | A late confirmation is found the next time home opens. | Open, accepted |
-| F7-01 | No load test has ever run, so "thousands of users" is unmeasured (G25). | DEFERRED | Moderate | Capacity unknown. | Open |
-| F7-02 | Android release blockers: cleartext traffic allowed, debug signing, `com.example` application id, no minify or ABI split, assets still 4.7 MB after F6 cleanup (G33). | DEFERRED | High | The Play Store rejects the build; the id cannot change after the first upload. | Open |
-| F7-03 | No `RELEASE.md`, backup, restore or rollback rehearsal. | DEFERRED | High | Same as X-06. | Open |
+| F7-01 | The load test **tooling** exists (`tools/loadtest`, `LOADTEST.md`) but no run on staging has happened, so "thousands of users" is still unmeasured (G25). The only run (#0) was on a laptop and proves the script, not capacity. | HUMAN | Moderate | Capacity unknown. Blocked by F7-04. | Open |
+| F7-02 | Android release blockers that remain after F7: the application id is still the placeholder (you must choose one, it cannot change after the first upload); no real upload keystore exists; the launcher icon is Flutter's default. The build refuses to make a Play bundle until the id and key are set. | HUMAN | High at release | No Play upload possible yet. | Open |
+| F7-03 | `RELEASE.md` exists, but the backup has never run (its two secrets are not set), the restore rehearsal has only been done on a laptop, and Render rollback has never been tried. | HUMAN | High | Same as X-06. | Open |
+| F7-04 | **Nothing can be load-tested yet:** the instance size to pay for is undecided, the staging seed has never landed (F3-03; whether Render's free plan has a shell is unverified, so the plan seeds from your laptop), staging has no email provider or Razorpay TEST keys, and two environment variables must be set on staging for Pass B. | HUMAN | Moderate | The measured answer waits on you. | Open |
+| F7-05 | Two likely bottlenecks are unmeasured hypotheses: a login costs about 1.6 s of CPU on this laptop (PBKDF2 with 1,000,000 rounds), so a login rush on a small server could stall it; and public browsing is limited to 60 requests a minute per address, counted per worker, so a campus sharing one address could be throttled. | UNVERIFIED | Moderate to High | Slow or refused requests at a launch rush. | Open |
+| F7-06 | Play Console is not started: no account, no store listing, no privacy-policy page (needed, GitHub Pages is free), no data-safety form. I could not verify Google's current rules for new accounts (a closed-testing requirement I recall). | HUMAN | High at release | Cannot publish. | Open |
+| F7-07 | R8 shrinking and the new `<queries>` entries (UPI, https) were proven only by a successful bundle build and file checks, never on a phone. Shrinking could remove something Razorpay or speech search needs at run time. | UNVERIFIED | Moderate | A release-only crash or a dead UPI button. | Open |
+| F7-08 | No "update required" screen in the app, so an old, broken app cannot be forced to update. | FUTURE | Low to Moderate | Bad versions linger. | Open |
+| F7-09 | The Brevo free plan's 300 sends a day is from its help page; whether transactional OTP mail counts towards it is unconfirmed. At launch volume this may cap new sign-ups (L4-02). | UNVERIFIED | Moderate | Sign-up codes stop arriving after the daily cap. | Open |
+| F7-10 | Backend folder holds old helper scripts: `reset_db*.py` (guarded), `query_db.py` and `sele tests/` (some aimed at production). Not routed, but they ship with the code. | DEFERRED | Low | Clutter and an accident risk. | Open |
 
 ---
 
@@ -283,9 +292,9 @@ F6-01 and F6-02 are closed (see Closed gaps C-14, C-15). C-16 closed the decode 
 | X-03 | Staging has no data and no test users, so nothing authenticated can be tried there. | HUMAN | Moderate | Same cause as F3-03. | Open |
 | X-04 | No branch protection (F3-01) and no code review other than CI. Solo developer. | HUMAN | Moderate | Mistakes merge unreviewed. | Open |
 | X-05 | Both repositories are public, with history that once held a database file and logs. | CHOICE | Moderate | See F0-03. | Open, accepted |
-| X-06 | **No backups and no restore rehearsal.** The free Supabase plan has no daily backups. | PAID | High | Permanent data loss if anything goes wrong. | Open |
+| X-06 | **No backups and no restore rehearsal.** The free Supabase plan has no daily backups. A daily encrypted-dump workflow now exists but is switched off until you add its two secrets; see F7-03. | PAID, HUMAN | High | Permanent data loss if anything goes wrong. | Open |
 | X-07 | Supabase free projects pause after a week of inactivity (staging); the production plan is unconfirmed. | PAID | Moderate | A paused project looks like an outage. | Open |
-| X-08 | The app has no Play Console entry and the application id is a placeholder (see F7-02). | INFRA, HUMAN | High at release | The first upload fixes the id for good. | Open |
+| X-08 | The app has no Play Console entry and the application id is a placeholder (see F7-02, F7-06). The release build is now wired for your key and id. | INFRA, HUMAN | High at release | The first upload fixes the id for good. | Open |
 | X-09 | Cloudinary free credits are limited and image transforms (F5-03) will consume them. | PAID | Low to Moderate | An overrun stops uploads or costs money. | Open |
 | X-10 | Dependency drift: 52 Flutter packages have newer versions that the constraints block. | DEFERRED | Low | Upgrade work accumulates. | Open |
 
@@ -308,6 +317,9 @@ F6-01 and F6-02 are closed (see Closed gaps C-14, C-15). C-16 closed the decode 
 | C-14 | (F6-01) The payment confirming screen could overlap polls, gave up at 75 s, "Try Again" could create a second order, and a killed app forgot a pending payment. | 2026-10-19 (F6) | `test/features/payments/` (27 tests): one question at a time with a time budget, Try Again asks the server first, no order while the first is undecided, note survives a simulated restart, cleared at Log Out. Not yet run on a phone (F6-05). |
 | C-15 | (F6-02) No shared HTTP client, no retry or backoff, a timeout that did not close the socket, no waking message, a network error during token refresh logged the person out, concurrent 401s refreshed several times, no offline copy, every chip refetched. | 2026-10-19 (F6) | `test/core/http_transport_test.dart`, `api_service_resilience_test.dart`, `last_good_cache_test.dart`, `test/features/f6_resilience_test.dart`. GET retried and POST not; one refresh for concurrent 401s; refresh network error keeps the session. |
 | C-16 | (part of F6-03) Pictures decoded at full size; 4 unused or duplicate bundled pictures; card entrance delay grew with list position. | 2026-10-19 (F6) | `cacheWidth` on every network picture (tests assert `ResizeImage`), `images/` 7.9 MB to 4.7 MB, a test fails if a bundled picture is unused or duplicated. Disk cache still open (F6-03). |
+| C-17 | (F7-02, part) Release build allowed plain HTTP, was signed with the debug key, had no shrinking, a `rohii_hostel_hunt` app name, backup of saved logins on, and no `<queries>` entries so UPI and WhatsApp links could report "no app" on Android 11+. | 2026-10-19 (F7) | `android_release_config_test.dart`; a signed `bundleRelease` built with a throwaway key and test id (59.2 MB, of which 29.2 MB are debug symbols not sent to phones); the bundle task refuses the debug key and the `com.example` id. Not yet on a phone (F7-07). |
+| C-18 | (part of F7-02) 4.7 MB of bundled images. | 2026-10-19 (F7) | 2.0 MB after resizing the five logos to the largest size drawn. |
+| C-19 | (part of F7-01, F7-03) No load-test tooling and no backup, restore or release documents. | 2026-10-19 (F7) | `test_f7.py` (33 tests): production refusal rules, thresholds, seed refusal outside staging, log summary, backup and restore script refusals; a local backup, restore and `verify_restore` rehearsal that turns FAIL when rows are removed. The runs themselves are F7-01 and F7-03. |
 | C-09 | Debug routes, tracebacks and OTP values leaked in responses. | 2026-10-10 (F1) on `main` and staging | Tests. Still live on production (F1-01). |
 
 # Changing this file

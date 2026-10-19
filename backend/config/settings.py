@@ -278,8 +278,10 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_THROTTLE_RATES': {
         # General public/browsing traffic (hostel list/search/localities, etc.)
-        'anon': '60/min',
-        'user': '120/min',
+        # THROTTLE_ANON / THROTTLE_USER exist for load tests on STAGING (every virtual user shares one address, so the
+        # per-address limit would hide what the server can do). Leave them unset elsewhere.
+        'anon': config('THROTTLE_ANON', default='60/min'),
+        'user': config('THROTTLE_USER', default='120/min'),
         # OTP send and verify are limited separately, per client address. These are generous on purpose
         # (a campus or mobile network shares one address); the limits that protect a person live on the
         # OTP record itself (cooldown, sends per hour, wrong-guess cap) and hold across workers.
