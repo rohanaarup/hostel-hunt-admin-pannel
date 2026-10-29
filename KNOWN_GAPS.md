@@ -1,6 +1,6 @@
 # Known gaps register (Hostel Hunt)
 
-**Started:** 2026-10-18 · **Last reviewed:** 2026-10-18 (after F5) · **Owner:** the developer and Claude, together
+**Started:** 2026-10-18 · **Last reviewed:** 2026-10-29 (after Phase 2 of the stay plan; no gap was closed, notes added) · **Owner:** the developer and Claude, together
 
 This file lists what we have **not** built, **not** verified, or **chosen to ignore**, phase by phase, and how much each
 item matters. It exists because no phase gets finished at 100%: many things need a paid service, infrastructure that
@@ -46,7 +46,7 @@ Impact is judged **at launch with real users**. Today (pre-production, a few tes
 | Environment | State |
 |---|---|
 | **Staging** (Render free, Singapore, Supabase `Hostel-hunt-staging`) | Runs the latest `main`: F1, F2, F3, the "11 API calls" fix, T1, T2, T3, T4 and F4. Database is **empty** (the seed never landed). Healthy. |
-| **Production** (`hostel-hunt-backend.onrender.com`) | **Old code.** `/healthz` and `/readyz` answer 404, the old `/debug-version/` route answers 200, DEBUG was set to True. Auto-deploy is off. None of F1 to F4 or T1 to T4 is live there, and none of their migrations ran. |
+| **Production** (`hostel-hunt-backend.onrender.com`) | **Old code** (re-checked 2026-10-29 by read-only GET: unchanged). `/healthz` and `/readyz` answer 404, the old `/debug-version/` route answers 200, DEBUG was set to True. Auto-deploy is off. None of F1 to F4 or T1 to T4 is live there, and none of their migrations ran. |
 | **Laptop** | `backend/.env` points at the **production** Supabase database (checked 2026-10-18, region only, no secrets read) with DEBUG on. Claude's test runs override it with environment variables, but a plain `runserver` or script from the laptop touches production data. |
 | **Admin site** (Next.js) | Not hosted anywhere as far as we know (2026-10-10 statement). Runs locally only. |
 | **App** | Built and installed on a test phone only. No Play Console app. Uses `com.example.rohii_hostel_hunt` as its id. |
@@ -110,10 +110,10 @@ Columns: **ID** · what is missing or ignored · **why** · **impact** · **how 
 | ID | Gap | Why | Impact | Effect | Status |
 |---|---|---|---|---|---|
 | P-01 | The app's Razorpay flow (UPI intent and card, `razorpay_flutter`, confirming screen) has no recorded device test with a real payment. UPI deep links are mobile-only and the web build shows a message instead. | HUMAN, UNVERIFIED | High | Money flow unproven end to end on a phone. | Open |
-| P-02 | `SECRET_KEY` printing was removed in code (PR #2). The rotation on Render was never confirmed. Whether production still prints it depends on its last deploy, which is unknown. | CHOICE (security ignored 2026-10-11) | Moderate | A leaked key lets someone forge sessions. Pre-launch with few users. | Open, accepted |
-| P-03 | On 2026-10-06 three migrations were unapplied on the shared Supabase database (`hostels.0004`, `payments.0004`, `rooms.0004`) and approval was asked. The outcome was not recorded, so the schema state of production versus its code is unknown. | HUMAN, UNVERIFIED | High (at deploy) | A deploy or a restore may fail or lose columns unless checked. | Open |
-| P-04 | There are no automated backups (stated 2026-10-06). | PAID | High | Any data loss is permanent. Same as X-06. | Open |
-| P-05 | Render free sleeps after 15 minutes and takes 30 to 60 seconds to wake. | PAID | Moderate | First request after idle looks broken. Same as F6-02. | Open |
+| P-02 | `SECRET_KEY` printing was removed in code (PR #2). The rotation on Render was never confirmed. Whether production still prints it depends on its last deploy, which is unknown. | CHOICE (security ignored 2026-10-11) | Moderate | A leaked key lets someone forge sessions. Pre-launch with few users. | Open, accepted. **Phase 2 (2026-10-29):** Phase 2: see G2-01: the old committed `.env` evidence makes rotation a launch step (checklist step 0). |
+| P-03 | On 2026-10-06 three migrations were unapplied on the shared Supabase database (`hostels.0004`, `payments.0004`, `rooms.0004`) and approval was asked. The outcome was not recorded, so the schema state of production versus its code is unknown. | HUMAN, UNVERIFIED | High (at deploy) | A deploy or a restore may fail or lose columns unless checked. | Open. **Phase 2 (2026-10-29):** Phase 2: the expected migration list and a read-only SQL query for the founder are in the checklist (step 8.1). The live state is still unknown. |
+| P-04 | There are no automated backups (stated 2026-10-06). | PAID | High | Any data loss is permanent. Same as X-06. | Open. **Phase 2 (2026-10-29):** Phase 2: see X-06. |
+| P-05 | Render free sleeps after 15 minutes and takes 30 to 60 seconds to wake. | PAID | Moderate | First request after idle looks broken. Same as F6-02. | Open. **Phase 2 (2026-10-29):** Phase 2: see F1-04. |
 | P-06 | Phone testing needs the PC's LAN IP and a firewall rule for port 8000 (needs admin). | HUMAN | Low | Dev convenience only. | Open |
 
 ## F0. Baseline (Lean Core F0 as written was never run)
@@ -121,21 +121,21 @@ Columns: **ID** · what is missing or ignored · **why** · **impact** · **how 
 | ID | Gap | Why | Impact | Effect | Status |
 |---|---|---|---|---|---|
 | F0-01 | No `hh-baseline/` folder, no timing script, no `BASELINE.md`, no cold-start time, no database round-trip measure. We only did a git baseline check and tests. Render plan, region, start command and Python version of production are unknown. | DEFERRED, HUMAN | Moderate | Decisions such as "move the database closer to Render" rest on a guess. F5 Part 1 measured query counts and headers only. | Open |
-| F0-02 | A stash labelled "temp before filter-branch" suggests a past history rewrite to remove a secret. Whether secrets were rotated is unknown. | CHOICE | Low | Old secrets could still exist in clones. | Open, accepted |
-| F0-03 | `db.sqlite3`, `django.log` and a data dump were tracked in git. They were untracked in F1, but history was not purged, and both repos are **public**. | CHOICE | Moderate | Possible personal data in public history. Needs a coordinated history rewrite and secret rotation. | Open, accepted |
+| F0-02 | A stash labelled "temp before filter-branch" suggests a past history rewrite to remove a secret. Whether secrets were rotated is unknown. | CHOICE | Low | Old secrets could still exist in clones. | Open, accepted. **Phase 2 (2026-10-29):** Phase 2: see G2-01. |
+| F0-03 | `db.sqlite3`, `django.log` and a data dump were tracked in git. They were untracked in F1, but history was not purged, and both repos are **public**. | CHOICE | Moderate | Possible personal data in public history. Needs a coordinated history rewrite and secret rotation. | Open, accepted. **Phase 2 (2026-10-29):** Phase 2: the newest non-empty committed `db.sqlite3` held 3 owner accounts, 1 hostel and no bookings; whether they are real people is the founder's call (checklist step 0). History rewrite not done. |
 | F0-04 | The manual scripts in `backend/sele tests/` hit live endpoints and were never run or reviewed. One contains the Cloudinary cloud name and preset (not secrets). | DEFERRED | Low | Clutter and risk of someone running them against production. | Open |
 
 ## F1. Define production
 
 | ID | Gap | Why | Impact | Effect | Status |
 |---|---|---|---|---|---|
-| F1-01 | Production does not run F1: debug routes are live, no health checks, DEBUG was True, `ALLOWED_HOSTS` unchecked. | HUMAN | High at launch, Moderate today | Debug information exposed, settings unsafe. Same root as X-01. | Open |
-| F1-02 | Secret rotation after exposure in git and logs was skipped by choice. | CHOICE | Moderate | See P-02, F0-03. | Open, accepted |
+| F1-01 | Production does not run F1: debug routes are live, no health checks, DEBUG was True, `ALLOWED_HOSTS` unchecked. | HUMAN | High at launch, Moderate today | Debug information exposed, settings unsafe. Same root as X-01. | Open. **Phase 2 (2026-10-29):** Phase 2: re-checked 2026-10-29: `/api/v1/debug-logs/` still answers 200 on production. Closed only by the deploy (X-01). |
+| F1-02 | Secret rotation after exposure in git and logs was skipped by choice. | CHOICE | Moderate | See P-02, F0-03. | Open, accepted. **Phase 2 (2026-10-29):** Phase 2: see G2-01 (checklist step 0). |
 | F1-03 | Both repos are public (checked 2026-10-18). | CHOICE | Moderate | Source code and history readable by anyone. | Open, accepted |
-| F1-04 | Render plan stays free: sleeps, blocks SMTP, 750 shared hours. | PAID | Moderate | See P-05, L4-02. | Open |
+| F1-04 | Render plan stays free: sleeps, blocks SMTP, 750 shared hours. | PAID | Moderate | See P-05, L4-02. | Open. **Phase 2 (2026-10-29):** Phase 2: plan decision is checklist step 2 (Phase 1 measured a 42.4 s wake on staging). Plans not changed in `render.yaml`. |
 | F1-05 | Phone-number OTP (Twilio) is not integrated; phone sign-up and forgot-password answer 503 outside development. | FUTURE | Moderate | Users who choose the phone option cannot register. | Open |
-| F1-06 | HSTS is off (`SECURE_HSTS_SECONDS=0`) until HTTPS is proven. | CHOICE | Low | Browsers may use plain HTTP on first visit. | Open, accepted |
-| F1-07 | Gunicorn was verified only through staging. The worker count in Render logs and rollback on Render were never tested. | UNVERIFIED | Low | Config values may differ from what runs. | Open |
+| F1-06 | HSTS is off (`SECURE_HSTS_SECONDS=0`) until HTTPS is proven. | CHOICE | Low | Browsers may use plain HTTP on first visit. | Open, accepted. **Phase 2 (2026-10-29):** Phase 2: recommended value and the condition (HTTPS proven on the final domain) are in the checklist; stays 0. |
+| F1-07 | Gunicorn was verified only through staging. The worker count in Render logs and rollback on Render were never tested. | UNVERIFIED | Low | Config values may differ from what runs. | Open. **Phase 2 (2026-10-29):** Phase 2: staging rollback rehearsal added to the checklist (8.3); not done. |
 | F1-08 | The AGENTS and CLAUDE files inside `hostel-hunt-admin-next/` were left stale. | DEFERRED | Low | Misleading docs for the admin site. | Open |
 | F1-09 | Local Python is 3.14 while Render and CI use 3.13.5. | DEFERRED | Low | A bug could appear only on one version. | Open |
 
@@ -143,20 +143,20 @@ Columns: **ID** · what is missing or ignored · **why** · **impact** · **how 
 
 | ID | Gap | Why | Impact | Effect | Status |
 |---|---|---|---|---|---|
-| F2-01 | No Sentry project or DSN exists, so no error is reported from the backend or the app. No test event was ever delivered. | HUMAN (free) | Moderate | Crashes and flagged payments (L4-07) go unnoticed. | Open |
-| F2-02 | No uptime monitors on `/healthz` and `/readyz`. Do not monitor staging (it must sleep to save hours). | HUMAN (free) | Moderate | An outage is found by users first. | Open |
-| F2-03 | `pg_stat_statements` is not confirmed enabled in Supabase. | HUMAN | Low | F5 index decisions lack real query data. | Open |
-| F2-04 | Production runs old code, so it has no request log and no `db_ms`. | see X-01 | Moderate | We cannot measure production latency or the database distance. | Open |
-| F2-05 | App builds are not obfuscated, so no symbol upload is set up. | DEFERRED | Low | Stack traces readable, which is fine for now. | Open |
-| F2-06 | Android build warns that three plugins apply the Kotlin Gradle plugin a future Flutter may reject. | DEFERRED | Low | A future Flutter upgrade may break the build. | Open |
-| F2-07 | Sentry performance tracing is off (sample rate 0). The Flutter SDK's PII behaviour is assumed, not proven. | DEFERRED | Low | No slow-request view in Sentry. | Open |
-| F2-08 | The release tag from `RENDER_GIT_COMMIT` was never seen on a real Render run. | UNVERIFIED | Low | Events may lack a version. | Open |
+| F2-01 | No Sentry project or DSN exists, so no error is reported from the backend or the app. No test event was ever delivered. | HUMAN (free) | Moderate | Crashes and flagged payments (L4-07) go unnoticed. | Open. **Phase 2 (2026-10-29):** Phase 2: the Sentry alert rules are written (`backend/docs/ALERTS.md`), set-up is checklist step 3. Still no project or DSN. |
+| F2-02 | No uptime monitors on `/healthz` and `/readyz`. Do not monitor staging (it must sleep to save hours). | HUMAN (free) | Moderate | An outage is found by users first. | Open. **Phase 2 (2026-10-29):** Phase 2: monitors specified (ALERTS 5 and 6, checklist step 4); none created. Staging must not be monitored. |
+| F2-03 | `pg_stat_statements` is not confirmed enabled in Supabase. | HUMAN | Low | F5 index decisions lack real query data. | Open. **Phase 2 (2026-10-29):** Phase 2: how to enable and check it is in checklist step 3; needs a reachable database, Phase 3 reads it. |
+| F2-04 | Production runs old code, so it has no request log and no `db_ms`. | see X-01 | Moderate | We cannot measure production latency or the database distance. | Open. **Phase 2 (2026-10-29):** Phase 2: solved by the production deploy (X-01); checklist step 9 records `db_ms` and `xff_hops`. |
+| F2-05 | App builds are not obfuscated, so no symbol upload is set up. | DEFERRED | Low | Stack traces readable, which is fine for now. | Open. **Phase 2 (2026-10-29):** Phase 2: not touched (stays LATER). |
+| F2-06 | Android build warns that three plugins apply the Kotlin Gradle plugin a future Flutter may reject. | DEFERRED | Low | A future Flutter upgrade may break the build. | Open. **Phase 2 (2026-10-29):** Phase 2: not touched (stays LATER). |
+| F2-07 | Sentry performance tracing is off (sample rate 0). The Flutter SDK's PII behaviour is assumed, not proven. | DEFERRED | Low | No slow-request view in Sentry. | Open. **Phase 2 (2026-10-29):** Phase 2: checklist step 3 recommends 0.1 once wanted; stays 0 until the founder sets it. No personal-data option is on. |
+| F2-08 | The release tag from `RENDER_GIT_COMMIT` was never seen on a real Render run. | UNVERIFIED | Low | Events may lack a version. | Open. **Phase 2 (2026-10-29):** Phase 2: the chain `GIT_COMMIT` to settings to Sentry options is now tested (`test_phase2.ReleaseTagTests`) and the cron sets `GIT_COMMIT` too. Never seen on a real Render run; checklist step 9 checks the log field. |
 
 ## F3. Change pipeline
 
 | ID | Gap | Why | Impact | Effect | Status |
 |---|---|---|---|---|---|
-| F3-01 | **Branch protection is off** in both repos (checked 2026-10-18: "Branch not protected"). Nothing enforces a green CI before merging to `main`. | HUMAN | Moderate | A red change could reach `main` and auto-deploy to staging. | Open |
+| F3-01 | **Branch protection is off** in both repos (checked 2026-10-18: "Branch not protected"). Nothing enforces a green CI before merging to `main`. | HUMAN | Moderate | A red change could reach `main` and auto-deploy to staging. | Open. **Phase 2 (2026-10-29):** Phase 2: checklist step 6 gives the exact check names; still off (re-checked in Phase 1). |
 | F3-02 | **The laptop `.env` points at the production database** (region checked, no secret read) with DEBUG on. | CHOICE | High | A local `runserver`, `migrate` or script changes production data. | Open, accepted |
 | F3-03 | The staging seed never landed (command ran but staging stayed empty; the last 10 lines of its output were never sent). | HUMAN | Moderate | All authenticated live checks are blocked (T2-01, T3-03, T1-02, T4-09, L4-01). | Open |
 | F3-04 | The app analyzer ratchet sits at 61 to 64 issues (warnings and infos), never cleaned. | DEFERRED | Low | Quality debt. | Open |
@@ -164,7 +164,7 @@ Columns: **ID** · what is missing or ignored · **why** · **impact** · **how 
 | F3-06 | The admin site's CI has no ESLint (its config was already broken). | DEFERRED | Low | Style and some bug classes unchecked. | Open |
 | F3-07 | The app's CI does **not** build an APK. A broken plugin version (`permission_handler` 13.0.2) passed CI and failed locally. | DEFERRED | Moderate | Android build breakage shows up late. | Open |
 | F3-08 | CI tests on Postgres 16; Supabase runs 17.x. | DEFERRED | Low | Rare version differences. | Open |
-| F3-09 | `render.yaml` is a **reference** only. Dashboard settings are copied by hand, so they drift (F4 added email variables and a cron entry that exist only in the file). | HUMAN | Moderate | The live service can differ from the repo without anyone noticing. | Open |
+| F3-09 | `render.yaml` is a **reference** only. Dashboard settings are copied by hand, so they drift (F4 added email variables and a cron entry that exist only in the file). | HUMAN | Moderate | The live service can differ from the repo without anyone noticing. | Open. **Phase 2 (2026-10-29):** Phase 2: `render.yaml` reconciled with the code (cron variables and start command, list of names that must not exist on production). The comparison with the live dashboard is checklist step 2a and is not done. |
 | F3-10 | Render's 750 free hours are shared by all free services. Two always-on services would not fit. | PAID | Low | Staging must be allowed to sleep. | Open |
 
 ## A. The "F4" of 2026-10-11 (11 broken or ignored API calls; our own name, not the playbook's F4)
@@ -176,7 +176,7 @@ Columns: **ID** · what is missing or ignored · **why** · **impact** · **how 
 | A-03 | Photo upload to Cloudinary was tested against a mock only. | HUMAN, UNVERIFIED | Moderate | The first real upload may fail (preset, limits). | Open |
 | A-04 | The admin Payments page and notice delete were type-checked and built but never opened in a browser. | UNVERIFIED | Low | Possible UI bugs. | Open |
 | A-05 | GitHub Pages turned out to be enabled on the backend repo. | HUMAN | Low | An unintended public site build. | Open |
-| A-06 | Not live on production, including migration `owners.0005`. | see X-01 | High at deploy | See X-01. | Open |
+| A-06 | Not live on production, including migration `owners.0005`. | see X-01 | High at deploy | See X-01. | Open. **Phase 2 (2026-10-29):** Phase 2: see X-01. |
 | A-07 | `search` and `amenity` filter only the public list, not the owner's own list. | DEFERRED | Low | Owners cannot search their own hostels. | Open |
 
 ## T1. Location, search, hostel list
@@ -235,9 +235,9 @@ Columns: **ID** · what is missing or ignored · **why** · **impact** · **how 
 | L4-02 | **No email provider is configured.** The new code has no sender on staging or production, and Render free blocks SMTP. Email sign-up and forgot-password cannot send a code. | HUMAN, PAID | High | New users cannot register by email. | Open |
 | L4-03 | Brevo's single-sender route is untested; whether a new account can use its transactional API without a domain is unconfirmed. Resend needs a verified domain and none is planned. | UNVERIFIED, INFRA | Moderate | The chosen provider may refuse to send. A paid Render instance (SMTP allowed) is the fallback. | Open |
 | L4-04 | Razorpay **TEST** keys and the webhook are not set up on staging. Live-mode readiness (keys, KYC, webhook) on production is unverified. UPI intent in test mode is unproven. | HUMAN | High | No real or test payment can be exercised on staging. | Open |
-| L4-05 | The Render cron job for `cleanup_expired` is not created. Old OTP rows, webhook ids and tokens are not purged. Holds still expire when read. | PAID | Low to Moderate | Tables slowly grow. | Open |
+| L4-05 | The Render cron job for `cleanup_expired` is not created. Old OTP rows, webhook ids and tokens are not purged. Holds still expire when read. | PAID | Low to Moderate | Tables slowly grow. | Open. **Phase 2 (2026-10-29):** Phase 2: the cron is wrapped with `ping_heartbeat` and has Sentry and heartbeat variables in `render.yaml`. The job itself is not created (checklist step 5). |
 | L4-06 | `TRUSTED_PROXY_COUNT` defaults to 1 but Render's real proxy chain is unverified. If the last forwarded address were a shared edge address, all users would share one 20-per-minute send limit. | UNVERIFIED | Moderate | Could throttle sign-ups. Check one `xff_hops` log line. | Open |
-| L4-07 | A payment captured but not honoured (late capture, wrong amount, duplicate, unknown refund) is only flagged `needs_review` and logged. There is no alert (Sentry is not set up, F2-01) and no student-facing explanation: the student sees "failed". | DEFERRED | Moderate | Money could sit unrefunded unnoticed. | Open |
+| L4-07 | A payment captured but not honoured (late capture, wrong amount, duplicate, unknown refund) is only flagged `needs_review` and logged. There is no alert (Sentry is not set up, F2-01) and no student-facing explanation: the student sees "failed". | DEFERRED | Moderate | Money could sit unrefunded unnoticed. | Open. **Phase 2 (2026-10-29):** Phase 2: a flagged payment and an unknown-outcome refund now raise one Sentry alert with no personal data (`test_phase2.PaymentFlaggedAlertTests`; payment code unchanged). Reaches nobody until the Sentry project and rule exist (F2-01). The student still sees failed. |
 | L4-08 | The owner action `/bookings/<id>/verify/` marks an online booking paid without a Razorpay payment. Left unchanged by decision. | CHOICE | Low | An owner override with no money behind it. | Open, accepted |
 | L4-09 | A refund whose outcome is unknown stays RESERVED and needs a person; there is no reconcile job against Razorpay. | DEFERRED | Low to Moderate | Manual follow-up. | Open |
 | L4-10 | Password login has no limit beyond the default 60 per minute per address. | CHOICE | Low | Guessing attempts are not slowed. | Open, accepted |
@@ -249,7 +249,7 @@ Columns: **ID** · what is missing or ignored · **why** · **impact** · **how 
 | ID | Gap | Why | Impact | Effect | Status |
 |---|---|---|---|---|---|
 | F5-01 | The distance from Render (Singapore) to the production database (Mumbai) is **unmeasured**, because production has no request log yet (F2-04). The rule to decide is written in AFTER-F5.md (40 ms or more per query and database time above half of the request means move it). | HUMAN | Moderate | The query cuts help whatever the distance is, but we cannot say whether moving the database is worth it. | Open |
-| F5-02 | The statement timeout (`DB_STATEMENT_TIMEOUT_MS=25000`) is in `render.yaml` only. Render's dashboard start command must be edited by hand on staging and production (same drift risk as F3-09). | HUMAN | Low | A runaway query is not cut off until then. | Open |
+| F5-02 | The statement timeout (`DB_STATEMENT_TIMEOUT_MS=25000`) is in `render.yaml` only. Render's dashboard start command must be edited by hand on staging and production (same drift risk as F3-09). | HUMAN | Low | A runaway query is not cut off until then. | Open. **Phase 2 (2026-10-29):** Phase 2: how to confirm it is live is recorded (checklist 2a: start command text and the `==> Running` line in the deploy log). Not yet confirmed. |
 | F5-03 | Image savings were **not measured** (no staging photo, no Cloudinary access). The sized URLs are tested; the byte saving is an expectation. Cloudinary credits will be used by the transformations (X-09). | HUMAN, UNVERIFIED | Low | Possible surprise in data use or credits. | Open |
 | F5-04 | The cities and localities cache is per worker for 60 s: a bulk update (the deactivate command) or a change saved on the other worker shows after up to a minute. | CHOICE | Low | A just-added locality can be missing briefly on one worker. | Open, accepted |
 | F5-05 | Cache headers (`ETag`, `max-age`) only help once something caches: a browser, a CDN, or the app's HTTP cache (F6). Render's edge does not cache JSON by itself. | DEFERRED | Low | No bandwidth saving yet. | Open |
@@ -272,7 +272,7 @@ F6-01 and F6-02 are closed (see Closed gaps C-14, C-15). C-16 closed the decode 
 | F6-09 | The "payment waiting" banner shows on the home screen only, and a note older than 24 hours is dropped. A student who never returns to home sees it only on the payment screen. | CHOICE | Low | A late confirmation is found the next time home opens. | Open, accepted |
 | F7-01 | The load test **tooling** exists (`tools/loadtest`, `LOADTEST.md`) but no run on staging has happened, so "thousands of users" is still unmeasured (G25). The only run (#0) was on a laptop and proves the script, not capacity. | HUMAN | Moderate | Capacity unknown. Blocked by F7-04. | Open |
 | F7-02 | Android release blockers that remain after F7: the application id is still the placeholder (you must choose one, it cannot change after the first upload); no real upload keystore exists; the launcher icon is Flutter's default. The build refuses to make a Play bundle until the id and key are set. | HUMAN | High at release | No Play upload possible yet. | Open |
-| F7-03 | `RELEASE.md` exists, but the backup has never run (its two secrets are not set), the restore rehearsal has only been done on a laptop, and Render rollback has never been tried. | HUMAN | High | Same as X-06. | Open |
+| F7-03 | `RELEASE.md` exists, but the backup has never run (its two secrets are not set), the restore rehearsal has only been done on a laptop, and Render rollback has never been tried. | HUMAN | High | Same as X-06. | Open. **Phase 2 (2026-10-29):** Phase 2: see X-06. Staging rollback rehearsal added to checklist step 8.3; not done. |
 | F7-04 | **Nothing can be load-tested yet:** the instance size to pay for is undecided, the staging seed has never landed (F3-03; whether Render's free plan has a shell is unverified, so the plan seeds from your laptop), staging has no email provider or Razorpay TEST keys, and two environment variables must be set on staging for Pass B. | HUMAN | Moderate | The measured answer waits on you. | Open |
 | F7-05 | Two likely bottlenecks are unmeasured hypotheses: a login costs about 1.6 s of CPU on this laptop (PBKDF2 with 1,000,000 rounds), so a login rush on a small server could stall it; and public browsing is limited to 60 requests a minute per address, counted per worker, so a campus sharing one address could be throttled. | UNVERIFIED | Moderate to High | Slow or refused requests at a launch rush. | Open |
 | F7-06 | Play Console is not started: no account, no store listing, no privacy-policy page (needed, GitHub Pages is free), no data-safety form. I could not verify Google's current rules for new accounts (a closed-testing requirement I recall). | HUMAN | High at release | Cannot publish. | Open |
@@ -283,17 +283,37 @@ F6-01 and F6-02 are closed (see Closed gaps C-14, C-15). C-16 closed the decode 
 
 ---
 
+## G. Found in the stay plan's Phase 1 and 2 (2026-10-29)
+
+Evidence for G1 is in `backend/docs/STAY_BASELINE.md` and `backend/docs/GAP_TRIAGE.md`.
+
+| ID | Gap | Why | Impact | Effect | Status |
+|---|---|---|---|---|---|
+| G1-01 | The backup workflow file was invalid YAML (`backup.yml` line 32), so it could never run, even with its secrets. | (fixed in code) | High | No backup possible. | Fixed on the Phase 2 branch (`actionlint` clean, `test_phase2.BackupWorkflowTests`); it now fails on purpose until the secrets exist. Close after the merge shows it in GitHub's workflow list and a manual run succeeds (X-06). |
+| G1-02 | `BookingViewSet.verify` has no status guard (cancelled, rejected or paid bookings can be set to paid again). | DEFERRED | High for Phase 5 | A repeated call would create duplicate stays and dues. | Open |
+| G1-03 | `confirm_payment` and the hold logic cannot be reused for rent: the 15-minute age rule fails a payment with no live hold, `confirm_payment` flags "bed already taken", and `create-order` refuses paid bookings. | DEFERRED | High for Phase 6 | A rent payment would be failed or flagged. | Open |
+| G1-04 | Offline revenue trusts `Booking.amount`, which any anonymous client can set. | DEFERRED | Moderate | Dashboard totals can be wrong. | Open |
+| G1-05 | The cleanup cron lacked the variables later work needs. | DEFERRED | Moderate | Reminder email, Razorpay and push work would fail there. | Open. Partly done in Phase 2 (Sentry and heartbeat added); email, Razorpay and push variables are added by the phase that needs them. |
+| G1-06 | Webhook-confirmed payments are always recorded as method CARD. | DEFERRED | Low | Wrong method label only. | Open |
+| G1-07 | A booking can become paid in Django admin or the load-test seed with no bed and no payment. | DEFERRED | Low | Staff-only; no stay would be created for it later. | Open |
+| G1-08 | Two web instances do not fit the 15-slot database pool (16 needed; a deploy overlap can exceed 15). | PAID | High at scale | Scaling out fails first on connections. | Open |
+| G1-09 | The backend test suite takes 7.5 to 13.4 minutes on the laptop (CI: 2.8 minutes). | DEFERRED | Low | Slow local phases. | Open |
+| G1-10 | `Room.available_beds` is never updated after a payment, and `Bed.is_available` is never set back to True. | FUTURE | Moderate | A room never shows as full; a freed bed would not show as free (see L4-12). | Open |
+| G1-11 | Nothing in the code ever sets a booking to `cancelled`. | FUTURE | Low | Several refusals of cancelled bookings are unreachable. | Open |
+| G1-12 | **The staging database was unreachable on 2026-10-29** (`/readyz` 503 and data endpoints 500 after 15 s; `/healthz` ok). Probably a paused free Supabase project. | HUMAN | High (blocks staging work) | No staging payment test, seed or load test. | Open; checklist step 0 |
+| G2-01 | **Credentials in the public git history are still current.** An old committed `backend/.env` (5 commits in the backend repository, 3 in the app repository) held a filled `SECRET_KEY`, `DATABASE_URL` and `EMAIL_HOST_PASSWORD`. By hash comparison the backend repository's old database address and password, and old email password, equal those in the laptop `.env`, which points at the production database (F3-02). The default secret scanner (gitleaks) found nothing, so a clean scan proves nothing here. | HUMAN, CHOICE | High | Anyone can read the production database password from a public repository. | Open; rotate before the production deploy (checklist step 0). The founder's 2026-10-11 decision to ignore security hardening predates this evidence. |
+
 # Cross-cutting gaps
 
 | ID | Gap | Why | Impact | Effect | Status |
 |---|---|---|---|---|---|
-| X-01 | **Production is stale.** It runs code from before F1 (2026-10-10; its exact last deploy date is unknown), and these migrations are pending: `owners` 0005 and 0006, `hostels` 0004 to 0006, `payments` 0004 and 0005, `rooms` 0004 and 0005 (and anything older still unapplied). | HUMAN | High at launch, Moderate today | A first production deploy is a large, risky step. It needs a backup, staging first, and the owner's OK. | Open |
+| X-01 | **Production is stale.** It runs code from before F1 (2026-10-10; its exact last deploy date is unknown), and these migrations are pending: `owners` 0005 and 0006, `hostels` 0004 to 0006, `payments` 0004 and 0005, `rooms` 0004 and 0005 (and anything older still unapplied). | HUMAN | High at launch, Moderate today | A first production deploy is a large, risky step. It needs a backup, staging first, and the owner's OK. | Open. **Phase 2 (2026-10-29):** Phase 2: the pending migrations were read and their SQL printed (all additive; the two renames are SQL no-ops; `backend/docs/MIGRATION_POLICY.md`). Deploy steps and `ops/post_deploy_check.py` are ready. Production re-checked 2026-10-29 (read-only GET): `/healthz` 404, `/readyz` 404, debug route 200. Needs the founder's deploy (checklist step 8). |
 | X-02 | **Live-verification debt.** Phases T1 to T4 and F4 were proven by tests and CI, plus staging checks that need no login. No authenticated flow, device test or browser test exists. | HUMAN | Moderate | Bugs that tests cannot see will appear on first real use. | Open |
 | X-03 | Staging has no data and no test users, so nothing authenticated can be tried there. | HUMAN | Moderate | Same cause as F3-03. | Open |
 | X-04 | No branch protection (F3-01) and no code review other than CI. Solo developer. | HUMAN | Moderate | Mistakes merge unreviewed. | Open |
 | X-05 | Both repositories are public, with history that once held a database file and logs. | CHOICE | Moderate | See F0-03. | Open, accepted |
-| X-06 | **No backups and no restore rehearsal.** The free Supabase plan has no daily backups. A daily encrypted-dump workflow now exists but is switched off until you add its two secrets; see F7-03. | PAID, HUMAN | High | Permanent data loss if anything goes wrong. | Open |
-| X-07 | Supabase free projects pause after a week of inactivity (staging); the production plan is unconfirmed. | PAID | Moderate | A paused project looks like an outage. | Open |
+| X-06 | **No backups and no restore rehearsal.** The free Supabase plan has no daily backups. A daily encrypted-dump workflow now exists but is switched off until you add its two secrets; see F7-03. | PAID, HUMAN | High | Permanent data loss if anything goes wrong. | Open. **Phase 2 (2026-10-29):** Phase 2: the backup workflow is fixed (it was invalid YAML, G1-01) and now FAILS until its two secrets exist. Secrets, first run and restore rehearsal are founder steps (checklist step 1). Still no backup. |
+| X-07 | Supabase free projects pause after a week of inactivity (staging); the production plan is unconfirmed. | PAID | Moderate | A paused project looks like an outage. | Open. **Phase 2 (2026-10-29):** Phase 2: staging's database was found unreachable on 2026-10-29 (G1-12), probably this. Production plan decision is checklist step 2. |
 | X-08 | The app has no Play Console entry and the application id is a placeholder (see F7-02, F7-06). The release build is now wired for your key and id. | INFRA, HUMAN | High at release | The first upload fixes the id for good. | Open |
 | X-09 | Cloudinary free credits are limited and image transforms (F5-03) will consume them. | PAID | Low to Moderate | An overrun stops uploads or costs money. | Open |
 | X-10 | Dependency drift: 52 Flutter packages have newer versions that the constraints block. | DEFERRED | Low | Upgrade work accumulates. | Open |

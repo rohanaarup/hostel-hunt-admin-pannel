@@ -101,10 +101,10 @@ Three additive migrations, applied by the build command's `migrate`: `owners.000
 Order: staging first (build runs the migrations), run the staging payment test (`backend/docs/PAYMENT_TEST.md`), then production only with the owner's approval. Production has not received any change since before F1, so a production deploy carries every migration since then.
 
 ### Scheduled clean-up
-`python manage.py cleanup_expired` (every 5 minutes) closes payments whose bed hold lapsed, frees beds with no live hold, deletes OTP records older than a day and webhook event ids older than 30 days, and flushes expired JWT tokens. `render.yaml` has a production cron job for it (about $1 per month on Render; confirm the price). Nothing depends on it for correctness: a lapsed hold is also treated as lapsed whenever it is read or written. Check it any time with `python manage.py cleanup_expired --dry-run`.
+`python manage.py ping_heartbeat cleanup_expired` (every 5 minutes; `ping_heartbeat` runs `cleanup_expired` and then calls the heartbeat monitor in `HEARTBEAT_URL`, or its `/fail` address after a failure; with no `HEARTBEAT_URL` it just runs the job) closes payments whose bed hold lapsed, frees beds with no live hold, deletes OTP records older than a day and webhook event ids older than 30 days, and flushes expired JWT tokens. `render.yaml` has a production cron job for it (about $1 per month on Render; confirm the price). Nothing depends on it for correctness: a lapsed hold is also treated as lapsed whenever it is read or written. Check it any time with `python manage.py cleanup_expired --dry-run`. The cron needs `SENTRY_DSN`, `SENTRY_ENVIRONMENT` and `HEARTBEAT_URL` besides the three required variables, and its start command sets `GIT_COMMIT` (all in `render.yaml`). The missed-heartbeat alert is described in `backend/docs/ALERTS.md`.
 
 ### Payments that need a person
-A payment with `needs_review` set means Razorpay captured money that the system could not honour (the bed was taken, the booking was cancelled, the amount differed, a duplicate capture, or a refund whose outcome is unknown). Nothing is refunded automatically. Filter Payments by "needs review" in `/admin/`, read the note, and refund in the Razorpay dashboard. The same event is logged at ERROR level (and reaches Sentry).
+A payment with `needs_review` set means Razorpay captured money that the system could not honour (the bed was taken, the booking was cancelled, the amount differed, a duplicate capture, or a refund whose outcome is unknown). Nothing is refunded automatically. Filter Payments by "needs review" in `/admin/`, read the note, and refund in the Razorpay dashboard. The same event is logged at ERROR level, and with Sentry on it raises one alert, "Payment flagged for manual review" (tags `alert=payment_flagged` and `kind`; no ids or personal data), see `backend/docs/ALERTS.md` (alert 3).
 
 ## F5 (data path): nothing to migrate
 No migration and no required variable. Optional on the **web service only**: `DB_STATEMENT_TIMEOUT_MS=25000` in front of the
@@ -112,3 +112,10 @@ start command (see `render.yaml`) caps one database statement; leave it off the 
 `DB_CONNECT_TIMEOUT` (default 5), `PUBLIC_LIST_CACHE_SECONDS` (default 60, 0 = off) and `GZIP_RESPONSES` (default on) are
 optional too. The measurements and the reasoning (why no indexes, connection arithmetic, how to decide whether to move the
 database) are in `backend/docs/AFTER-F5.md`.
+
+## Production foundation (Phase 2)
+- `backend/docs/FOUNDER_CHECKLIST_PROD.md` is the ordered list of dashboard steps (backups, plan sizes, Sentry, monitors, the cron, branch protection, key rotation, the deploy and its checks).
+- `backend/docs/MIGRATION_POLICY.md`: how migrations must be written so the previous version keeps working during a deploy.
+- `backend/docs/ALERTS.md`: the seven alerts, who gets them, and what to do.
+- `python backend/ops/post_deploy_check.py https://<host> --expect-env production` is the read-only check to run after a deploy (it only sends GET requests).
+- New optional variables: `HEARTBEAT_URL` and `HEARTBEAT_FAIL_URL` (cron only; the URL holds a secret token).

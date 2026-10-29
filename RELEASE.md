@@ -43,13 +43,24 @@ Per release:
 4. Upload to **Internal testing** first. Install it from Play on a real phone and run the checks in `docs/F6-PHONE-RESILIENCE.md`.
 5. Promote to production as a **staged rollout** (start at a small percentage), watching crashes and the backend log.
 
+### Post-deploy checks (paste the results here after every production deploy)
+
+Run `python backend/ops/post_deploy_check.py https://<host> --expect-env production` (read-only GET requests; `staging` for staging), then look at one `hh.request` line in the Render log.
+
+| Date | Commit | Host | healthz | env | readyz | debug route 404 | `release` field set | `xff_hops` | Result | Done by |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-10-29 (before any Phase 2 deploy) | old code | production | 404 | n/a | 404 | **200 (route still live)** | n/a | n/a | FAIL (expected: production runs old code, KNOWN_GAPS X-01) | Claude, read-only GETs, status codes only |
+| (pending) | | production | | | | | | | **NOT DONE: needs the founder's deploy** | |
+
+Also record here, once: the date the rollback was rehearsed on staging (**NOT DONE**), and which of the pending migrations the production database already had (`FOUNDER_CHECKLIST_PROD.md` step 8.1, **NOT DONE**).
+
 ## 3. Backups and restore
 
 ### What exists
 
 * `backend/ops/backup.sh`: an encrypted dump (pg_dump 17 in Docker, encrypted with the public half of an `age` key).
 * `.github/workflows/backup.yml`: runs it every day at 03:00 India time and keeps the file as a workflow artifact for 30 days.
-  It does nothing, and says so as a warning, until the two secrets below exist. **NOT DONE: no backup exists today.**
+  It **fails on purpose** (a red run and an email) until the two secrets below exist, so a green run always means a backup was made. (Before 2026-10-29 the file was invalid YAML and could never run at all, KNOWN_GAPS G1-01; fixed in Phase 2.) **NOT DONE: no backup exists today.**
 * `backend/ops/restore.sh` and `backend/ops/verify_restore.py`: restore into a database and prove the copy is complete.
 * Supabase's own daily backups (kept 7 days) exist only on the Pro plan (supabase.com/pricing). They are the first
   line of defence once you pay; the encrypted dump is a second copy that you own.

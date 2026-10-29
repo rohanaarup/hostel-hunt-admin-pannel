@@ -21,14 +21,14 @@ Phases 5 and 6 may change payment code; Phase 10 may change the app's payment fl
 Where a gap belongs to a part of the plan I cannot place (stay lifecycle, notifications, owner screens) it says "Stay phases" and the founder should pin the number.
 **HUMAN** means only the founder can do it (dashboards, accounts, devices, money); the phase listed is where Claude verifies it afterwards.
 
-**Totals for the 119 register rows:** 30 LAUNCH-BLOCKER (10 default plus 20 added), 36 SCALE, 53 LATER. The 12 new G1 rows are counted separately below. Every register ID appears exactly once (checked by script against `KNOWN_GAPS.md`).
+**Totals for the 119 register rows (after Phase 2 raised four of them):** 34 LAUNCH-BLOCKER (10 default, 20 added in Phase 1, P-02, F0-02, F0-03, F1-02 raised in Phase 2), 35 SCALE, 50 LATER. The 12 new G1 rows and the new G2-01 are counted separately below. Every register ID appears exactly once (checked by script against `KNOWN_GAPS.md`).
 
 ## Launch blockers at a glance
 
 Founder's default list (kept in full): P-03, A-06, L4-12, F1-01, F7-02, F7-03, F7-06, X-01, X-06, X-08.
 
 Added in Phase 1 (each has a reason in its row; the founder may question an addition, but removing a default needs the founder's approval):
-P-01, P-04, P-05, F1-04, F2-01, F2-02, F3-02, T1-01, T4-01, L4-01, L4-02, L4-03, L4-04, L4-05, L4-07, F6-05, F6-07, F7-07, X-02, X-07, and the new rows G1-01 (backup workflow cannot run), G1-02 (verify has no status guard) and G1-03 (rent cannot reuse `confirm_payment`). A further new row, G1-12 (staging database unreachable), blocks Phase 1's own measurements and is a founder action.
+P-01, P-04, P-05, F1-04, F2-01, F2-02, F3-02, T1-01, T4-01, L4-01, L4-02, L4-03, L4-04, L4-05, L4-07, F6-05, F6-07, F7-07, X-02, X-07, and the new rows G1-01 (backup workflow cannot run), G1-02 (verify has no status guard) and G1-03 (rent cannot reuse `confirm_payment`). A further new row, G1-12 (staging database unreachable), blocks Phase 1's own measurements and is a founder action, and G2-01 (credentials in public history) was found in Phase 2.
 
 ## Open gaps from KNOWN_GAPS.md (119 rows)
 
@@ -37,7 +37,7 @@ P-01, P-04, P-05, F1-04, F2-01, F2-02, F3-02, T1-01, T4-01, L4-01, L4-02, L4-03,
 | ID | Gap (short) | Class | Owner phase | Note |
 |---|---|---|---|---|
 | P-01 | No recorded real-device payment test | LAUNCH-BLOCKER (added) | 10, 11 (HUMAN device run) | Money flow unproven on a phone. |
-| P-02 | SECRET_KEY rotation never confirmed | LATER | 2 | Accepted by choice. Cheap to do during the first production deploy (X-01) because the environment is being set anyway; only side effect is that existing logins end. |
+| P-02 | SECRET_KEY rotation never confirmed | LAUNCH-BLOCKER (raised in Phase 2) | 2 (HUMAN) | Phase 2 found the old committed `.env` files (see G2-01). Rotate with the database password; the only side effect is that logins end once (checklist step 0). |
 | P-03 | Production schema vs code unknown (3 migrations unapplied on 2026-10-06) | LAUNCH-BLOCKER (default) | 2 | Phase 2 must compare the live schema read-only before any deploy. |
 | P-04 | No automated backups | LAUNCH-BLOCKER (added; same as X-06) | 2 | See G1-01: the workflow cannot even start. |
 | P-05 | Render free sleeps; slow wake | LAUNCH-BLOCKER (added) | 2 (HUMAN: paid plan) | Phase 1 measured a **42.4 s** wake on staging. A first-time user would see this. |
@@ -48,8 +48,8 @@ P-01, P-04, P-05, F1-04, F2-01, F2-02, F3-02, T1-01, T4-01, L4-01, L4-02, L4-03,
 | ID | Gap | Class | Owner phase | Note |
 |---|---|---|---|---|
 | F0-01 | No baseline measurements | SCALE | 1 (partial), 3, 11 | Phase 1 delivers a partial baseline: wake time and public-endpoint latency from outside. Log-based numbers still need Render log access (see STAY_BASELINE, Part C). |
-| F0-02 | Possible past secret exposure; rotation unknown | LATER | 2 | Accepted. |
-| F0-03 | Old `db.sqlite3`, `django.log`, data dump in public git history | SCALE | 2 | **Verify first**: scan the history for personal data. If any real person's data is there, this becomes a LAUNCH-BLOCKER (privacy). Needs a history rewrite, which needs the founder's approval. |
+| F0-02 | Possible past secret exposure; rotation unknown | LAUNCH-BLOCKER (raised in Phase 2) | 2 (HUMAN) | Now evidenced: see G2-01. |
+| F0-03 | Old `db.sqlite3`, `django.log`, data dump in public git history | LAUNCH-BLOCKER (raised in Phase 2) | 2 (HUMAN decision) | Phase 1 said to verify first. Phase 2: the newest non-empty `db.sqlite3` holds 3 owner accounts, 1 hostel, no bookings; whether they are real people is the founder's call. A history rewrite needs approval and does not remove copies already taken. |
 | F0-04 | `sele tests/` scripts hit live endpoints, unreviewed | LATER | 2 | Same as F7-10. |
 
 ### F1. Define production
@@ -57,7 +57,7 @@ P-01, P-04, P-05, F1-04, F2-01, F2-02, F3-02, T1-01, T4-01, L4-01, L4-02, L4-03,
 | ID | Gap | Class | Owner phase | Note |
 |---|---|---|---|---|
 | F1-01 | Production does not run F1 (debug routes, DEBUG on) | LAUNCH-BLOCKER (default) | 2 | Same root as X-01. |
-| F1-02 | Secret rotation skipped by choice | LATER | 2 | See P-02. |
+| F1-02 | Secret rotation skipped by choice | LAUNCH-BLOCKER (raised in Phase 2) | 2 (HUMAN) | See P-02 and G2-01. |
 | F1-03 | Both repos public | LATER | none | Accepted. Revisit with F0-03. |
 | F1-04 | Render plan stays free (sleeps, blocks SMTP) | LAUNCH-BLOCKER (added) | 2 (HUMAN) | See P-05 and L4-02. |
 | F1-05 | Phone OTP (Twilio) not integrated | LATER | none | Decision D4 excludes SMS in v1. The app should not offer phone sign-up while it answers 503 (check in Phase 10). |
@@ -214,24 +214,24 @@ P-01, P-04, P-05, F1-04, F2-01, F2-02, F3-02, T1-01, T4-01, L4-01, L4-02, L4-03,
 | X-02 | Live-verification debt | LAUNCH-BLOCKER (added) | 11 | The final gate. |
 | X-03 | Staging has no data or test users | SCALE | 2 | Same as F3-03. |
 | X-04 | No branch protection or review | SCALE | 2 | Same as F3-01. |
-| X-05 | Public repos with old DB file in history | SCALE | 2 | Same as F0-03. |
+| X-05 | Public repos with old DB file in history | SCALE | 2 | Same as F0-03; the app repository also has `db.sqlite3` copies and a `.env` in its history. |
 | X-06 | No backups, no restore rehearsal | LAUNCH-BLOCKER (default) | 2 | See G1-01. |
 | X-07 | Supabase free pauses; production plan unconfirmed | LAUNCH-BLOCKER (added) | 2 (HUMAN) | A paused database is an outage. |
 | X-08 | Play Console entry and application id | LAUNCH-BLOCKER (default) | 11 (HUMAN) | |
 | X-09 | Cloudinary credits | SCALE | 11 | |
 | X-10 | 52 Flutter packages behind | LATER | none | |
 
-## New gaps found in Phase 1
+## New gaps found in Phase 1 and 2
 
-Evidence for each is in `backend/docs/STAY_BASELINE.md`. IDs use the prefix G1.
+Evidence for the G1 rows is in `backend/docs/STAY_BASELINE.md`; G2-01 is from Phase 2 (`FOUNDER_CHECKLIST_PROD.md` step 0). Phase 1 left these in this file only; Phase 2 copied them into `KNOWN_GAPS.md` section G.
 
 | ID | Gap | Impact | Class | Owner phase | Evidence / effect |
 |---|---|---|---|---|---|
-| G1-01 | **The backup workflow is invalid YAML and cannot run.** `.github/workflows/backup.yml` line 32 has an unquoted `run:` value containing `: ` ("Backup skipped: ..."). GitHub shows runs 39227131826 and 39227677174 as failures ("workflow file issue") and the daily schedule never starts, even after the two secrets are added. `KNOWN_GAPS` assumes only the secrets are missing. | High | LAUNCH-BLOCKER | 2 | `actionlint` output: "could not parse as YAML: mapping values are not allowed in this context". `gh secret list` shows no secrets at all. Not fixed in Phase 1 (workflows are out of scope). |
+| G1-01 | **The backup workflow is invalid YAML and cannot run.** `.github/workflows/backup.yml` line 32 has an unquoted `run:` value containing `: ` ("Backup skipped: ..."). GitHub shows runs 39227131826 and 39227677174 as failures ("workflow file issue") and the daily schedule never starts, even after the two secrets are added. `KNOWN_GAPS` assumes only the secrets are missing. | High | LAUNCH-BLOCKER | 2 | `actionlint` output: "could not parse as YAML: mapping values are not allowed in this context". `gh secret list` shows no secrets at all. Not fixed in Phase 1 (workflows are out of scope). **Phase 2: fixed on branch `phase-2-production-foundation`** (the step now fails the run on purpose when secrets are missing; `actionlint` clean; `test_phase2.BackupWorkflowTests`). Close after the merge and a successful manual run. |
 | G1-02 | **`BookingViewSet.verify` has no status guard.** It only checks `payment_mode == 'online'`, then takes the bed and sets `paid`. A cancelled, rejected or already paid booking can be set to paid again, and every repeat call would run again whatever Phase 5 attaches (E2: stay and dues created in the same transaction), creating duplicates. `mark_paid` does guard (`pending`/`confirmed` only). | High for Phase 5 | LAUNCH-BLOCKER | 5 | `apps/bookings/views.py:147-165`. Distinct from L4-08, which is about the missing money, not the missing guard. |
 | G1-03 | **`confirm_payment` and the hold logic cannot be reused unchanged for rent (E6/E7).** (a) `holds.hold_has_lapsed` treats any payment whose bed has no live hold as lapsed after 15 minutes of age, and the status poll and cleanup then fail it; (b) `confirm_payment` flags a payment as "bed already taken" whenever `bed.is_available` is False, which is always true for a booking that is already paid; (c) `CreateOrderView` refuses bookings in status `paid` and bookings with a SUCCESS payment. A rent order built on the current Payment/booking path would be failed or flagged. | High for Phase 6 | LAUNCH-BLOCKER | 6 | `holds.py:44-51`, `holds.py:90-95`, `confirm.py:98-101`, `payments/views.py:137-154`. Phase 6 must branch on payment kind (a new field or a separate function) and add tests for all three. |
 | G1-04 | **Offline revenue trusts a client-supplied amount.** `BookingCreateSerializer` accepts `amount` from anyone (the endpoint is `AllowAny`) and never checks it against the room price. The owner dashboard's offline revenue and "pending" totals sum `Booking.amount`. Online payments are safe (the amount comes from `Room.price_per_month`). | Moderate | SCALE | 5 | `serializers.py:49,61`; `dashboard/views.py:334-335`. Phase 5 should set `Booking.amount` server-side. |
-| G1-05 | **The cleanup cron has too few variables for the later work.** `render.yaml` gives it only `PYTHON_VERSION`, `SECRET_KEY`, `ALLOWED_HOSTS`, `DATABASE_URL`. Reminder email (E8, D4) needs `EMAIL_API_PROVIDER`, `EMAIL_API_KEY`, `DEFAULT_FROM_EMAIL`; any Razorpay reconcile job needs `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`; errors from the cron are invisible without `SENTRY_DSN`/`SENTRY_ENVIRONMENT`; push (D4) will need FCM credentials. | Moderate | SCALE | 2 and each feature phase | `render.yaml` lines 128-146. Also the cron is `plan: starter` (paid) and exists only in the file (L4-05, F3-09). |
+| G1-05 | **The cleanup cron has too few variables for the later work.** `render.yaml` gives it only `PYTHON_VERSION`, `SECRET_KEY`, `ALLOWED_HOSTS`, `DATABASE_URL`. Reminder email (E8, D4) needs `EMAIL_API_PROVIDER`, `EMAIL_API_KEY`, `DEFAULT_FROM_EMAIL`; any Razorpay reconcile job needs `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`; errors from the cron are invisible without `SENTRY_DSN`/`SENTRY_ENVIRONMENT`; push (D4) will need FCM credentials. | Moderate | SCALE | 2 and each feature phase | `render.yaml` lines 128-146. Also the cron is `plan: starter` (paid) and exists only in the file (L4-05, F3-09). **Phase 2: Sentry and heartbeat variables and `GIT_COMMIT` added; email, Razorpay and push variables are for the phases that need them.** |
 | G1-06 | **Webhook-confirmed payments are always recorded as method CARD** even when paid by UPI. Only the payment-method label is wrong, not the money. | Low | LATER | 6 | `payments/views.py:607` (code comment already says "best guess"). Razorpay's event carries the method; Phase 6 can read it. |
 | G1-07 | **A booking can also become `paid` in Django admin and in the load-test seed**, with no bed taken and no payment: `BookingAdmin` has no read-only fields (`apps/bookings/admin.py`), and `seed_loadtest.py:137` creates paid bookings directly. Staff-only today, but a stay would not be created for such a booking (E2 covers three paths only). | Low | LATER | 5 | Make `status` read-only in the admin when Phase 5 touches it. |
 | G1-08 | **Two web instances do not fit the database pool.** One instance holds up to 8 connections (2 workers x 4 threads); the pooler allows 15; a deploy that briefly runs the old and new instance together can ask for 16. | High at scale | SCALE | 3 | Arithmetic in STAY_BASELINE A10. This sharpens F5-08. |
@@ -239,3 +239,4 @@ Evidence for each is in `backend/docs/STAY_BASELINE.md`. IDs use the prefix G1.
 | G1-10 | **`Room.available_beds` is never updated after a bed is paid.** It is set only from the owner's hostel payload (and the seed). `Bed.is_available` is only ever set to False (`confirm.py:132`, `holds.py:166`), never back to True. The public room JSON exposes `available_beds` (`RoomSerializer` uses `fields = '__all__'`) and the app's bed screen uses it for its "full" state (`bed_selection_screen.dart:220`). So a room never shows as full from payments, and a freed bed (L4-12) would not show as free. | Moderate | SCALE | Stay phases | Whoever builds stay end / vacate must define one source of truth for bed availability (count from `Bed` rows, or update the counter in the same transaction). |
 | G1-11 | **Nothing in the code ever sets a booking to `cancelled`.** The status exists as a choice and several checks refuse it, but no endpoint, command or admin action produces it (grep of `apps/`). Only the owner `reject` action ends a booking early. Confirms T3-04 / KNOWN_GAPS "no student cancel route". | Low | LATER | Stay phases | Those refusals are currently unreachable paths. |
 | G1-12 | **The staging database is unreachable right now.** On 2026-10-29 (about 12:20 and 14:16 UTC) staging `/healthz` answered 200 in about 0.1 s, but `/readyz` answered 503 after about 15 s, `GET /api/v1/hostels/` and `/api/v1/cities/` answered 500 after about 15 s, and a later try hung past 30 s. KNOWN_GAPS (2026-10-18) said staging was healthy. Likely cause: the free Supabase project paused after a week without activity (X-07) or its connection settings changed; **not confirmed**, because no dashboard access exists from here. | High (blocks all staging work) | SCALE | 2 (HUMAN first) | STAY_BASELINE Part C. Founder: open the Supabase dashboard for `Hostel-hunt-staging`, restore the project if paused, then re-run the probe. |
+| G2-01 | **Credentials in the public git history are still current.** An old committed `backend/.env` (5 commits in the backend repository, 3 in the app repository) held a filled `SECRET_KEY`, `DATABASE_URL` and `EMAIL_HOST_PASSWORD`. By hash comparison, the old database address and password and the old email password in the backend repository equal those in the laptop `.env`, which points at the production database (F3-02). gitleaks' default rules found nothing, so a clean scan proves nothing here. | High | LAUNCH-BLOCKER | 2 (HUMAN) | Found in Phase 2 by reading file names and comparing hashes; no value was shown. Rotate the production database password, the email password and `SECRET_KEY` before the production deploy: `FOUNDER_CHECKLIST_PROD.md` step 0. Raises P-02, F0-02, F0-03 and F1-02. |
