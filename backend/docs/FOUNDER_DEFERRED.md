@@ -33,6 +33,20 @@ Detailed instructions for most of these are in `FOUNDER_CHECKLIST_PROD.md` (step
 | 16 | Application id, upload keystore, Play Console account, privacy-policy page (F7-02, F7-06, X-08) | Cannot publish the Android app | Release | Deferred |
 | 17 | Device runs: payment on a phone, F6 resilience script, R8/UPI check (P-01, F6-05, F7-07) | Proven by tests and a debug build only | Release | Deferred |
 
+## Added by Phase 3 (scale layer)
+
+None of these blocks building the next phases. Details: `CAPACITY.md` and `EDGE_SETUP.md`. **Approve cost before each.**
+
+| # | Action | Why | Needed by | Status | How to know it worked |
+|---|---|---|---|---|---|
+| 18 | Create a Render Key Value (Redis) instance for staging (free plan exists) and, for production, a paid one; set `REDIS_URL` on the web service | Shared cache and shared rate limits; without it each worker still counts alone | Before more than one instance; before the staging load tests | Deferred | `python manage.py cache_stats` prints counters; two workers share a rate-limit count |
+| 19 | Approve and apply the paid sizes and two instances in `render.scale.yaml` (production web `numInstances: 2`, staging at the planned size), including `migrate` as a pre-deploy command | Failover and a measured size | Before go-live; the load tests need the planned size | Deferred (cost) | a deploy runs `migrate` once and a failed migration stops the release |
+| 20 | Decide the database pooler: a larger Supabase plan, or transaction pooling (and then create the dedicated web role with the statement timeout) | Two or more instances exceed the free 15-slot pooler | Before the second instance | Deferred (decision, cost) | `python manage.py pool_check` ends `RESULT: PASS` with the mode in use; connections stay at or under 80 percent of the pooler limit |
+| 21 | Buy a domain; set up Cloudflare as in `EDGE_SETUP.md` (DNS, Full strict, cache rule, sign-in rate rules, webhook skip rule, the edge secret) | Edge cache, firewall, origin hidden | Before go-live (optional but recommended) | Deferred (cost) | `cf-cache-status: HIT` on the public lists; the origin answers 403 without the secret |
+| 22 | Run the two-phone test and then set `TRUSTED_PROXY_COUNT=2` | The server must read the real client address behind Cloudflare | Right after step 21 | Deferred | two phones show two different `client` values in the log |
+| 23 | Run the capacity measurements (`CAPACITY.md` section 6: 50, 200, 300 users, stress, 1 versus 2 instances, a restart under load) and paste the numbers | Replace the assumptions with measurements | The end (needs items 1, 14, 18, 19) | Deferred | the table in `CAPACITY.md` is filled |
+| 24 | Run `python manage.py pool_check` on staging against Supabase's pooler | Only pgbouncer was proven locally | With item 20 | Deferred | `RESULT: PASS` |
+
 ## Added by later phases
 
 (none yet)

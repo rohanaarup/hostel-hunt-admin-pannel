@@ -163,7 +163,7 @@ P-01, P-04, P-05, F1-04, F2-01, F2-02, F3-02, T1-01, T4-01, L4-01, L4-02, L4-03,
 | L4-03 | Brevo single-sender route unconfirmed | LAUNCH-BLOCKER (added) | 2 (HUMAN) | Same cause as L4-02. |
 | L4-04 | No Razorpay TEST keys/webhook on staging; live readiness unverified | LAUNCH-BLOCKER (added) | 2 (HUMAN) | |
 | L4-05 | Cleanup cron job not created | LAUNCH-BLOCKER (added) | 2 (PAID, HUMAN) | Rent reminders (E8) also depend on a cron. See G1-05 for its missing variables. |
-| L4-06 | `TRUSTED_PROXY_COUNT` default 1 unverified on Render | SCALE | 3 | Needs one `xff_hops` log line. If wrong, all users share one limit. |
+| L4-06 | `TRUSTED_PROXY_COUNT` default 1 unverified on Render | SCALE | 3 | Needs one `xff_hops` log line. If wrong, all users share one limit. **Phase 3: the log field and the two-phone test exist** (`EDGE_SETUP.md`); needs a real run. |
 | L4-07 | Flagged payments have no alert or student message | LAUNCH-BLOCKER (added) | 6 (code), 2 (Sentry) | |
 | L4-08 | Owner `verify` marks paid with no money | LATER | 5 | Accepted, but see G1-02: it also lacks a status guard, which Phase 5 must fix before stays are created from it. |
 | L4-09 | No refund reconcile job | SCALE | 6 | |
@@ -178,11 +178,11 @@ P-01, P-04, P-05, F1-04, F2-01, F2-02, F3-02, T1-01, T4-01, L4-01, L4-02, L4-03,
 | F5-01 | Render-to-database distance unmeasured | SCALE | 2 then 11 | The rule is in AFTER-F5.md. Needs request-log lines. |
 | F5-02 | Statement timeout only in `render.yaml` | SCALE | 2 | |
 | F5-03 | Image savings unmeasured | LATER | none | |
-| F5-04 | Places cache is per worker | SCALE | 3 | Replaced by the shared cache (rule S2). |
+| F5-04 | Places cache is per worker | SCALE | 3 | Replaced by the shared cache (rule S2). **Phase 3: done in code** (shared cache plus version bump); closes with a Redis check on staging. |
 | F5-05 | Cache headers help only once something caches | LATER | none | |
 | F5-06 | Deactivated rooms still counted in owner totals | LATER | none | |
 | F5-07 | Owner queries grow linearly with bookings | LATER | 11 | Revisit at `db_ms` above about 100. |
-| F5-08 | Database pool headroom 3 to 4 of 15 | SCALE | 3 | **Phase 1 arithmetic: a second web instance does not fit** (see STAY_BASELINE A10). |
+| F5-08 | Database pool headroom 3 to 4 of 15 | SCALE | 3 | **Phase 1 arithmetic: a second web instance does not fit** (see STAY_BASELINE A10). **Phase 3: formula, options and the transaction-mode switch delivered** (`CAPACITY.md`); the choice is the founder's. |
 
 ### F6 and F7
 
@@ -199,7 +199,7 @@ P-01, P-04, P-05, F1-04, F2-01, F2-02, F3-02, T1-01, T4-01, L4-01, L4-02, L4-03,
 | F7-02 | Android release blockers (id, keystore, icon) | LAUNCH-BLOCKER (default) | 11 (HUMAN) | |
 | F7-03 | Backup never run; restore only rehearsed on a laptop; rollback never tried | LAUNCH-BLOCKER (default) | 2 | See G1-01. |
 | F7-04 | Nothing can be load-tested yet (size, seed, vars) | SCALE | 2 (HUMAN decisions) | |
-| F7-05 | Login hash cost; per-address throttle | SCALE | 3 | Phase 1: Django 5.2.15 PBKDF2 = 1,000,000 rounds confirmed. Per the prompt the round count is not changed. |
+| F7-05 | Login hash cost; per-address throttle | SCALE | 3 | Phase 1: Django 5.2.15 PBKDF2 = 1,000,000 rounds confirmed. Per the prompt the round count is not changed. **Phase 3: recommendation written** (`CAPACITY.md`); nothing changed. |
 | F7-06 | Play Console not started | LAUNCH-BLOCKER (default) | 11 (HUMAN) | |
 | F7-07 | R8 shrinking and `<queries>` not run on a phone | LAUNCH-BLOCKER (added) | 10, 11 (HUMAN) | A release-only crash or dead UPI button would block paying. |
 | F7-08 | No "update required" screen | LATER | 10 | |
@@ -240,3 +240,6 @@ Evidence for the G1 rows is in `backend/docs/STAY_BASELINE.md`; G2-01 is from Ph
 | G1-11 | **Nothing in the code ever sets a booking to `cancelled`.** The status exists as a choice and several checks refuse it, but no endpoint, command or admin action produces it (grep of `apps/`). Only the owner `reject` action ends a booking early. Confirms T3-04 / KNOWN_GAPS "no student cancel route". | Low | LATER | Stay phases | Those refusals are currently unreachable paths. |
 | G1-12 | **The staging database is unreachable right now.** On 2026-10-29 (about 12:20 and 14:16 UTC) staging `/healthz` answered 200 in about 0.1 s, but `/readyz` answered 503 after about 15 s, `GET /api/v1/hostels/` and `/api/v1/cities/` answered 500 after about 15 s, and a later try hung past 30 s. KNOWN_GAPS (2026-10-18) said staging was healthy. Likely cause: the free Supabase project paused after a week without activity (X-07) or its connection settings changed; **not confirmed**, because no dashboard access exists from here. | High (blocks all staging work) | SCALE | 2 (HUMAN first) | STAY_BASELINE Part C. Founder: open the Supabase dashboard for `Hostel-hunt-staging`, restore the project if paused, then re-run the probe. |
 | G2-01 | **Credentials in the public git history are still current.** An old committed `backend/.env` (5 commits in the backend repository, 3 in the app repository) held a filled `SECRET_KEY`, `DATABASE_URL` and `EMAIL_HOST_PASSWORD`. By hash comparison, the old database address and password and the old email password in the backend repository equal those in the laptop `.env`, which points at the production database (F3-02). gitleaks' default rules found nothing, so a clean scan proves nothing here. | High | LAUNCH-BLOCKER | 2 (HUMAN) | Found in Phase 2 by reading file names and comparing hashes; no value was shown. Rotate the production database password, the email password and `SECRET_KEY` before the production deploy: `FOUNDER_CHECKLIST_PROD.md` step 0. Raises P-02, F0-02, F0-03 and F1-02. |
+| G3-01 | `render.yaml` had `autoDeployTrigger: off` unquoted (the boolean `false` in YAML 1.1; Render's schema wants the string). | Low | LATER | 3 | Fixed in Phase 3; both blueprints validate against Render's schema. |
+| G3-02 | In transaction pooling mode, single statements outside a transaction block have no statement timeout unless the database role carries one. | Moderate (only in that mode) | SCALE | 3, founder | `CAPACITY.md` section 2: a dedicated web role. |
+| G3-03 | Redis alone cannot give a per-endpoint cache hit rate. | Low | LATER | 3 | Use two `cache_stats` snapshots plus the request log. |

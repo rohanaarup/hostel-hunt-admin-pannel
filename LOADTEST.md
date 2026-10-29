@@ -141,6 +141,12 @@ with the Locust `RESULT` block and the Render CPU and memory numbers.
 * **The first run of anything.** The places cache is empty and the database is cold; a second identical run is the fairer one.
 * **Test data.** 40 hostels is small. A catalogue of thousands changes the list and search cost; say so when quoting a result.
 
+## Phase 3 measurements
+
+The runs that decide the number of instances (50, 200 and 300 users, a stress run, one versus two instances, a restart
+under load, the cache hit rate) are listed in `backend/docs/CAPACITY.md` section 6, with the table to fill. Start the
+shared cache first (`REDIS_URL`) or the rate limits and caches will be per worker, as in the earlier runs.
+
 ## Instance size
 
 Prices and sizes below come from provider pages read on 2026-10-19 and need re-reading before you pay (they change).

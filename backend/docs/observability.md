@@ -29,6 +29,7 @@ One JSON object per request on stdout, logger `hh.request`. `/healthz` is not lo
 | `db_queries`, `db_ms` | Number of queries and total time in them. |
 | `inflight` | Requests in progress in this worker process when this request started. |
 | `user_id` | Internal owner id (a UUID string) when the request was authenticated, otherwise `null`. |
+| `client` | A masked client identifier: the address the rate limits see (so it honours `TRUSTED_PROXY_COUNT`), put through an HMAC keyed with `SECRET_KEY` and the UTC date, cut to 8 hex characters. It cannot be turned back into an address; the same client has the same value for one UTC day and a different one the next. Its only job is the two-phone test in `EDGE_SETUP.md` ("are these two requests from different clients?"). `LOG_CLIENT_ID=False` removes it. |
 | `xff_hops` | How many entries `X-Forwarded-For` had (a count only). Compare it with `TRUSTED_PROXY_COUNT`: on Render it should be the number of proxies in front of gunicorn plus any hops the client itself added. |
 | `exc` | Present only if a view raised: the exception class name, never the message. |
 | `release` | Deployed git commit (`GIT_COMMIT` or `SENTRY_RELEASE`). |
