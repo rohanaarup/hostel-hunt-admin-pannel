@@ -32,6 +32,11 @@ razorpay==2.0.1
 # Error reporting (only active when SENTRY_DSN is set)
 sentry-sdk==2.71.0
 
+# Shared cache (Phase 3): used only when REDIS_URL is set. django-redis 7.0.0 supports Django 5.2 (its metadata
+# says Django>=5.2,<7, Python>=3.10); redis-py 7.4.1 satisfies its redis>=4.0.2. Both read on 2026-10-29.
+django-redis==7.0.0
+redis==7.4.1
+
 # OpenAPI schema generation (schema.yml, Swagger UI on staging)
 drf-spectacular==0.30.0
 

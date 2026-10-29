@@ -11,6 +11,8 @@ Authorization, Cookie, User-Agent or IP), request or response bodies, emails,
 phone numbers, tokens or OTPs. `route` is the URL template, not the real path.
 """
 import contextvars
+import hashlib
+import hmac
 import json
 import logging
 import os
@@ -96,6 +98,25 @@ def _user_id(request):
     return str(user.pk) if getattr(user, 'is_authenticated', False) else None
 
 
+def _today():
+    return datetime.now(timezone.utc).strftime('%Y-%m-%d')
+
+
+def client_hash(request):
+    """A short masked identifier for the client address, for the two-phone test in docs/EDGE_SETUP.md.
+
+    It is the address the rate limits see (DRF's get_ident, which honours TRUSTED_PROXY_COUNT), run through an HMAC
+    keyed with SECRET_KEY and the UTC date, cut to 8 hex characters. The address cannot be read back from it, two
+    requests from the same client on the same day share it, and tomorrow it is a different value, so it is useful for
+    checking "are these two requests from different clients" and useless for following a person. LOG_CLIENT_ID=False
+    removes it from the log."""
+    from rest_framework.throttling import BaseThrottle  # imported here: this module loads during logging set-up
+
+    ident = BaseThrottle().get_ident(request) or '-'
+    key = hashlib.sha256(('hh-client-id:' + settings.SECRET_KEY).encode()).digest()
+    return hmac.new(key, f'{_today()}|{ident}'.encode(), hashlib.sha256).hexdigest()[:8]
+
+
 def _response_bytes(response):
     length = response.headers.get('Content-Length')
     if length and length.isdigit():
@@ -177,6 +198,8 @@ class RequestLogMiddleware:
             'release': self.release,
             'pid': self.pid,
         }
+        if getattr(settings, 'LOG_CLIENT_ID', True):
+            payload['client'] = client_hash(request)
         exc = getattr(request, '_hh_exc', None)
         if exc:
             payload['exc'] = exc

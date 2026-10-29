@@ -6,6 +6,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db.models import Q
 
+from apps.hostels import places_cache
 from apps.hostels.models import Hostel
 
 
@@ -55,6 +56,7 @@ class Command(BaseCommand):
         undo = Path(options['undo_file'] or f"deactivated_hostels_{datetime.now():%Y%m%d_%H%M%S}.json")
         undo.write_text(json.dumps({'created': datetime.now().isoformat(), 'hostel_ids': [str(h.pk) for h in hostels]}, indent=2))
         Hostel.objects.filter(pk__in=[h.pk for h in hostels]).update(is_active=False)
+        places_cache.bump()  # a bulk update fires no signal: make every worker drop its cached places lists
         self.stdout.write(self.style.SUCCESS(f'Deactivated {len(hostels)}. Undo file: {undo} (python manage.py deactivate_test_hostels --restore {undo})'))
 
     def _restore(self, path):
@@ -62,4 +64,5 @@ class Command(BaseCommand):
             raise CommandError(f'Undo file not found: {path}')
         ids = json.loads(path.read_text())['hostel_ids']
         changed = Hostel.objects.filter(pk__in=ids, is_active=False).update(is_active=True)
+        places_cache.bump()
         self.stdout.write(self.style.SUCCESS(f'Restored {changed} hostel(s) from {path}.'))

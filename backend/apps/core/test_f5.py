@@ -122,14 +122,14 @@ class HttpHeaderTests(Base):
         for path, seconds in (('/api/v1/hostels/', 30), ('/api/v1/cities/', 120), ('/api/v1/hostels/localities/', 120)):
             response = client().get(path)
             self.assertEqual(response.status_code, 200, path)
-            self.assertEqual(response.headers['Cache-Control'], f'public, max-age={seconds}', path)
+            self.assertEqual(response.headers['Cache-Control'], f'public, max-age={seconds}, s-maxage={seconds}', path)
             self.assertIn('Authorization', response.headers['Vary'], path)
             self.assertTrue(response.headers['ETag'].startswith('"'), path)
 
     def test_the_locality_list_of_a_city_is_cached_too(self):
         slug = City.objects.filter(is_active=True).first().slug
         response = client().get(f'/api/v1/cities/{slug}/localities/')
-        self.assertEqual(response.headers['Cache-Control'], 'public, max-age=120')
+        self.assertEqual(response.headers['Cache-Control'], 'public, max-age=120, s-maxage=120')
 
     def test_a_request_with_a_token_is_never_publicly_cached(self):
         for path in ('/api/v1/hostels/', '/api/v1/cities/', '/api/v1/hostels/localities/'):
@@ -142,14 +142,14 @@ class HttpHeaderTests(Base):
         self.assertNotIn('public', owner_list.headers.get('Cache-Control', ''))
         detail = client().get(f'/api/v1/hostels/{self.hostel.id}/')
         self.assertEqual(detail.status_code, 200)
-        self.assertNotIn('Cache-Control', detail.headers, 'the detail carries bed availability and must not be cached')
+        self.assertEqual(detail.headers['Cache-Control'], 'private, no-store', 'the detail carries bed availability and must not be cached')
 
     def test_a_matching_etag_answers_304_with_no_body(self):
         first = client().get('/api/v1/cities/')
         again = client().get('/api/v1/cities/', HTTP_IF_NONE_MATCH=first.headers['ETag'])
         self.assertEqual(again.status_code, 304)
         self.assertEqual(again.content, b'')
-        self.assertEqual(again.headers['Cache-Control'], 'public, max-age=120')
+        self.assertEqual(again.headers['Cache-Control'], 'public, max-age=120, s-maxage=120')
         other = client().get('/api/v1/cities/', HTTP_IF_NONE_MATCH='"something-else"')
         self.assertEqual(other.status_code, 200)
 

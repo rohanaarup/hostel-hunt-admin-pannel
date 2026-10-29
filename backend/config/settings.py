@@ -19,7 +19,7 @@ from decouple import config, Csv
 from django.core.exceptions import ImproperlyConfigured
 import dj_database_url
 
-from apps.core.db_options import postgres_options
+from apps.core.db_options import POOL_MODES, apply_pool_mode, pool_mode_from, postgres_options
 
 logger = logging.getLogger('apps.startup')
 
@@ -112,6 +112,12 @@ if config('GZIP_RESPONSES', default=True, cast=bool):
     # Render's edge already compresses large responses; your own server would not. A response the edge
     # compressed is never compressed twice.
     MIDDLEWARE.insert(2, 'django.middleware.gzip.GZipMiddleware')
+# Refuses requests that bypass the edge when EDGE_SHARED_SECRET is set (apps/core/edge.py). Right after the health
+# check, which must stay untouched, so a refused request costs nothing.
+MIDDLEWARE.insert(2, 'apps.core.edge.EdgeSecretMiddleware')
+EDGE_SHARED_SECRET = config('EDGE_SHARED_SECRET', default='')
+# The request log carries a masked, daily-rotating client identifier (observability.client_hash). Set False to drop it.
+LOG_CLIENT_ID = config('LOG_CLIENT_ID', default=True, cast=bool)
 
 ROOT_URLCONF = 'config.urls'
 
@@ -197,12 +203,40 @@ if _missing_env:
 # web process through its start command, so migrations and the clean-up job are never cut short.
 DB_CONNECT_TIMEOUT = config('DB_CONNECT_TIMEOUT', default=5, cast=int)
 DB_STATEMENT_TIMEOUT_MS = config('DB_STATEMENT_TIMEOUT_MS', default=0, cast=int)
+# session (default) or transaction: the kind of pooler in front of the database (apps/core/db_options.py,
+# docs/CAPACITY.md). Transaction mode turns off server-side cursors and psycopg's prepared statements, and applies the
+# statement timeout per transaction. Production stays in session mode until the founder switches it.
+DB_POOL_MODE = pool_mode_from(config('DB_POOL_MODE', default='session'))
 if DATABASES['default']['ENGINE'].endswith('postgresql'):
     DATABASES['default']['OPTIONS'] = postgres_options(DATABASES['default'].get('OPTIONS'), DB_CONNECT_TIMEOUT)
+    apply_pool_mode(DATABASES['default'], DB_POOL_MODE)
+elif DB_POOL_MODE not in POOL_MODES:
+    raise ImproperlyConfigured(f"DB_POOL_MODE must be 'session' or 'transaction' (got {DB_POOL_MODE!r}).")
 
-# Per-process memory cache. Used for the short public places cache (apps/hostels/places_cache.py) and the
-# per-worker request throttle counters. 0 turns the places cache off.
-CACHES = {'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}}
+# The cache. With REDIS_URL set it is shared by every worker and instance: the public places lists
+# (apps/hostels/places_cache.py, through apps/core/cache.py) and DRF's request-throttle counters live in it. A Redis
+# outage must slow things down, never take the API down, so the backend has a circuit breaker and rate limits fail
+# open (apps/core/cache_backend.py). Short socket timeouts keep one dead call cheap. With REDIS_URL unset the cache is
+# per process memory (LocMem), which is what local runs and most of CI use. REDIS_URL holds a password: never log it.
+REDIS_URL = config('REDIS_URL', default='')
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'apps.core.cache_backend.ResilientRedisCache',
+            'LOCATION': REDIS_URL,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'IGNORE_EXCEPTIONS': False,  # the backend's circuit breaker handles errors (it must see them)
+                'SOCKET_CONNECT_TIMEOUT': config('REDIS_CONNECT_TIMEOUT', default=0.25, cast=float),
+                'SOCKET_TIMEOUT': config('REDIS_SOCKET_TIMEOUT', default=0.5, cast=float),
+                'CONNECTION_POOL_KWARGS': {'max_connections': config('REDIS_MAX_CONNECTIONS', default=20, cast=int)},
+                'BREAKER_SECONDS': config('REDIS_BREAKER_SECONDS', default=10, cast=int),
+            },
+        }
+    }
+else:
+    CACHES = {'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}}
+# Seconds the public cities and localities lists are kept (+-10 percent). 0 turns the places cache off.
 PUBLIC_LIST_CACHE_SECONDS = config('PUBLIC_LIST_CACHE_SECONDS', default=60, cast=int)
 
 
