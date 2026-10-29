@@ -1,0 +1,219 @@
+# THE TARGET RENDER SETUP FOR SCALE (Phase 3). NOT APPLIED. Nothing here has been created or paid for.
+#
+# render.yaml describes what runs today (free plans, one instance, migrate in the build). This file describes what it
+# becomes once the founder approves the cost: a shared cache, two web instances for failover, migrations that run once
+# per deploy, and a size chosen by measurement. It is separate so that render.yaml stays valid for the free plans (the
+# free plan has no pre-deploy step and cannot run more than one instance: Render's pricing and plan pages say so; the
+# blueprint schema itself does not state plan restrictions, so confirm on the pages before you apply).
+#
+# Every key name below is taken from Render's published blueprint schema (https://render.com/schema/render.yaml.json,
+# read 2026-10-29, stored in backend/contract/render.schema.json); apps/core/test_scale_config.py validates this file
+# against it. Prices are NOT in this file and must be read on Render's pricing page the day you decide.
+#
+# CHANGES THE FOUNDER MUST APPROVE (each costs money or changes how deploys behave):
+#   1. A Key Value instance per environment (the shared cache).               Free plan exists; the production one is paid.
+#   2. Production web service on a paid size, numInstances: 2 (failover).     Roughly twice the web cost.
+#   3. migrate moves from the build to preDeployCommand (runs once per deploy; a failed migration blocks the release).
+#   4. WEB_CONCURRENCY / GUNICORN_THREADS set from the instance size (a hypothesis until the load test decides).
+#   5. A Supabase plan or pooler mode that fits the connection arithmetic in backend/docs/CAPACITY.md. With two or
+#      more instances the free 15-slot session pooler is exceeded: 2 x 3 x 4 = 24 connections, plus cron and admin.
+#   6. Cloudflare in front (backend/docs/EDGE_SETUP.md): TRUSTED_PROXY_COUNT and EDGE_SHARED_SECRET change with it.
+# To apply: create the Key Value instances and set the environment values in the dashboard (names only here), or use
+# this file as a Blueprint. Do it on STAGING first and run the measurements in CAPACITY.md.
+
+services:
+  # ---------------------------------------------------------------------------------------------------------------
+  # Shared cache. Internal connections only (an empty ipAllowList allows no external address). allkeys-lru: when memory
+  # is full the least recently used keys go first, which is right for a cache; nothing stored here is the only copy.
+  # ---------------------------------------------------------------------------------------------------------------
+  - type: keyvalue
+    name: hostel-hunt-cache
+    region: singapore
+    plan: starter
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
+
+  - type: keyvalue
+    name: hostel-hunt-cache-staging
+    region: singapore
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
+
+  # ---------------------------------------------------------------------------------------------------------------
+  # Production web service.
+  # ---------------------------------------------------------------------------------------------------------------
+  - type: web
+    name: hostel-hunt-backend
+    runtime: python
+    region: singapore
+    # Hypothesis to be replaced by measurement (CAPACITY.md): 1 CPU and 2 GB. LOADTEST.md read this size as "Standard".
+    plan: standard
+    rootDir: backend
+    # Two instances as the minimum, so one can restart or fail while the other serves. With autoscaling the schema key
+    # is `scaling:` instead (it needs a Pro workspace per Render's docs); numInstances then has no effect:
+    #   scaling:
+    #     minInstances: 2
+    #     maxInstances: 4
+    #     targetCPUPercent: 60      # the trigger in CAPACITY.md: add instances at 60 percent CPU sustained
+    numInstances: 2
+    # migrate no longer runs in the build: it runs ONCE per deploy, before the new version starts, and a failed
+    # migration stops the release (the previous version keeps serving). Migrations must work with the previous
+    # version still running: backend/docs/MIGRATION_POLICY.md.
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    preDeployCommand: python manage.py migrate --noinput
+    startCommand: DB_STATEMENT_TIMEOUT_MS=25000 GIT_COMMIT=$RENDER_GIT_COMMIT gunicorn config.wsgi:application -c gunicorn.conf.py
+    healthCheckPath: /healthz
+    # gunicorn's graceful_timeout is 30 s; Render waits this long after SIGTERM before it kills the process.
+    maxShutdownDelaySeconds: 35
+    autoDeployTrigger: "off"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      - key: DEBUG
+        value: "False"
+      - key: SENTRY_ENVIRONMENT
+        value: production
+      # Workers and threads for the instance size. Hypothesis: 1 CPU and 2 GB gives 3 workers x 4 threads. The load
+      # test decides; change both numbers together with the connection arithmetic in CAPACITY.md.
+      - key: WEB_CONCURRENCY
+        value: "3"
+      - key: GUNICORN_THREADS
+        value: "4"
+      # The shared cache. If it is unreachable the API keeps working (the cache fails open).
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: hostel-hunt-cache
+          property: connectionString
+      # Stays session until the founder switches it (CAPACITY.md, "Transaction mode"); run `manage.py pool_check` after.
+      - key: DB_POOL_MODE
+        value: session
+      # 1 = Render only. Set to 2 ONLY after Cloudflare is in front AND the two-phone test (EDGE_SETUP.md) passed.
+      - key: TRUSTED_PROXY_COUNT
+        value: "1"
+      # Optional, with Cloudflare: the value of the X-Edge-Secret header the edge adds. Dashboard only.
+      - key: EDGE_SHARED_SECRET
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: ALLOWED_HOSTS
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: CSRF_TRUSTED_ORIGINS
+        sync: false
+      - key: EMAIL_API_PROVIDER
+        sync: false
+      - key: EMAIL_API_KEY
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_UPLOAD_PRESET
+        sync: false
+
+  # ---------------------------------------------------------------------------------------------------------------
+  # Staging web service: the same shape at the planned size, so the measurements in CAPACITY.md are taken on what
+  # production will be. numInstances is changed by hand between runs (1, then 2) for the instance-count measurements.
+  # Do not point an uptime monitor at it (it should be allowed to idle between tests).
+  # ---------------------------------------------------------------------------------------------------------------
+  - type: web
+    name: hostel-hunt-backend-staging
+    runtime: python
+    region: singapore
+    plan: standard
+    rootDir: backend
+    branch: main
+    numInstances: 1
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    preDeployCommand: python manage.py migrate --noinput
+    startCommand: DB_STATEMENT_TIMEOUT_MS=25000 GIT_COMMIT=$RENDER_GIT_COMMIT gunicorn config.wsgi:application -c gunicorn.conf.py
+    healthCheckPath: /healthz
+    maxShutdownDelaySeconds: 35
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      - key: DEBUG
+        value: "False"
+      - key: APP_ENV
+        value: staging
+      - key: SENTRY_ENVIRONMENT
+        value: staging
+      - key: WEB_CONCURRENCY
+        value: "3"
+      - key: GUNICORN_THREADS
+        value: "4"
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: hostel-hunt-cache-staging
+          property: connectionString
+      - key: DB_POOL_MODE
+        value: session
+      - key: TRUSTED_PROXY_COUNT
+        value: "1"
+      - key: SECRET_KEY
+        sync: false
+      - key: ALLOWED_HOSTS
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: EMAIL_API_PROVIDER
+        sync: false
+      - key: EMAIL_API_KEY
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_UPLOAD_PRESET
+        sync: false
+
+  # ---------------------------------------------------------------------------------------------------------------
+  # Scheduled clean-up for production: unchanged from render.yaml (it uses no cache and one database connection).
+  # ---------------------------------------------------------------------------------------------------------------
+  - type: cron
+    name: hostel-hunt-cleanup
+    runtime: python
+    region: singapore
+    plan: starter
+    rootDir: backend
+    schedule: "*/5 * * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: GIT_COMMIT=$RENDER_GIT_COMMIT python manage.py ping_heartbeat cleanup_expired
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      - key: SECRET_KEY
+        sync: false
+      - key: ALLOWED_HOSTS
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: SENTRY_ENVIRONMENT
+        value: production
+      - key: HEARTBEAT_URL
+        sync: false

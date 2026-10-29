@@ -34,7 +34,8 @@ services:
     startCommand: DB_STATEMENT_TIMEOUT_MS=25000 GIT_COMMIT=$RENDER_GIT_COMMIT gunicorn config.wsgi:application -c gunicorn.conf.py
     healthCheckPath: /healthz
     # Production is deployed by hand from a commit that already ran on staging.
-    autoDeployTrigger: off
+    # Quoted on purpose: a bare `off` is the boolean false in YAML 1.1, and Render's schema wants the string "off".
+    autoDeployTrigger: "off"
     envVars:
       - key: PYTHON_VERSION
         value: 3.13.5

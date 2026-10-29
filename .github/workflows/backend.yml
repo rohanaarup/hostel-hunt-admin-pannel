@@ -34,6 +34,18 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
+      # The shared cache (Phase 3). Only the cache and throttle tests below use it; the rest of the suite keeps
+      # the in-memory cache, because REDIS_URL is set on that one step only.
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     env:
       # CI-only values, not secrets. DEBUG is deliberately unset (= off) so the production
       # settings path is what gets tested.
@@ -83,3 +95,11 @@ jobs:
         env:
           SECURE_SSL_REDIRECT: "False"
         run: python manage.py test apps utils --noinput
+
+      - name: Cache and throttle tests against Redis
+        # Same tests as above for these modules, now with the Redis cache switched on (3 of them only run here).
+        # A second run of the shared-state tests, not a replacement for the LocMem run.
+        env:
+          SECURE_SSL_REDIRECT: "False"
+          REDIS_URL: redis://localhost:6379/0
+        run: python manage.py test apps.core.test_cache --noinput
