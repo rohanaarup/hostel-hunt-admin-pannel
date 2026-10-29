@@ -34,7 +34,7 @@ python manage.py migrate
 python manage.py runserver 0.0.0.0:8000      # /healthz and /readyz answer; /api/v1/debug-logs/ is 404
 
 $env:USE_DB='sqlite'
-python manage.py test apps utils             # 136 tests, all pass
+python manage.py test apps utils             # 434 tests, all pass (2026-10-29; 7 to 14 minutes on the laptop, about 3 in CI)
 python manage.py makemigrations --check --dry-run   # "No changes detected"
 python manage.py spectacular --file schema.yml      # regenerate the OpenAPI schema after an API change
 
