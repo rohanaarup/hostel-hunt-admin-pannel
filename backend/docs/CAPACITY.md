@@ -6,6 +6,8 @@ size, the seed data and the Render and Supabase dashboards. Every number marked 
 or a hypothesis and must be replaced by a measurement. Numbers marked *measured here* come from this laptop (a local
 Postgres, Redis and pgbouncer in Docker) and show behaviour, not capacity.
 
+> **Provider note (founder rule, 2026-10-29: nothing is permanent).** Render and Supabase are today's host and database, not a commitment. The formulas, the triggers and the measurement protocol below are generic; every pooler limit, plan size, price and free-tier behaviour is an input read from a provider's page on a given date. On another provider (a managed Postgres on AWS or Azure, a VPS on Hostinger, a self-run pgbouncer) replace those inputs and re-measure; the code only needs a Postgres URL, a Redis URL and environment variables.
+
 Design targets (assumptions): **1,000** registered users at launch, **10,000** comfortable, **100,000** reachable by adding
 instances and following the triggers in section 5. Peak concurrent users about 3 percent of registered; one request per user
 every 5 seconds; about 80 percent of traffic is public reads.
