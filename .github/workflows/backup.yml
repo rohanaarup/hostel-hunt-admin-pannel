@@ -2,7 +2,7 @@ name: backup
 
 # A daily encrypted copy of the database, kept for 30 days, so a loss on Supabase is not permanent.
 #
-# It does nothing until two repository secrets exist (Settings > Secrets and variables > Actions):
+# It FAILS (red run, email) until two repository secrets exist (Settings > Secrets and variables > Actions):
 #   BACKUP_DATABASE_URL     the database's session-pooler URL (a secret; never put it in a file)
 #   BACKUP_AGE_PUBLIC_KEY   the PUBLIC half of an age key pair (starts with age1)
 # The private half stays with you, outside GitHub: it is the only way to read a backup.
@@ -27,9 +27,14 @@ jobs:
       BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
       BACKUP_AGE_PUBLIC_KEY: ${{ secrets.BACKUP_AGE_PUBLIC_KEY }}
     steps:
-      - name: Say so when the secrets are missing
+      # A run that made no backup must not look green: this step FAILS, so GitHub emails the failure (docs/ALERTS.md).
+      # (The earlier version of this step was an unquoted `run:` value containing ": ", which made the whole file
+      # invalid YAML, so the workflow never ran at all: gap G1-01.)
+      - name: Fail when the secrets are missing
         if: ${{ env.BACKUP_DATABASE_URL == '' || env.BACKUP_AGE_PUBLIC_KEY == '' }}
-        run: echo "::warning::Backup skipped: BACKUP_DATABASE_URL and BACKUP_AGE_PUBLIC_KEY are not set. No backup exists (gap X-06)."
+        run: |
+          echo "::error::No backup was made. Add the repository secrets BACKUP_DATABASE_URL and BACKUP_AGE_PUBLIC_KEY (RELEASE.md, section 3)."
+          exit 1
 
       - uses: actions/checkout@v4
         if: ${{ env.BACKUP_DATABASE_URL != '' && env.BACKUP_AGE_PUBLIC_KEY != '' }}

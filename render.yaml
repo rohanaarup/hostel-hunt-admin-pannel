@@ -5,6 +5,18 @@
 #
 # Nothing in the Django code depends on Render: on your own server run the same
 # build commands, start command and environment variables.
+#
+# RECONCILING WITH THE LIVE DASHBOARD (F3-09). This file was brought in line with the code on 2026-10-29. It has
+# NOT been compared with the dashboard (nobody but the founder can open it). FOUNDER_CHECKLIST_PROD.md, step 2a,
+# does the comparison: for each service, the build command, start command, health check path and the NAMES of the
+# environment variables must match what is below. Names only: never paste a value anywhere.
+#
+# Variables that must NOT exist on the production service (they are for tests or development):
+#   THROTTLE_ANON, THROTTLE_USER (load tests, staging only), EXPOSE_DEV_OTP, USE_DB, LOCAL_DATABASE_URL,
+#   APP_ENV=staging, DEBUG=True.
+# Optional on production, set after the matching step in the checklist: SECURE_HSTS_SECONDS (31536000, only once
+# HTTPS is proven on the final domain; hard to undo), SENTRY_TRACES_SAMPLE_RATE (0.1; leave PII off, which is the
+# default), TRUSTED_PROXY_COUNT (default 1; check the request log field xff_hops first).
 services:
   - type: web
     name: hostel-hunt-backend
@@ -53,9 +65,11 @@ services:
         sync: false
       - key: RAZORPAY_WEBHOOK_SECRET
         sync: false
-      # Error reporting. Leave unset to disable Sentry.
+      # Error reporting. Leave unset to disable Sentry. SENTRY_ENVIRONMENT keeps production events apart from staging.
       - key: SENTRY_DSN
         sync: false
+      - key: SENTRY_ENVIRONMENT
+        value: production
       # Profile photo uploads (Cloudinary unsigned preset; no secret). Without them the
       # photo endpoint answers 503 "Photo upload is not configured".
       - key: CLOUDINARY_CLOUD_NAME
@@ -125,6 +139,10 @@ services:
   # pricing page). Correctness never depends on it: a lapsed bed hold is also treated as lapsed when it is
   # read or written. It closes stale payments, deletes old OTP records and webhook ids, and flushes expired
   # tokens. Safe to run twice. Staging does not need one.
+  #
+  # `ping_heartbeat` runs the command and then calls the heartbeat monitor (HEARTBEAT_URL after a success, the
+  # same URL plus /fail after a failure), so a cron that stops or fails raises an alert (docs/ALERTS.md).
+  # With HEARTBEAT_URL unset it simply runs the command. GIT_COMMIT tags errors with the deployed version.
   - type: cron
     name: hostel-hunt-cleanup
     runtime: python
@@ -133,7 +151,7 @@ services:
     rootDir: backend
     schedule: "*/5 * * * *"
     buildCommand: pip install -r requirements.txt
-    startCommand: python manage.py cleanup_expired
+    startCommand: GIT_COMMIT=$RENDER_GIT_COMMIT python manage.py ping_heartbeat cleanup_expired
     envVars:
       - key: PYTHON_VERSION
         value: 3.13.5
@@ -143,4 +161,12 @@ services:
       - key: ALLOWED_HOSTS
         sync: false
       - key: DATABASE_URL
+        sync: false
+      # Errors from the job reach the same Sentry project as the web service (the production DSN).
+      - key: SENTRY_DSN
+        sync: false
+      - key: SENTRY_ENVIRONMENT
+        value: production
+      # The heartbeat monitor's ping URL for THIS job. It holds a secret token: dashboard only.
+      - key: HEARTBEAT_URL
         sync: false
