@@ -17,6 +17,7 @@ BUSINESS_APP_LABELS = {
     "notices",
     "payments",
     "media_uploads",
+    "stays",
 }
 
 

@@ -89,6 +89,7 @@ INSTALLED_APPS = [
     'apps.otp_auth',
     'apps.residents',
     'apps.notices',
+    'apps.stays',
 ]
 
 MIDDLEWARE = [
