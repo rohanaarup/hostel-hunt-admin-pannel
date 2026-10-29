@@ -47,6 +47,14 @@ None of these blocks building the next phases. Details: `CAPACITY.md` and `EDGE_
 | 23 | Run the capacity measurements (`CAPACITY.md` section 6: 50, 200, 300 users, stress, 1 versus 2 instances, a restart under load) and paste the numbers | Replace the assumptions with measurements | The end (needs items 1, 14, 18, 19) | Deferred | the table in `CAPACITY.md` is filled |
 | 24 | Run `python manage.py pool_check` on staging against Supabase's pooler | Only pgbouncer was proven locally | With item 20 | Deferred | `RESULT: PASS` |
 
+## Added by Phase 4 (stay domain)
+
+A decision, not a dashboard step; nothing is blocked by it.
+
+| # | Decision | Why | Needed by | Status |
+|---|---|---|---|---|
+| 25 | Confirm the PRORATE rule, or name another: first rent for a fixed-day hostel = monthly rent x days from the join date to the next fixed due day / days in the fixed period (previous to next fixed due day) containing the join date, rounded to the paisa with halves up. Example: rent 6,500, fixed day 5, joining 18 Sep = 6,500 x 17 / 30 = 3,683.33. | Decision D1 supports both PRORATE and FULL_MONTH; the amount rule for PRORATE is the proposal in the plan document and is built into ONE function, so a different rule is a one-function change | Before an owner can choose PRORATE (Phase 9 owner screens); the default is FULL_MONTH | Open |
+
 ## Added by later phases
 
 (none yet)

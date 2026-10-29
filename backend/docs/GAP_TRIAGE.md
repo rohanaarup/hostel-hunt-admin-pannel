@@ -243,3 +243,4 @@ Evidence for the G1 rows is in `backend/docs/STAY_BASELINE.md`; G2-01 is from Ph
 | G3-01 | `render.yaml` had `autoDeployTrigger: off` unquoted (the boolean `false` in YAML 1.1; Render's schema wants the string). | Low | LATER | 3 | Fixed in Phase 3; both blueprints validate against Render's schema. |
 | G3-02 | In transaction pooling mode, single statements outside a transaction block have no statement timeout unless the database role carries one. | Moderate (only in that mode) | SCALE | 3, founder | `CAPACITY.md` section 2: a dedicated web role. |
 | G3-03 | Redis alone cannot give a per-endpoint cache hit rate. | Low | LATER | 3 | Use two `cache_stats` snapshots plus the request log. |
+| G4-01 | The FIXED_DAY proration rule is a proposal awaiting the founder; isolated in `prorated_amount`; the default policy is FULL_MONTH. | Low | LATER | 5 (before PRORATE is offered to owners) | `FOUNDER_DEFERRED.md` item 25; `STAYS_DOMAIN.md`. |

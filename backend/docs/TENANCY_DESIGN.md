@@ -181,3 +181,20 @@ Each step gets its own regression tests (two tenants / two users, assert cross-a
 3. **Skip entirely.** There is no platform-admin/superuser UI today (no cross-hostel listing, performance, or revenue view) and building one is a substantial net-new feature, not part of this fix. **Decision:** drop `IsPlatformAdmin`/`PlatformAdminQuerysetMixin` from Phase 2 scope. The fail-closed default (deny/empty when scope is missing or ambiguous) still applies with no bypass at all — safer than a half-built escalation path. Revisit when a real support/staff workflow is scoped as its own project.
 4. **Fix from the backend side.** Confirmed: the admin-panel website partially uses `/dashboard/stats/` and `/dashboard/activity/`, and the Flutter app currently shows nothing there. **Decision:** fix the backend queries in this pass (Group 8 below) against the *current* `Payment`/`Booking` schema — `Payment.objects.filter(booking__hostel__owner=user)` instead of the nonexistent `hostel` field, revenue computed from `Payment.amount` (status=`SUCCESS`, online) plus `Booking.amount` (payment_mode=`offline`, status=`paid`), and `resident_name`/`amount_paid` references replaced with the real `Booking`/`Payment` fields. Frontend changes (if the mobile app needs new UI to consume this) are explicitly out of scope per the backend-only rule — flagging that gap in the final QA checklist rather than closing it myself.
 5. **Best judgement: leave as-is.** Low severity, aggregate-display-only, predates this task, and removing it risks losing legacy guest-booking stats for existing bookings that were never linked to a `student` FK. Not touched in Phase 2; noted in the final report as a known soft spot.
+
+---
+
+## Addendum (Phase 4, 2026-10-29): the `stays` app
+
+`stays` is in the explicit app list (`BUSINESS_APP_LABELS`, `apps/core/tenancy/checks.py`), so the startup check requires every
+model in it to be classified. No new base class or permission class was needed.
+
+| Model | Scope | Lookup path |
+|---|---|---|
+| `HostelBillingConfig` | Tenant | `OWNER_LOOKUP = "hostel__owner"` |
+| `Stay` | **Both** (owner sees their hostel's stays, the student sees their own) | `OWNER_LOOKUP = "hostel__owner"`, `USER_LOOKUP = "student"` |
+| `Due` | **Both** | `OWNER_LOOKUP = "stay__hostel__owner"`, `USER_LOOKUP = "stay__student"` |
+| `OutboxEvent` | Global (internal, never read through an API; payloads carry no personal data) | none |
+
+When endpoints are added (Phase 7), student views use `UserScopedQuerysetMixin` and `IsResourceUser`, owner views use
+`TenantScopedQuerysetMixin` and `IsTenantOwner`, as for `Booking` and `Payment`.

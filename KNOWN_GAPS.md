@@ -1,6 +1,6 @@
 # Known gaps register (Hostel Hunt)
 
-**Started:** 2026-10-18 · **Last reviewed:** 2026-10-29 (after Phase 3 of the stay plan; no gap was closed, notes added) · **Owner:** the developer and Claude, together
+**Started:** 2026-10-18 · **Last reviewed:** 2026-10-29 (after Phase 4 of the stay plan; no gap was closed, notes added) · **Owner:** the developer and Claude, together
 
 This file lists what we have **not** built, **not** verified, or **chosen to ignore**, phase by phase, and how much each
 item matters. It exists because no phase gets finished at 100%: many things need a paid service, infrastructure that
@@ -283,22 +283,22 @@ F6-01 and F6-02 are closed (see Closed gaps C-14, C-15). C-16 closed the decode 
 
 ---
 
-## G. Found in the stay plan's Phases 1 to 3 (2026-10-29)
+## G. Found in the stay plan's Phases 1 to 4 (2026-10-29)
 
 Evidence for G1 is in `backend/docs/STAY_BASELINE.md` and `backend/docs/GAP_TRIAGE.md`.
 
 | ID | Gap | Why | Impact | Effect | Status |
 |---|---|---|---|---|---|
 | G1-01 | The backup workflow file was invalid YAML (`backup.yml` line 32), so it could never run, even with its secrets. | (fixed in code) | High | No backup possible. | Fixed on the Phase 2 branch (`actionlint` clean, `test_phase2.BackupWorkflowTests`); it now fails on purpose until the secrets exist. Close after the merge shows it in GitHub's workflow list and a manual run succeeds (X-06). |
-| G1-02 | `BookingViewSet.verify` has no status guard (cancelled, rejected or paid bookings can be set to paid again). | DEFERRED | High for Phase 5 | A repeated call would create duplicate stays and dues. | Open |
-| G1-03 | `confirm_payment` and the hold logic cannot be reused for rent: the 15-minute age rule fails a payment with no live hold, `confirm_payment` flags "bed already taken", and `create-order` refuses paid bookings. | DEFERRED | High for Phase 6 | A rent payment would be failed or flagged. | Open |
-| G1-04 | Offline revenue trusts `Booking.amount`, which any anonymous client can set. | DEFERRED | Moderate | Dashboard totals can be wrong. | Open |
+| G1-02 | `BookingViewSet.verify` has no status guard (cancelled, rejected or paid bookings can be set to paid again). | DEFERRED | High for Phase 5 | A repeated call would create duplicate stays and dues. | Open **Phase 4:** not yet; the stay model and engine Phase 5 needs now exist (`STAYS_DOMAIN.md`). |
+| G1-03 | `confirm_payment` and the hold logic cannot be reused for rent: the 15-minute age rule fails a payment with no live hold, `confirm_payment` flags "bed already taken", and `create-order` refuses paid bookings. | DEFERRED | High for Phase 6 | A rent payment would be failed or flagged. | Open **Phase 4:** not yet; a `Due` can carry a `payment` link and a `kind`, which is what a rent payment will need. |
+| G1-04 | Offline revenue trusts `Booking.amount`, which any anonymous client can set. | DEFERRED | Moderate | Dashboard totals can be wrong. | Open **Phase 4:** a stay copies the ROOM price (never `Booking.amount`) by design, see `STAYS_DOMAIN.md`. |
 | G1-05 | The cleanup cron lacked the variables later work needs. | DEFERRED | Moderate | Reminder email, Razorpay and push work would fail there. | Open. Partly done in Phase 2 (Sentry and heartbeat added); email, Razorpay and push variables are added by the phase that needs them. |
 | G1-06 | Webhook-confirmed payments are always recorded as method CARD. | DEFERRED | Low | Wrong method label only. | Open |
 | G1-07 | A booking can become paid in Django admin or the load-test seed with no bed and no payment. | DEFERRED | Low | Staff-only; no stay would be created for it later. | Open |
 | G1-08 | Two web instances do not fit the 15-slot database pool (16 needed; a deploy overlap can exceed 15). | PAID | High at scale | Scaling out fails first on connections. | Open. **Phase 3:** the formula, the options and the transaction-mode switch are built (`CAPACITY.md`, `DB_POOL_MODE`); choosing between a larger Supabase plan and transaction mode is the founder's decision, and production is unchanged. |
 | G1-09 | The backend test suite takes 7.5 to 13.4 minutes on the laptop (CI: 2.8 minutes). | DEFERRED | Low | Slow local phases. | Open |
-| G1-10 | `Room.available_beds` is never updated after a payment, and `Bed.is_available` is never set back to True. | FUTURE | Moderate | A room never shows as full; a freed bed would not show as free (see L4-12). | Open |
+| G1-10 | `Room.available_beds` is never updated after a payment, and `Bed.is_available` is never set back to True. | FUTURE | Moderate | A room never shows as full; a freed bed would not show as free (see L4-12). | Open **Phase 4:** the stay ends in a status and `ended_at`; availability is still unsolved (a later phase must free the bed and fix the counter together). |
 | G1-11 | Nothing in the code ever sets a booking to `cancelled`. | FUTURE | Low | Several refusals of cancelled bookings are unreachable. | Open |
 | G1-12 | **The staging database was unreachable on 2026-10-29** (`/readyz` 503 and data endpoints 500 after 15 s; `/healthz` ok). Probably a paused free Supabase project. | HUMAN | High (blocks staging work) | No staging payment test, seed or load test. | Open; checklist step 0 |
 | G2-01 | **Credentials in the public git history are still current.** An old committed `backend/.env` (5 commits in the backend repository, 3 in the app repository) held a filled `SECRET_KEY`, `DATABASE_URL` and `EMAIL_HOST_PASSWORD`. By hash comparison the backend repository's old database address and password, and old email password, equal those in the laptop `.env`, which points at the production database (F3-02). The default secret scanner (gitleaks) found nothing, so a clean scan proves nothing here. | HUMAN, CHOICE | High | Anyone can read the production database password from a public repository. | Open; rotate before the production deploy (checklist step 0). The founder's 2026-10-11 decision to ignore security hardening predates this evidence. |
@@ -306,6 +306,7 @@ Evidence for G1 is in `backend/docs/STAY_BASELINE.md` and `backend/docs/GAP_TRIA
 | G3-02 | In transaction-pooling mode a single statement outside a transaction block has no statement timeout unless the database role carries one. The code applies `SET LOCAL` per transaction only. | DEFERRED | Moderate (only if transaction mode is switched on) | Slow autocommit reads would not be cut off at 25 s. | Open; fix is a dedicated web role with `statement_timeout` (`CAPACITY.md` section 2), a founder database step. |
 | G3-03 | The cache hit rate cannot be measured per endpoint from Redis alone (Redis counts every command, including rate-limit reads). | DEFERRED | Low | Hit-rate numbers need two snapshots or the request log. | Open; method in `CAPACITY.md` section 6. |
 | G3-04 | The app has its default API host compiled in (`api_service.dart`: an `onrender.com` address; overridable only with `--dart-define=API_BASE_URL` at build time). Moving the backend to another host (or a paid Render service with a new address) means a new app release, and phones on old builds keep calling the old host. | DEFERRED | Moderate | A host change cannot be done quietly. The founder's rule is that Render and Supabase are temporary (`AGENTS.md`, "Nothing is permanent"). | Open. Mitigation: use your own domain (`backend/docs/EDGE_SETUP.md`) in the FIRST store release, so the host behind it can change freely; keep the old address answering during any move. Needs an app change in the app repository (a later phase). |
+| G4-01 | The proration rule for a FIXED_DAY hostel's first part-month is a PROPOSAL awaiting the founder: rent x days from the join date to the next fixed due day / days in the fixed period (previous to next fixed due day) containing the join date, halves rounded up. It is isolated in one function (`apps/stays/billing.py: prorated_amount`); new hostel configs default to FULL_MONTH, which does not use it. | HUMAN (a decision) | Low today, Moderate once an owner picks PRORATE | A different rule would change what a student with a fixed-day hostel is charged first. | Open; `FOUNDER_DEFERRED.md` item 25. |
 
 # Cross-cutting gaps
 

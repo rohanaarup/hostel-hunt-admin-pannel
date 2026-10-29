@@ -1,0 +1,84 @@
+# The stays domain (Phase 4)
+
+**Status:** the data model and the billing engine exist and are tested. **Nothing is user-visible**: no endpoint, no view, no
+serializer, and nothing creates a stay yet (Phase 5 does that from a paid booking). `apps/payments` and `apps/bookings`
+were not touched. This page is what Phases 5 to 8 may rely on.
+
+## The words
+
+- **Stay**: a student's live tenancy in one bed, created from a paid booking. One stay per booking.
+- **Due**: one billing cycle of a stay. A booking pays **Due 1** (kind `BOOKING_PERIOD`, the period starting on the join
+  date) and **Due 2** (kind `RENT`, the first rent) is scheduled.
+- **Period**: the dates a due covers, first day to last day inclusive. A period is due on its **first day**.
+- **Outbox**: a table of work to do outside a request (reminders and the like). Only the table exists; the consumer is Phase 8.
+
+## The two billing rules (`apps/stays/billing.py`, pure Python)
+
+| Rule | When | How the dates work |
+|---|---|---|
+| **ANNIVERSARY** (default) | every hostel unless configured otherwise | Join on the 18th, pay on the 18th of each following month. `due(n) = anchor + n months`, day = `min(anchor day, last day of that month)`, **always computed from the anchor, never from the previous due**. 31 Jan gives 28 Feb (29 in a leap year), 31 Mar, 30 Apr, 31 May. |
+| **FIXED_DAY** (rare, set per hostel) | the owner wants rent on one day for everyone | Due on a fixed day 1 to 28, or the last day of the month. The first period runs from the join date to the next fixed due day, charged by the first-period policy. |
+
+First-period policy for FIXED_DAY (decision D1): **FULL_MONTH** charges a whole month's rent for the first (shorter) period;
+**PRORATE** charges only the part of the fixed period that is left.
+
+**Joining exactly on the fixed due day** starts a new period, so the first charge is a whole period for either policy (the
+"next" due day is always strictly after the join date).
+
+## The one rule still waiting for the founder (`prorated_amount`)
+
+```
+prorated first rent = monthly rent x (days from the join date to the next fixed due day)
+                      / (days in the fixed period, previous fixed due day to next fixed due day, that contains the join date)
+```
+
+Rounded to the paisa, halves rounded up, with `Decimal`. Worked example: rent 6,500.00, fixed day 5, joining 18 September.
+The fixed period is 5 Sep to 5 Oct (30 days); 18 Sep to 5 Oct is 17 days; 6,500 x 17 / 30 = 3,683.33.
+It lives in **one function** (`prorated_amount`), so a different rule changes one place. **Please confirm or name another
+rule** (`FOUNDER_DEFERRED.md`, item 25). Until then the default policy for a new config is FULL_MONTH, which does not use it.
+
+## The engine's promises
+
+- No database, no Django, no other app, and **no clock**: `today` and grace days are arguments (a test scans the source).
+- Money is `Decimal` rupees in whole paise; a float is refused. Dates are plain `date`s, never `datetime`s.
+- `build_periods(join_date, mode, policy, rent, fixed_due_day, count)` returns periods with no gap and no overlap; Phase 5
+  takes the first two as Due 1 and Due 2, and Phase 8 takes later ones.
+- `effective_status(stored, today, due, window_days, grace_days)`: **overdue is never stored** (E8); it is worked out from the
+  dates. Payable opens `payable_window_days` before the due date (default 7); overdue starts after the due date plus
+  `grace_days` (default 0).
+- All dates a person sees are **IST** (`apps/stays/dates.py: today_ist()`); midnight IST is 18:30 UTC the day before.
+
+## The models (`apps/stays/models.py`)
+
+| Model | Table | Scope | Notes |
+|---|---|---|---|
+| `HostelBillingConfig` | `hostel_billing_configs` | owner (`hostel__owner`) | One per hostel; **no row means the defaults** (`HostelBillingConfig.effective_for(hostel)`). The database refuses a fixed day outside 1 to 28, a fixed-day hostel with no day, both a day and "last day", and a day on an anniversary hostel. |
+| `Stay` | `stays` | owner and student | Rent and the billing settings are **copied** onto the stay, so a later price or billing change never touches it. Index on (student, status). Optional link to an existing `Resident` (never created automatically, E5). |
+| `Due` | `dues` | owner and student (through the stay) | Unique on (stay, period_start); a period cannot end before it starts; an amount cannot be negative; indexes on (status, due_date) and (stay, due_date). The payment link is a string reference to `payments.Payment`, set to null if the payment row goes. |
+| `OutboxEvent` | `outbox_events` | none (internal) | Unique `dedupe_key`, so writing an event twice is harmless. Payloads hold **ids and codes only, never personal data**. Index on (status, next_attempt_at) for the consumer's query. |
+
+The migration (`stays.0001_initial`) only creates the four tables, three indexes and three constraints on them; it adds nothing
+to an existing table and reverses by dropping them (checked forwards, backwards and forwards again). Tenancy: `stays` is in the
+explicit app list (`apps/core/tenancy/checks.py`) and the startup check passes.
+
+## Decisions made in this phase (please review)
+
+1. **A stay's student is optional** (null, set to null if the account is deleted), like `Booking.student`: a booking marked paid
+   offline can have no account. Phase 5 decides whether such a booking gets a stay.
+2. **No database rule limits a student to one current stay.** Decision D2 is a booking-time check in a later phase, and E4 says a
+   second paid booking must never be refused after the money is taken; that stay is created and flagged `needs_review`.
+3. **Default first-period policy is FULL_MONTH**, because the proration rule is unconfirmed.
+4. **Rent must be in whole paise** (two decimal places at most) or the engine refuses it, rather than rounding silently.
+5. **Table names** follow the repository's style: `stays`, `dues`, `outbox_events`, `hostel_billing_configs`.
+6. **The admin cannot type over money or add stays**: dues' amount, status, payment and kind, and a stay's rent and snapshot, are
+   read-only; stays, dues and outbox events cannot be added by hand (code creates them). This avoids the problem of
+   KNOWN_GAPS G1-07 (a booking made paid by hand) for the new tables.
+7. **Limits on the config**: payable window 0 to 60 days, grace 0 to 30 days, enforced by the database too.
+8. **The fixed due day is passed to the engine as a whole number 1 to 28 or the marker `LAST_DAY`**; the model stores it as a
+   nullable day plus a last-day flag, as specified.
+
+## What Phase 5 should do with this
+
+Create the stay inside the payment transaction: copy `HostelBillingConfig.effective_for(hostel).snapshot()` and the room's
+`price_per_month` onto the stay (never `Booking.amount`, which a client can set: KNOWN_GAPS G1-04), call `build_periods(...,
+count=2)`, write Due 1 as `PAID` and Due 2 as `SCHEDULED`, and guard `BookingViewSet.verify` against a second call (G1-02).
