@@ -7,6 +7,7 @@ scrub_event() removes sensitive headers, bodies, query strings, user details and
 masks emails and phone-like numbers in any text before an event is sent.
 """
 import logging
+import re
 
 from apps.core.privacy import mask_text  # noqa: F401  (re-exported)
 
@@ -25,6 +26,16 @@ EXTRA_DENYLIST = sorted(_SENSITIVE_EXACT)
 
 _NOISY_LOGGERS = frozenset({'django.security.DisallowedHost'})
 
+# Payments that need a person (L4-07). apps/payments logs these two ERROR lines when it sets needs_review; the
+# payment code itself is not touched, so PaymentFlagHandler (registered in CoreConfig.ready) watches for the lines
+# and raises ONE clean alert. Matching the formatted text works both before and after the console handler's mask
+# filter rewrites the record.
+PAYMENT_FLAG_LINES = (
+    (re.compile(r'^Payment \S+ needs a manual refund or review'), 'needs_review'),
+    (re.compile(r'^Razorpay refund \S+ for payment \S+: outcome unknown'), 'refund_outcome_unknown'),
+)
+PAYMENT_FLAG_MESSAGE = 'Payment flagged for manual review'
+
 
 def _is_sensitive(key):
     key = str(key).lower()
@@ -42,11 +53,20 @@ def _clean(value):
     return value
 
 
+def _is_payment_flag_log(event):
+    """The ERROR log line that flags a payment also reaches Sentry as its own event; the clean alert replaces it.
+    (The unknown-refund line is kept: its traceback is useful, and it is a different line.)"""
+    if event.get('logger') != 'apps.payments':
+        return False
+    message = (event.get('logentry') or {}).get('message') or event.get('message') or ''
+    return bool(PAYMENT_FLAG_LINES[0][0].match(message))
+
+
 def _is_noise(event, hint):
     from django.core.exceptions import DisallowedHost, PermissionDenied
     from django.http import Http404
 
-    if event.get('logger') in _NOISY_LOGGERS:
+    if event.get('logger') in _NOISY_LOGGERS or _is_payment_flag_log(event):
         return True
     exc_info = (hint or {}).get('exc_info')
     return bool(exc_info and exc_info[0] and issubclass(exc_info[0], (Http404, PermissionDenied, DisallowedHost)))
@@ -97,6 +117,34 @@ def scrub_breadcrumb(crumb, hint):
     if isinstance(crumb.get('data'), dict):
         crumb['data'] = _clean(crumb['data'])
     return crumb
+
+
+def capture_payment_flagged(kind):
+    """One Sentry alert for a payment that needs a person. Fixed text, two tags, no ids, no extras, no user:
+    the person finds the payment in /admin/ (Payments, filter "needs review"). Does nothing when Sentry is off."""
+    import sentry_sdk
+
+    sentry_sdk.capture_message(
+        PAYMENT_FLAG_MESSAGE, level='error',
+        tags={'alert': 'payment_flagged', 'kind': kind},
+        fingerprint=['payment-flagged', kind],
+    )
+
+
+class PaymentFlagHandler(logging.Handler):
+    """Attached to the `apps.payments` logger. Never raises: an alert must not break a payment."""
+
+    def emit(self, record):
+        try:
+            if record.levelno < logging.ERROR:
+                return
+            text = record.getMessage()
+            for pattern, kind in PAYMENT_FLAG_LINES:
+                if pattern.match(text):
+                    capture_payment_flagged(kind)
+                    return
+        except Exception:  # noqa: BLE001
+            self.handleError(record)
 
 
 def init_sentry(dsn, environment, release, traces_sample_rate):

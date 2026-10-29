@@ -460,6 +460,9 @@ RELEASE = config('SENTRY_RELEASE', default='') or GIT_COMMIT
 SENTRY_DSN = config('SENTRY_DSN', default='')
 SENTRY_ENVIRONMENT = config('SENTRY_ENVIRONMENT', default='development' if DEBUG else 'production')
 SENTRY_TRACES_SAMPLE_RATE = config('SENTRY_TRACES_SAMPLE_RATE', default=0.0, cast=float)
+# Heartbeat monitor for scheduled jobs (python manage.py ping_heartbeat <command>). The URL holds a secret token.
+HEARTBEAT_URL = config('HEARTBEAT_URL', default='')
+HEARTBEAT_FAIL_URL = config('HEARTBEAT_FAIL_URL', default='')
 
 from apps.core.sentry_config import init_sentry  # noqa: E402
 

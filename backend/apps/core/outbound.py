@@ -7,6 +7,7 @@ below the gunicorn timeout (60 s). apps/core/test_outbound_timeouts.py scans the
 build when a new call appears without one.
 
   * outbound.post(...)        for plain calls (email provider, SMS); timeout defaults to SHORT.
+  * outbound.get(...)         the same for a plain GET (heartbeat monitors); timeout defaults to SHORT.
   * outbound.gateway_session  for the Razorpay SDK, which makes its own requests through a session.
 """
 import requests
@@ -28,6 +29,11 @@ def _checked(timeout):
 def post(url, *, timeout=SHORT, **kwargs):
     """requests.post with a mandatory, bounded timeout."""
     return requests.post(url, timeout=_checked(timeout), **kwargs)
+
+
+def get(url, *, timeout=SHORT, **kwargs):
+    """requests.get with a mandatory, bounded timeout."""
+    return requests.get(url, timeout=_checked(timeout), **kwargs)
 
 
 class TimeoutSession(requests.Session):

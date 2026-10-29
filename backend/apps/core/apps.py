@@ -16,3 +16,12 @@ class CoreConfig(AppConfig):
 
         from apps.core.db_options import apply_statement_timeout
         connection_created.connect(apply_statement_timeout, dispatch_uid='hh-statement-timeout')
+
+        # One Sentry alert when a payment is flagged for a person (L4-07), without touching the payment code.
+        import logging
+
+        from apps.core.sentry_config import PaymentFlagHandler
+
+        payments_logger = logging.getLogger('apps.payments')
+        if not any(isinstance(h, PaymentFlagHandler) for h in payments_logger.handlers):
+            payments_logger.addHandler(PaymentFlagHandler())
