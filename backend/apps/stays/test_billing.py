@@ -6,9 +6,10 @@ Rules under test (decision D1, E8, E9):
   * FIXED_DAY: a fixed due day 1 to 28, or the last day of the month, with first_period_policy PRORATE or FULL_MONTH.
   * PRORATE (pending founder confirmation, kept in ONE function): rent x days from the join date to the next fixed due day
     / days in the fixed period (previous fixed due day to next fixed due day) that contains the join date, rounded to the
-    paisa with ROUND_HALF_UP.
+    WHOLE RUPEE with round-half-up, exactly as the AdminBilling board does.
   * payable window and overdue helpers take today and grace days as arguments and never read the clock.
 """
+import json
 import re
 import unittest
 from datetime import date, datetime, timedelta
@@ -20,7 +21,7 @@ from apps.stays import billing
 from apps.stays.billing import (
     ANNIVERSARY, FIXED_DAY, FULL_MONTH, LAST_DAY, PRORATE,
     build_periods, days_overdue, days_until_due, due_date, effective_status, first_period, fixed_day_due_dates,
-    is_overdue, is_payable, last_day_of_month, payable_from, previous_fixed_due, prorated_amount,
+    fixed_period_days, is_overdue, is_payable, last_day_of_month, payable_from, previous_fixed_due, prorated_amount,
 )
 
 D = date
@@ -122,8 +123,8 @@ class FixedDayDueDateTests(unittest.TestCase):
 
 class ProratedAmountTests(unittest.TestCase):
     def test_a_join_part_way_through_a_period(self):
-        # period 5 Sep to 5 Oct = 30 days; 18 Sep to 5 Oct = 17 days; 6500 x 17 / 30 = 3683.333...
-        self.assertEqual(prorated_amount(RENT, D(2026, 9, 18), 5), Decimal('3683.33'))
+        # period 5 Sep to 5 Oct = 30 days; 18 Sep to 5 Oct = 17 days; 6500 x 17 / 30 = 3683.333... -> 3683 rupees
+        self.assertEqual(prorated_amount(RENT, D(2026, 9, 18), 5), Decimal('3683'))
 
     def test_joining_on_the_fixed_day_is_a_whole_period(self):
         self.assertEqual(prorated_amount(RENT, D(2026, 9, 5), 5), Decimal('6500.00'))
@@ -131,19 +132,42 @@ class ProratedAmountTests(unittest.TestCase):
     def test_joining_the_day_before_the_fixed_day_is_one_day(self):
         # the period holding 4 Sep runs 5 Aug to 5 Sep = 31 days, so one day is 3100 / 31 = 100.00
         self.assertEqual(prorated_amount(Decimal('3100.00'), D(2026, 9, 4), 5), Decimal('100.00'))
-        self.assertEqual(prorated_amount(Decimal('3000.00'), D(2026, 9, 4), 5), Decimal('96.77'))  # 3000 / 31
+        self.assertEqual(prorated_amount(Decimal('3000.00'), D(2026, 9, 4), 5), Decimal('97'))  # 3000 / 31 = 96.77, whole rupees
 
     def test_the_period_length_is_the_real_one(self):
         # 1 Oct to 1 Nov = 31 days; 20 Oct to 1 Nov = 12 days; 3100 x 12 / 31 = 1200.00
         self.assertEqual(prorated_amount(Decimal('3100'), D(2026, 10, 20), 1), Decimal('1200.00'))
 
     def test_the_last_day_of_the_month_option(self):
-        # period 31 Jan to 28 Feb = 28 days; 10 Feb to 28 Feb = 18 days; 3100 x 18 / 28 = 1992.857... -> 1992.86
-        self.assertEqual(prorated_amount(Decimal('3100'), D(2026, 2, 10), LAST_DAY), Decimal('1992.86'))
+        # period 31 Jan to 28 Feb = 28 days; 10 Feb to 28 Feb = 18 days; 3100 x 18 / 28 = 1992.857... -> 1993
+        self.assertEqual(prorated_amount(Decimal('3100'), D(2026, 2, 10), LAST_DAY), Decimal('1993'))
 
-    def test_a_half_paisa_rounds_up_not_to_even(self):
-        # 30-day period (5 Sep to 5 Oct), 3 days left: 0.05 x 3 / 30 = 0.005 exactly. HALF_UP gives 0.01 (HALF_EVEN would give 0.00).
-        self.assertEqual(prorated_amount(Decimal('0.05'), D(2026, 10, 2), 5), Decimal('0.01'))
+    def test_the_result_is_a_whole_rupee(self):
+        for fixed in (1, 5, 28, LAST_DAY):
+            for offset in range(0, 70):
+                amount = prorated_amount(RENT, D(2026, 9, 1) + timedelta(days=offset), fixed)
+                self.assertEqual(amount, amount.to_integral_value(), (fixed, offset, amount))
+
+    def test_half_a_rupee_rounds_up_not_to_even(self):
+        # fixed day 1: the period holding 16 Sep is 1 Sep to 1 Oct = 30 days; 16 Sep to 1 Oct = 15 days (half the period).
+        # 6001 x 15 / 30 = 3000.5 exactly. Round-half-up gives 3001 (round-half-even would give 3000).
+        self.assertEqual(prorated_amount(Decimal('6001'), D(2026, 9, 16), 1), Decimal('3001'))
+        self.assertEqual(prorated_amount(Decimal('6003'), D(2026, 9, 16), 1), Decimal('3002'))  # 3001.5 -> 3002
+
+    def test_it_equals_the_boards_integer_formula(self):
+        """The board's own arithmetic: floor((2 x rent x first + full) / (2 x full))."""
+        for rent in (3000, 5500, 6000, 6001, 6500, 12345):
+            for fixed in (1, 5, 10, 15, 28, LAST_DAY):
+                for offset in range(0, 90):
+                    join = D(2026, 9, 1) + timedelta(days=offset)
+                    first, full = fixed_period_days(join, fixed)
+                    expected = (2 * rent * first + full) // (2 * full)
+                    self.assertEqual(prorated_amount(rent, join, fixed), Decimal(expected), (rent, fixed, join))
+
+    def test_the_day_counts_the_summary_line_needs(self):
+        self.assertEqual(fixed_period_days(D(2026, 9, 18), 1), (13, 30))     # 18 Sep to 1 Oct of the 1 Sep to 1 Oct period
+        self.assertEqual(fixed_period_days(D(2026, 9, 1), 1), (30, 30))      # joining on the due day: the whole period
+        self.assertEqual(fixed_period_days(D(2027, 1, 31), 1), (1, 31))      # 31 Jan to 1 Feb
 
     def test_the_result_has_exactly_two_decimal_places(self):
         self.assertEqual(prorated_amount(RENT, D(2026, 9, 18), 5).as_tuple().exponent, -2)
@@ -198,7 +222,7 @@ class FirstPeriodTests(unittest.TestCase):
 
     def test_fixed_day_prorate_charges_part_of_a_month(self):
         period = first_period(D(2026, 9, 18), FIXED_DAY, PRORATE, RENT, 5)
-        self.assertEqual(period.amount, Decimal('3683.33'))
+        self.assertEqual(period.amount, Decimal('3683'))
         self.assertLess(period.amount, RENT)
         self.assertEqual(period.next_due, D(2026, 10, 5))
 
@@ -257,7 +281,7 @@ class BuildPeriodsTests(unittest.TestCase):
     def test_fixed_day_with_prorate_starts_with_a_part_month_then_whole_months(self):
         periods = build_periods(D(2026, 9, 18), FIXED_DAY, PRORATE, RENT, 5, 3)
         self.assertEqual([p.start for p in periods], [D(2026, 9, 18), D(2026, 10, 5), D(2026, 11, 5)])
-        self.assertEqual([p.amount for p in periods], [Decimal('3683.33'), RENT, RENT])
+        self.assertEqual([p.amount for p in periods], [Decimal('3683'), RENT, RENT])
 
     def test_fixed_day_with_full_month_charges_whole_months_throughout(self):
         periods = build_periods(D(2026, 9, 18), FIXED_DAY, FULL_MONTH, RENT, 5, 3)
@@ -275,6 +299,102 @@ class BuildPeriodsTests(unittest.TestCase):
     def test_a_count_below_one_is_refused(self):
         with self.assertRaises(ValueError):
             build_periods(D(2026, 9, 18), ANNIVERSARY, None, RENT, None, 0)
+
+
+# ----------------------------------------------------------------------------------------------- the AdminBilling board
+
+GOLDEN = json.loads((Path(billing.__file__).parent / 'test_data' / 'adminbilling_golden.json').read_text(encoding='utf-8'))
+MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+JOINS = {'18 Sep 2026': D(2026, 9, 18), '31 Jan 2027': D(2027, 1, 31), '1 Sep 2026': D(2026, 9, 1), '5 Sep 2026': D(2026, 9, 5)}
+
+
+def board_date(value):
+    return f'{value.day} {MONTHS[value.month - 1]} {value.year}'
+
+
+def board_rupees(amount):
+    """The board prints rupees the Indian way: 6,000 and 1,86,000."""
+    whole = int(amount)
+    assert amount == whole, f'{amount} is not a whole rupee'
+    digits = str(whole)
+    if len(digits) > 3:
+        head, tail = digits[:-3], digits[-3:]
+        groups = []
+        while len(head) > 2:
+            groups.insert(0, head[-2:])
+            head = head[:-2]
+        digits = ','.join(([head] if head else []) + groups + [tail])
+    return '\u20b9' + digits
+
+
+def engine_rows(case):
+    """What the engine says for the same inputs, in the board's own text form."""
+    join = JOINS[case['join']]
+    if case['mode'] == 'ANNIVERSARY':
+        mode, policy, day = ANNIVERSARY, None, None
+    else:
+        mode, policy = FIXED_DAY, case['policy']
+        day = LAST_DAY if case['day'] == 'LAST_DAY' else case['day']
+    periods = build_periods(join, mode, policy, Decimal(GOLDEN['rent']), day, 5)
+    rows = []
+    for index, period in enumerate(periods):
+        rows.append({
+            'label': 'Booking' if index == 0 else f'Rent {index}',
+            'period': f'{board_date(period.start)} to {board_date(period.end)}',
+            'due': board_date(period.due_date) + (' (at booking)' if index == 0 else ''),
+            'amount': board_rupees(period.amount),
+        })
+    return rows
+
+
+class AdminBillingBoardTests(unittest.TestCase):
+    """The expected rows were produced by running the board's OWN script for four sample joins, both modes, every due day
+    and both policies (apps/stays/test_data/adminbilling_golden.json). The engine must reproduce them exactly."""
+
+    def test_the_fixture_covers_every_case(self):
+        self.assertEqual(len(GOLDEN['cases']), 4 * (1 + 5 * 2))
+        self.assertEqual(GOLDEN['rent'], 6000)
+        self.assertIn('Admin: billing and rent', GOLDEN['_source'])
+
+    def test_every_board_case_matches_the_engine(self):
+        for case in GOLDEN['cases']:
+            with self.subTest(mode=case['mode'], day=case['day'], policy=case['policy'], join=case['join']):
+                self.assertEqual(engine_rows(case), case['rows'])
+
+    def test_the_example_in_the_brief(self):
+        """18 Sep 2026, fixed day 1, PRORATE, rent 6,000: 13 days, 2,600 rupees, next due 1 Oct 2026."""
+        join = D(2026, 9, 18)
+        period = first_period(join, FIXED_DAY, PRORATE, Decimal('6000'), 1)
+        self.assertEqual((period.end - period.start).days + 1, 13)
+        self.assertEqual(period.amount, Decimal('2600'))
+        self.assertEqual(period.next_due, D(2026, 10, 1))
+        self.assertEqual(period.end, D(2026, 9, 30))
+        self.assertEqual(fixed_period_days(join, 1), (13, 30))
+
+    def test_the_proration_summary_numbers_match_the_day_counts(self):
+        """The board's summary line says 'First period is prorated: 13 of 30 days = 2,600': those day counts come from the engine."""
+        checked = 0
+        for case in GOLDEN['cases']:
+            match = re.search(r'prorated: (\d+) of (\d+) days = (\S+)\.', case['summary'])
+            if not match:
+                continue
+            day = LAST_DAY if case['day'] == 'LAST_DAY' else case['day']
+            first, full = fixed_period_days(JOINS[case['join']], day)
+            self.assertEqual((first, full), (int(match.group(1)), int(match.group(2))), case['summary'])
+            self.assertEqual(board_rupees(prorated_amount(6000, JOINS[case['join']], day)), match.group(3))
+            checked += 1
+        self.assertGreater(checked, 10)
+
+    def test_a_join_on_the_fixed_day_is_a_full_first_month_in_the_board_too(self):
+        for case in GOLDEN['cases']:
+            if case['mode'] == 'FIXED_DAY' and case['day'] == 1 and case['join'] == '1 Sep 2026':
+                self.assertIn('joins on the fixed day', case['summary'])
+                self.assertEqual(case['rows'][0]['amount'], '\u20b96,000')
+
+    def test_anniversary_from_31_january_in_the_board(self):
+        case = next(c for c in GOLDEN['cases'] if c['mode'] == 'ANNIVERSARY' and c['join'] == '31 Jan 2027')
+        self.assertEqual([r['due'] for r in case['rows']],
+                         ['31 Jan 2027 (at booking)', '28 Feb 2027', '31 Mar 2027', '30 Apr 2027', '31 May 2027'])
 
 
 class PayableAndOverdueTests(unittest.TestCase):

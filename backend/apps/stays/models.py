@@ -17,7 +17,7 @@ import uuid
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.validators import MaxValueValidator, MinValueValidator
+from django.core.validators import MaxValueValidator
 from django.db import models
 from django.db.models import F, Q
 from django.utils import timezone
@@ -134,6 +134,13 @@ class Stay(TenantScopedModel, UserScopedModel):
         ENDED = 'ENDED', 'Ended'
         CANCELLED = 'CANCELLED', 'Cancelled'
 
+    class VacateReason(models.TextChoices):
+        # The wording of the approved 'Request to vacate' screen.
+        COURSE_COMPLETED = 'COURSE_COMPLETED', 'Course completed'
+        MOVING_CITY = 'MOVING_CITY', 'Moving city'
+        FOUND_ANOTHER_PLACE = 'FOUND_ANOTHER_PLACE', 'Found another place'
+        OTHER = 'OTHER', 'Other'
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     # Optional, like Booking.student: a booking marked paid offline can have no account.
     student = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
@@ -151,7 +158,11 @@ class Stay(TenantScopedModel, UserScopedModel):
     rent_amount = models.DecimalField(max_digits=10, decimal_places=2)
     billing_snapshot = models.JSONField(default=dict, blank=True)
     needs_review = models.BooleanField(default=False)
+    # The student's request to move out (the 'Request to vacate' screen): when it was sent, the date they plan to leave,
+    # and why. The owner confirms check-out later (ended_at); until then the stay stays current.
     vacate_requested_at = models.DateTimeField(null=True, blank=True)
+    planned_move_out_date = models.DateField(null=True, blank=True)
+    vacate_reason = models.CharField(max_length=30, choices=VacateReason.choices, null=True, blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

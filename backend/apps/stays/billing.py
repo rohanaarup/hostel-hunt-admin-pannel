@@ -20,7 +20,7 @@ A Period covers `start` to `end` (both included) and is due on its first day: Du
 starts on the join date, Due 2 is the one that starts a month later. `next_due` is the first day of the following
 period.
 
-Everything about "how much is the first part-month" is in ONE function, prorated_amount. That rule is a proposal that
+Everything about "how much is the first part-month" is in ONE function, prorated_amount (whole rupees, round half up). That rule is a proposal that
 is still waiting for the founder's confirmation (docs/GAP_TRIAGE.md, FOUNDER_DEFERRED.md); if it changes, only that
 function changes.
 """
@@ -46,6 +46,7 @@ STORED_STATUSES = (SCHEDULED, PAYABLE, PAID, WAIVED, CANCELLED)
 FINISHED_STATUSES = (PAID, WAIVED, CANCELLED)
 
 _PAISA = Decimal('0.01')
+_WHOLE_RUPEE = Decimal('1')
 
 
 @dataclass(frozen=True)
@@ -154,23 +155,33 @@ def previous_fixed_due(on, fixed_due_day):
     return _fixed_on(year, month, fixed_due_day)
 
 
+def fixed_period_days(join_date, fixed_due_day):
+    """(days left, days in the period) for a join date in a fixed-day hostel: the days from the join date to the next
+    fixed due day, and the length of the fixed period (previous fixed due day to next fixed due day) that holds the join
+    date. These are the numbers a screen shows as "13 of 30 days"."""
+    _check_date(join_date, 'join_date')
+    previous = previous_fixed_due(join_date, fixed_due_day)
+    following = fixed_day_due_dates(join_date, fixed_due_day, 1)[0]
+    return (following - join_date).days, (following - previous).days
+
+
 def prorated_amount(rent, join_date, fixed_due_day):
     """THE proration rule, in one place (pending the founder's confirmation):
 
         rent x (days from the join date to the next fixed due day)
              / (days in the fixed period, previous fixed due day to next fixed due day, that contains the join date)
 
-    rounded to the paisa, halves rounded up, with Decimal (never floats). Joining on a fixed due day is a whole period,
-    so the result is the whole rent."""
+    rounded to a WHOLE RUPEE, halves rounded up, with Decimal (never floats). That is the rule the Billing Simulator and
+    the AdminBilling board use, in integer form: floor((2 x rent x first + full) / (2 x full)), where `first` is the days
+    to the next fixed due day and `full` the days in that fixed period. Joining on a fixed due day is a whole period, so
+    the result is the whole rent. The amount is returned with two decimal places (like every stored amount), e.g. 2600.00."""
     rent = _money(rent)
     _check_date(join_date, 'join_date')
-    previous = previous_fixed_due(join_date, fixed_due_day)
-    following = fixed_day_due_dates(join_date, fixed_due_day, 1)[0]
-    days_left = (following - join_date).days
-    days_in_period = (following - previous).days
+    days_left, days_in_period = fixed_period_days(join_date, fixed_due_day)
     with localcontext() as context:
         context.prec = 50
-        return (rent * days_left / days_in_period).quantize(_PAISA, rounding=ROUND_HALF_UP)
+        rupees = (rent * days_left / days_in_period).quantize(_WHOLE_RUPEE, rounding=ROUND_HALF_UP)
+    return rupees.quantize(_PAISA)
 
 
 # --------------------------------------------------------------------------------------------------- periods

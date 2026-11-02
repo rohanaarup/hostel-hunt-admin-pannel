@@ -1,0 +1,1723 @@
+{
+ "_about": "Expected billing rows for the AdminBilling board (HH Stay and Rent Screens, page 'Admin: billing and rent'). Generated on 2026-11-02 by running that page's own script (class Component.renderVals) in Node for every sample join date, mode, due day and policy; NOT written by hand and NOT produced by apps/stays/billing.py. Rent is 6,000. Regenerate with generate_golden.js if the board changes.",
+ "_source": "Downloads/HH Stay and Rent Screens.html, page 'Admin: billing and rent' (not yet in the repository's docs/ui)",
+ "rent": 6000,
+ "cases": [
+  {
+   "mode": "ANNIVERSARY",
+   "day": null,
+   "policy": null,
+   "join": "18 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "18 Sep 2026 to 17 Oct 2026",
+     "due": "18 Sep 2026 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "18 Oct 2026 to 17 Nov 2026",
+     "due": "18 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "18 Nov 2026 to 17 Dec 2026",
+     "due": "18 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "18 Dec 2026 to 17 Jan 2027",
+     "due": "18 Dec 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "18 Jan 2027 to 17 Feb 2027",
+     "due": "18 Jan 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "Rent repeats on day 18 of every month. Short months use their last day, and every date is counted from the join date."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 1,
+   "policy": "PRORATE",
+   "join": "18 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "18 Sep 2026 to 30 Sep 2026",
+     "due": "18 Sep 2026 (at booking)",
+     "amount": "₹2,600"
+    },
+    {
+     "label": "Rent 1",
+     "period": "1 Oct 2026 to 31 Oct 2026",
+     "due": "1 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "1 Nov 2026 to 30 Nov 2026",
+     "due": "1 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "1 Dec 2026 to 31 Dec 2026",
+     "due": "1 Dec 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "1 Jan 2027 to 31 Jan 2027",
+     "due": "1 Jan 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period is prorated: 13 of 30 days = ₹2,600. From 1 Oct 2026 the full rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 1,
+   "policy": "FULL_MONTH",
+   "join": "18 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "18 Sep 2026 to 30 Sep 2026",
+     "due": "18 Sep 2026 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "1 Oct 2026 to 31 Oct 2026",
+     "due": "1 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "1 Nov 2026 to 30 Nov 2026",
+     "due": "1 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "1 Dec 2026 to 31 Dec 2026",
+     "due": "1 Dec 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "1 Jan 2027 to 31 Jan 2027",
+     "due": "1 Jan 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period charges the full month (₹6,000) even though the student joins part-way. From 1 Oct 2026 rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 5,
+   "policy": "PRORATE",
+   "join": "18 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "18 Sep 2026 to 4 Oct 2026",
+     "due": "18 Sep 2026 (at booking)",
+     "amount": "₹3,400"
+    },
+    {
+     "label": "Rent 1",
+     "period": "5 Oct 2026 to 4 Nov 2026",
+     "due": "5 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "5 Nov 2026 to 4 Dec 2026",
+     "due": "5 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "5 Dec 2026 to 4 Jan 2027",
+     "due": "5 Dec 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "5 Jan 2027 to 4 Feb 2027",
+     "due": "5 Jan 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period is prorated: 17 of 30 days = ₹3,400. From 5 Oct 2026 the full rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 5,
+   "policy": "FULL_MONTH",
+   "join": "18 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "18 Sep 2026 to 4 Oct 2026",
+     "due": "18 Sep 2026 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "5 Oct 2026 to 4 Nov 2026",
+     "due": "5 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "5 Nov 2026 to 4 Dec 2026",
+     "due": "5 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "5 Dec 2026 to 4 Jan 2027",
+     "due": "5 Dec 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "5 Jan 2027 to 4 Feb 2027",
+     "due": "5 Jan 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period charges the full month (₹6,000) even though the student joins part-way. From 5 Oct 2026 rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 10,
+   "policy": "PRORATE",
+   "join": "18 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "18 Sep 2026 to 9 Oct 2026",
+     "due": "18 Sep 2026 (at booking)",
+     "amount": "₹4,400"
+    },
+    {
+     "label": "Rent 1",
+     "period": "10 Oct 2026 to 9 Nov 2026",
+     "due": "10 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "10 Nov 2026 to 9 Dec 2026",
+     "due": "10 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "10 Dec 2026 to 9 Jan 2027",
+     "due": "10 Dec 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "10 Jan 2027 to 9 Feb 2027",
+     "due": "10 Jan 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period is prorated: 22 of 30 days = ₹4,400. From 10 Oct 2026 the full rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 10,
+   "policy": "FULL_MONTH",
+   "join": "18 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "18 Sep 2026 to 9 Oct 2026",
+     "due": "18 Sep 2026 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "10 Oct 2026 to 9 Nov 2026",
+     "due": "10 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "10 Nov 2026 to 9 Dec 2026",
+     "due": "10 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "10 Dec 2026 to 9 Jan 2027",
+     "due": "10 Dec 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "10 Jan 2027 to 9 Feb 2027",
+     "due": "10 Jan 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period charges the full month (₹6,000) even though the student joins part-way. From 10 Oct 2026 rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 15,
+   "policy": "PRORATE",
+   "join": "18 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "18 Sep 2026 to 14 Oct 2026",
+     "due": "18 Sep 2026 (at booking)",
+     "amount": "₹5,400"
+    },
+    {
+     "label": "Rent 1",
+     "period": "15 Oct 2026 to 14 Nov 2026",
+     "due": "15 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "15 Nov 2026 to 14 Dec 2026",
+     "due": "15 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "15 Dec 2026 to 14 Jan 2027",
+     "due": "15 Dec 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "15 Jan 2027 to 14 Feb 2027",
+     "due": "15 Jan 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period is prorated: 27 of 30 days = ₹5,400. From 15 Oct 2026 the full rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 15,
+   "policy": "FULL_MONTH",
+   "join": "18 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "18 Sep 2026 to 14 Oct 2026",
+     "due": "18 Sep 2026 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "15 Oct 2026 to 14 Nov 2026",
+     "due": "15 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "15 Nov 2026 to 14 Dec 2026",
+     "due": "15 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "15 Dec 2026 to 14 Jan 2027",
+     "due": "15 Dec 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "15 Jan 2027 to 14 Feb 2027",
+     "due": "15 Jan 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period charges the full month (₹6,000) even though the student joins part-way. From 15 Oct 2026 rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": "LAST_DAY",
+   "policy": "PRORATE",
+   "join": "18 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "18 Sep 2026 to 29 Sep 2026",
+     "due": "18 Sep 2026 (at booking)",
+     "amount": "₹2,400"
+    },
+    {
+     "label": "Rent 1",
+     "period": "30 Sep 2026 to 30 Oct 2026",
+     "due": "30 Sep 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "31 Oct 2026 to 29 Nov 2026",
+     "due": "31 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "30 Nov 2026 to 30 Dec 2026",
+     "due": "30 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "31 Dec 2026 to 30 Jan 2027",
+     "due": "31 Dec 2026",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period is prorated: 12 of 30 days = ₹2,400. From 30 Sep 2026 the full rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": "LAST_DAY",
+   "policy": "FULL_MONTH",
+   "join": "18 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "18 Sep 2026 to 29 Sep 2026",
+     "due": "18 Sep 2026 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "30 Sep 2026 to 30 Oct 2026",
+     "due": "30 Sep 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "31 Oct 2026 to 29 Nov 2026",
+     "due": "31 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "30 Nov 2026 to 30 Dec 2026",
+     "due": "30 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "31 Dec 2026 to 30 Jan 2027",
+     "due": "31 Dec 2026",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period charges the full month (₹6,000) even though the student joins part-way. From 30 Sep 2026 rent is due on the fixed day."
+  },
+  {
+   "mode": "ANNIVERSARY",
+   "day": null,
+   "policy": null,
+   "join": "31 Jan 2027",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "31 Jan 2027 to 27 Feb 2027",
+     "due": "31 Jan 2027 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "28 Feb 2027 to 30 Mar 2027",
+     "due": "28 Feb 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "31 Mar 2027 to 29 Apr 2027",
+     "due": "31 Mar 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "30 Apr 2027 to 30 May 2027",
+     "due": "30 Apr 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "31 May 2027 to 29 Jun 2027",
+     "due": "31 May 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "Rent repeats on day 31 of every month. Short months use their last day, and every date is counted from the join date."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 1,
+   "policy": "PRORATE",
+   "join": "31 Jan 2027",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "31 Jan 2027 to 31 Jan 2027",
+     "due": "31 Jan 2027 (at booking)",
+     "amount": "₹194"
+    },
+    {
+     "label": "Rent 1",
+     "period": "1 Feb 2027 to 28 Feb 2027",
+     "due": "1 Feb 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "1 Mar 2027 to 31 Mar 2027",
+     "due": "1 Mar 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "1 Apr 2027 to 30 Apr 2027",
+     "due": "1 Apr 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "1 May 2027 to 31 May 2027",
+     "due": "1 May 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period is prorated: 1 of 31 days = ₹194. From 1 Feb 2027 the full rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 1,
+   "policy": "FULL_MONTH",
+   "join": "31 Jan 2027",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "31 Jan 2027 to 31 Jan 2027",
+     "due": "31 Jan 2027 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "1 Feb 2027 to 28 Feb 2027",
+     "due": "1 Feb 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "1 Mar 2027 to 31 Mar 2027",
+     "due": "1 Mar 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "1 Apr 2027 to 30 Apr 2027",
+     "due": "1 Apr 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "1 May 2027 to 31 May 2027",
+     "due": "1 May 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period charges the full month (₹6,000) even though the student joins part-way. From 1 Feb 2027 rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 5,
+   "policy": "PRORATE",
+   "join": "31 Jan 2027",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "31 Jan 2027 to 4 Feb 2027",
+     "due": "31 Jan 2027 (at booking)",
+     "amount": "₹968"
+    },
+    {
+     "label": "Rent 1",
+     "period": "5 Feb 2027 to 4 Mar 2027",
+     "due": "5 Feb 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "5 Mar 2027 to 4 Apr 2027",
+     "due": "5 Mar 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "5 Apr 2027 to 4 May 2027",
+     "due": "5 Apr 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "5 May 2027 to 4 Jun 2027",
+     "due": "5 May 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period is prorated: 5 of 31 days = ₹968. From 5 Feb 2027 the full rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 5,
+   "policy": "FULL_MONTH",
+   "join": "31 Jan 2027",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "31 Jan 2027 to 4 Feb 2027",
+     "due": "31 Jan 2027 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "5 Feb 2027 to 4 Mar 2027",
+     "due": "5 Feb 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "5 Mar 2027 to 4 Apr 2027",
+     "due": "5 Mar 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "5 Apr 2027 to 4 May 2027",
+     "due": "5 Apr 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "5 May 2027 to 4 Jun 2027",
+     "due": "5 May 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period charges the full month (₹6,000) even though the student joins part-way. From 5 Feb 2027 rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 10,
+   "policy": "PRORATE",
+   "join": "31 Jan 2027",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "31 Jan 2027 to 9 Feb 2027",
+     "due": "31 Jan 2027 (at booking)",
+     "amount": "₹1,935"
+    },
+    {
+     "label": "Rent 1",
+     "period": "10 Feb 2027 to 9 Mar 2027",
+     "due": "10 Feb 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "10 Mar 2027 to 9 Apr 2027",
+     "due": "10 Mar 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "10 Apr 2027 to 9 May 2027",
+     "due": "10 Apr 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "10 May 2027 to 9 Jun 2027",
+     "due": "10 May 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period is prorated: 10 of 31 days = ₹1,935. From 10 Feb 2027 the full rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 10,
+   "policy": "FULL_MONTH",
+   "join": "31 Jan 2027",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "31 Jan 2027 to 9 Feb 2027",
+     "due": "31 Jan 2027 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "10 Feb 2027 to 9 Mar 2027",
+     "due": "10 Feb 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "10 Mar 2027 to 9 Apr 2027",
+     "due": "10 Mar 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "10 Apr 2027 to 9 May 2027",
+     "due": "10 Apr 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "10 May 2027 to 9 Jun 2027",
+     "due": "10 May 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period charges the full month (₹6,000) even though the student joins part-way. From 10 Feb 2027 rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 15,
+   "policy": "PRORATE",
+   "join": "31 Jan 2027",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "31 Jan 2027 to 14 Feb 2027",
+     "due": "31 Jan 2027 (at booking)",
+     "amount": "₹2,903"
+    },
+    {
+     "label": "Rent 1",
+     "period": "15 Feb 2027 to 14 Mar 2027",
+     "due": "15 Feb 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "15 Mar 2027 to 14 Apr 2027",
+     "due": "15 Mar 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "15 Apr 2027 to 14 May 2027",
+     "due": "15 Apr 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "15 May 2027 to 14 Jun 2027",
+     "due": "15 May 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period is prorated: 15 of 31 days = ₹2,903. From 15 Feb 2027 the full rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 15,
+   "policy": "FULL_MONTH",
+   "join": "31 Jan 2027",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "31 Jan 2027 to 14 Feb 2027",
+     "due": "31 Jan 2027 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "15 Feb 2027 to 14 Mar 2027",
+     "due": "15 Feb 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "15 Mar 2027 to 14 Apr 2027",
+     "due": "15 Mar 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "15 Apr 2027 to 14 May 2027",
+     "due": "15 Apr 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "15 May 2027 to 14 Jun 2027",
+     "due": "15 May 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period charges the full month (₹6,000) even though the student joins part-way. From 15 Feb 2027 rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": "LAST_DAY",
+   "policy": "PRORATE",
+   "join": "31 Jan 2027",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "31 Jan 2027 to 27 Feb 2027",
+     "due": "31 Jan 2027 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "28 Feb 2027 to 30 Mar 2027",
+     "due": "28 Feb 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "31 Mar 2027 to 29 Apr 2027",
+     "due": "31 Mar 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "30 Apr 2027 to 30 May 2027",
+     "due": "30 Apr 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "31 May 2027 to 29 Jun 2027",
+     "due": "31 May 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "The student joins on the fixed day, so the first period is a full month."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": "LAST_DAY",
+   "policy": "FULL_MONTH",
+   "join": "31 Jan 2027",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "31 Jan 2027 to 27 Feb 2027",
+     "due": "31 Jan 2027 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "28 Feb 2027 to 30 Mar 2027",
+     "due": "28 Feb 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "31 Mar 2027 to 29 Apr 2027",
+     "due": "31 Mar 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "30 Apr 2027 to 30 May 2027",
+     "due": "30 Apr 2027",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "31 May 2027 to 29 Jun 2027",
+     "due": "31 May 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "The student joins on the fixed day, so the first period is a full month."
+  },
+  {
+   "mode": "ANNIVERSARY",
+   "day": null,
+   "policy": null,
+   "join": "1 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "1 Sep 2026 to 30 Sep 2026",
+     "due": "1 Sep 2026 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "1 Oct 2026 to 31 Oct 2026",
+     "due": "1 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "1 Nov 2026 to 30 Nov 2026",
+     "due": "1 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "1 Dec 2026 to 31 Dec 2026",
+     "due": "1 Dec 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "1 Jan 2027 to 31 Jan 2027",
+     "due": "1 Jan 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "Rent repeats on day 1 of every month. Short months use their last day, and every date is counted from the join date."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 1,
+   "policy": "PRORATE",
+   "join": "1 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "1 Sep 2026 to 30 Sep 2026",
+     "due": "1 Sep 2026 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "1 Oct 2026 to 31 Oct 2026",
+     "due": "1 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "1 Nov 2026 to 30 Nov 2026",
+     "due": "1 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "1 Dec 2026 to 31 Dec 2026",
+     "due": "1 Dec 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "1 Jan 2027 to 31 Jan 2027",
+     "due": "1 Jan 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "The student joins on the fixed day, so the first period is a full month."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 1,
+   "policy": "FULL_MONTH",
+   "join": "1 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "1 Sep 2026 to 30 Sep 2026",
+     "due": "1 Sep 2026 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "1 Oct 2026 to 31 Oct 2026",
+     "due": "1 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "1 Nov 2026 to 30 Nov 2026",
+     "due": "1 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "1 Dec 2026 to 31 Dec 2026",
+     "due": "1 Dec 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "1 Jan 2027 to 31 Jan 2027",
+     "due": "1 Jan 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "The student joins on the fixed day, so the first period is a full month."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 5,
+   "policy": "PRORATE",
+   "join": "1 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "1 Sep 2026 to 4 Sep 2026",
+     "due": "1 Sep 2026 (at booking)",
+     "amount": "₹774"
+    },
+    {
+     "label": "Rent 1",
+     "period": "5 Sep 2026 to 4 Oct 2026",
+     "due": "5 Sep 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "5 Oct 2026 to 4 Nov 2026",
+     "due": "5 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "5 Nov 2026 to 4 Dec 2026",
+     "due": "5 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "5 Dec 2026 to 4 Jan 2027",
+     "due": "5 Dec 2026",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period is prorated: 4 of 31 days = ₹774. From 5 Sep 2026 the full rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 5,
+   "policy": "FULL_MONTH",
+   "join": "1 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "1 Sep 2026 to 4 Sep 2026",
+     "due": "1 Sep 2026 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "5 Sep 2026 to 4 Oct 2026",
+     "due": "5 Sep 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "5 Oct 2026 to 4 Nov 2026",
+     "due": "5 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "5 Nov 2026 to 4 Dec 2026",
+     "due": "5 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "5 Dec 2026 to 4 Jan 2027",
+     "due": "5 Dec 2026",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period charges the full month (₹6,000) even though the student joins part-way. From 5 Sep 2026 rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 10,
+   "policy": "PRORATE",
+   "join": "1 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "1 Sep 2026 to 9 Sep 2026",
+     "due": "1 Sep 2026 (at booking)",
+     "amount": "₹1,742"
+    },
+    {
+     "label": "Rent 1",
+     "period": "10 Sep 2026 to 9 Oct 2026",
+     "due": "10 Sep 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "10 Oct 2026 to 9 Nov 2026",
+     "due": "10 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "10 Nov 2026 to 9 Dec 2026",
+     "due": "10 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "10 Dec 2026 to 9 Jan 2027",
+     "due": "10 Dec 2026",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period is prorated: 9 of 31 days = ₹1,742. From 10 Sep 2026 the full rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 10,
+   "policy": "FULL_MONTH",
+   "join": "1 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "1 Sep 2026 to 9 Sep 2026",
+     "due": "1 Sep 2026 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "10 Sep 2026 to 9 Oct 2026",
+     "due": "10 Sep 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "10 Oct 2026 to 9 Nov 2026",
+     "due": "10 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "10 Nov 2026 to 9 Dec 2026",
+     "due": "10 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "10 Dec 2026 to 9 Jan 2027",
+     "due": "10 Dec 2026",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period charges the full month (₹6,000) even though the student joins part-way. From 10 Sep 2026 rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 15,
+   "policy": "PRORATE",
+   "join": "1 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "1 Sep 2026 to 14 Sep 2026",
+     "due": "1 Sep 2026 (at booking)",
+     "amount": "₹2,710"
+    },
+    {
+     "label": "Rent 1",
+     "period": "15 Sep 2026 to 14 Oct 2026",
+     "due": "15 Sep 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "15 Oct 2026 to 14 Nov 2026",
+     "due": "15 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "15 Nov 2026 to 14 Dec 2026",
+     "due": "15 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "15 Dec 2026 to 14 Jan 2027",
+     "due": "15 Dec 2026",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period is prorated: 14 of 31 days = ₹2,710. From 15 Sep 2026 the full rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 15,
+   "policy": "FULL_MONTH",
+   "join": "1 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "1 Sep 2026 to 14 Sep 2026",
+     "due": "1 Sep 2026 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "15 Sep 2026 to 14 Oct 2026",
+     "due": "15 Sep 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "15 Oct 2026 to 14 Nov 2026",
+     "due": "15 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "15 Nov 2026 to 14 Dec 2026",
+     "due": "15 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "15 Dec 2026 to 14 Jan 2027",
+     "due": "15 Dec 2026",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period charges the full month (₹6,000) even though the student joins part-way. From 15 Sep 2026 rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": "LAST_DAY",
+   "policy": "PRORATE",
+   "join": "1 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "1 Sep 2026 to 29 Sep 2026",
+     "due": "1 Sep 2026 (at booking)",
+     "amount": "₹5,800"
+    },
+    {
+     "label": "Rent 1",
+     "period": "30 Sep 2026 to 30 Oct 2026",
+     "due": "30 Sep 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "31 Oct 2026 to 29 Nov 2026",
+     "due": "31 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "30 Nov 2026 to 30 Dec 2026",
+     "due": "30 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "31 Dec 2026 to 30 Jan 2027",
+     "due": "31 Dec 2026",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period is prorated: 29 of 30 days = ₹5,800. From 30 Sep 2026 the full rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": "LAST_DAY",
+   "policy": "FULL_MONTH",
+   "join": "1 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "1 Sep 2026 to 29 Sep 2026",
+     "due": "1 Sep 2026 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "30 Sep 2026 to 30 Oct 2026",
+     "due": "30 Sep 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "31 Oct 2026 to 29 Nov 2026",
+     "due": "31 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "30 Nov 2026 to 30 Dec 2026",
+     "due": "30 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "31 Dec 2026 to 30 Jan 2027",
+     "due": "31 Dec 2026",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period charges the full month (₹6,000) even though the student joins part-way. From 30 Sep 2026 rent is due on the fixed day."
+  },
+  {
+   "mode": "ANNIVERSARY",
+   "day": null,
+   "policy": null,
+   "join": "5 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "5 Sep 2026 to 4 Oct 2026",
+     "due": "5 Sep 2026 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "5 Oct 2026 to 4 Nov 2026",
+     "due": "5 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "5 Nov 2026 to 4 Dec 2026",
+     "due": "5 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "5 Dec 2026 to 4 Jan 2027",
+     "due": "5 Dec 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "5 Jan 2027 to 4 Feb 2027",
+     "due": "5 Jan 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "Rent repeats on day 5 of every month. Short months use their last day, and every date is counted from the join date."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 1,
+   "policy": "PRORATE",
+   "join": "5 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "5 Sep 2026 to 30 Sep 2026",
+     "due": "5 Sep 2026 (at booking)",
+     "amount": "₹5,200"
+    },
+    {
+     "label": "Rent 1",
+     "period": "1 Oct 2026 to 31 Oct 2026",
+     "due": "1 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "1 Nov 2026 to 30 Nov 2026",
+     "due": "1 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "1 Dec 2026 to 31 Dec 2026",
+     "due": "1 Dec 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "1 Jan 2027 to 31 Jan 2027",
+     "due": "1 Jan 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period is prorated: 26 of 30 days = ₹5,200. From 1 Oct 2026 the full rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 1,
+   "policy": "FULL_MONTH",
+   "join": "5 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "5 Sep 2026 to 30 Sep 2026",
+     "due": "5 Sep 2026 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "1 Oct 2026 to 31 Oct 2026",
+     "due": "1 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "1 Nov 2026 to 30 Nov 2026",
+     "due": "1 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "1 Dec 2026 to 31 Dec 2026",
+     "due": "1 Dec 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "1 Jan 2027 to 31 Jan 2027",
+     "due": "1 Jan 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period charges the full month (₹6,000) even though the student joins part-way. From 1 Oct 2026 rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 5,
+   "policy": "PRORATE",
+   "join": "5 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "5 Sep 2026 to 4 Oct 2026",
+     "due": "5 Sep 2026 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "5 Oct 2026 to 4 Nov 2026",
+     "due": "5 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "5 Nov 2026 to 4 Dec 2026",
+     "due": "5 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "5 Dec 2026 to 4 Jan 2027",
+     "due": "5 Dec 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "5 Jan 2027 to 4 Feb 2027",
+     "due": "5 Jan 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "The student joins on the fixed day, so the first period is a full month."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 5,
+   "policy": "FULL_MONTH",
+   "join": "5 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "5 Sep 2026 to 4 Oct 2026",
+     "due": "5 Sep 2026 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "5 Oct 2026 to 4 Nov 2026",
+     "due": "5 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "5 Nov 2026 to 4 Dec 2026",
+     "due": "5 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "5 Dec 2026 to 4 Jan 2027",
+     "due": "5 Dec 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "5 Jan 2027 to 4 Feb 2027",
+     "due": "5 Jan 2027",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "The student joins on the fixed day, so the first period is a full month."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 10,
+   "policy": "PRORATE",
+   "join": "5 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "5 Sep 2026 to 9 Sep 2026",
+     "due": "5 Sep 2026 (at booking)",
+     "amount": "₹968"
+    },
+    {
+     "label": "Rent 1",
+     "period": "10 Sep 2026 to 9 Oct 2026",
+     "due": "10 Sep 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "10 Oct 2026 to 9 Nov 2026",
+     "due": "10 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "10 Nov 2026 to 9 Dec 2026",
+     "due": "10 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "10 Dec 2026 to 9 Jan 2027",
+     "due": "10 Dec 2026",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period is prorated: 5 of 31 days = ₹968. From 10 Sep 2026 the full rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 10,
+   "policy": "FULL_MONTH",
+   "join": "5 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "5 Sep 2026 to 9 Sep 2026",
+     "due": "5 Sep 2026 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "10 Sep 2026 to 9 Oct 2026",
+     "due": "10 Sep 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "10 Oct 2026 to 9 Nov 2026",
+     "due": "10 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "10 Nov 2026 to 9 Dec 2026",
+     "due": "10 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "10 Dec 2026 to 9 Jan 2027",
+     "due": "10 Dec 2026",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period charges the full month (₹6,000) even though the student joins part-way. From 10 Sep 2026 rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 15,
+   "policy": "PRORATE",
+   "join": "5 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "5 Sep 2026 to 14 Sep 2026",
+     "due": "5 Sep 2026 (at booking)",
+     "amount": "₹1,935"
+    },
+    {
+     "label": "Rent 1",
+     "period": "15 Sep 2026 to 14 Oct 2026",
+     "due": "15 Sep 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "15 Oct 2026 to 14 Nov 2026",
+     "due": "15 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "15 Nov 2026 to 14 Dec 2026",
+     "due": "15 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "15 Dec 2026 to 14 Jan 2027",
+     "due": "15 Dec 2026",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period is prorated: 10 of 31 days = ₹1,935. From 15 Sep 2026 the full rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": 15,
+   "policy": "FULL_MONTH",
+   "join": "5 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "5 Sep 2026 to 14 Sep 2026",
+     "due": "5 Sep 2026 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "15 Sep 2026 to 14 Oct 2026",
+     "due": "15 Sep 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "15 Oct 2026 to 14 Nov 2026",
+     "due": "15 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "15 Nov 2026 to 14 Dec 2026",
+     "due": "15 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "15 Dec 2026 to 14 Jan 2027",
+     "due": "15 Dec 2026",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period charges the full month (₹6,000) even though the student joins part-way. From 15 Sep 2026 rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": "LAST_DAY",
+   "policy": "PRORATE",
+   "join": "5 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "5 Sep 2026 to 29 Sep 2026",
+     "due": "5 Sep 2026 (at booking)",
+     "amount": "₹5,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "30 Sep 2026 to 30 Oct 2026",
+     "due": "30 Sep 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "31 Oct 2026 to 29 Nov 2026",
+     "due": "31 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "30 Nov 2026 to 30 Dec 2026",
+     "due": "30 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "31 Dec 2026 to 30 Jan 2027",
+     "due": "31 Dec 2026",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period is prorated: 25 of 30 days = ₹5,000. From 30 Sep 2026 the full rent is due on the fixed day."
+  },
+  {
+   "mode": "FIXED_DAY",
+   "day": "LAST_DAY",
+   "policy": "FULL_MONTH",
+   "join": "5 Sep 2026",
+   "rows": [
+    {
+     "label": "Booking",
+     "period": "5 Sep 2026 to 29 Sep 2026",
+     "due": "5 Sep 2026 (at booking)",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 1",
+     "period": "30 Sep 2026 to 30 Oct 2026",
+     "due": "30 Sep 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 2",
+     "period": "31 Oct 2026 to 29 Nov 2026",
+     "due": "31 Oct 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 3",
+     "period": "30 Nov 2026 to 30 Dec 2026",
+     "due": "30 Nov 2026",
+     "amount": "₹6,000"
+    },
+    {
+     "label": "Rent 4",
+     "period": "31 Dec 2026 to 30 Jan 2027",
+     "due": "31 Dec 2026",
+     "amount": "₹6,000"
+    }
+   ],
+   "summary": "First period charges the full month (₹6,000) even though the student joins part-way. From 30 Sep 2026 rent is due on the fixed day."
+  }
+ ]
+}

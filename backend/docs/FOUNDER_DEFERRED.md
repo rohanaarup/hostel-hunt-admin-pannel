@@ -53,7 +53,7 @@ A decision, not a dashboard step; nothing is blocked by it.
 
 | # | Decision | Why | Needed by | Status |
 |---|---|---|---|---|
-| 25 | Confirm the PRORATE rule, or name another: first rent for a fixed-day hostel = monthly rent x days from the join date to the next fixed due day / days in the fixed period (previous to next fixed due day) containing the join date, rounded to the paisa with halves up. Example: rent 6,500, fixed day 5, joining 18 Sep = 6,500 x 17 / 30 = 3,683.33. | Decision D1 supports both PRORATE and FULL_MONTH; the amount rule for PRORATE is the proposal in the plan document and is built into ONE function, so a different rule is a one-function change | Before an owner can choose PRORATE (Phase 9 owner screens); the default is FULL_MONTH | Open |
+| 25 | Confirm the PRORATE rule, or name another: first rent for a fixed-day hostel = monthly rent x days from the join date to the next fixed due day / days in the fixed period (previous to next fixed due day) containing the join date, rounded to a WHOLE RUPEE with halves up (the same as the Billing Simulator and the AdminBilling board). Example from the board: rent 6,000, fixed day 1, joining 18 Sep = 6,000 x 13 / 30 = 2,600, next due 1 Oct. | Decision D1 supports both PRORATE and FULL_MONTH; the amount rule for PRORATE is the proposal in the plan document and is built into ONE function, so a different rule is a one-function change | Before an owner can choose PRORATE (Phase 9 owner screens); the default is FULL_MONTH | Open |
 
 ## Added by later phases
 

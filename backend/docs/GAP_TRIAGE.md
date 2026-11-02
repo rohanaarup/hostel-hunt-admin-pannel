@@ -244,3 +244,4 @@ Evidence for the G1 rows is in `backend/docs/STAY_BASELINE.md`; G2-01 is from Ph
 | G3-02 | In transaction pooling mode, single statements outside a transaction block have no statement timeout unless the database role carries one. | Moderate (only in that mode) | SCALE | 3, founder | `CAPACITY.md` section 2: a dedicated web role. |
 | G3-03 | Redis alone cannot give a per-endpoint cache hit rate. | Low | LATER | 3 | Use two `cache_stats` snapshots plus the request log. |
 | G4-01 | The FIXED_DAY proration rule is a proposal awaiting the founder; isolated in `prorated_amount`; the default policy is FULL_MONTH. | Low | LATER | 5 (before PRORATE is offered to owners) | `FOUNDER_DEFERRED.md` item 25; `STAYS_DOMAIN.md`. |
+| G4-02 | The UI pack `docs/ui` named in the Phase 4 brief is not in the repositories; the board was read from the founder's Downloads. | Low | LATER | 7, 9, 10 (the UI phases) | KNOWN_GAPS G4-02. |

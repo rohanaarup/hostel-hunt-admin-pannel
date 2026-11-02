@@ -154,6 +154,34 @@ class StayTests(Base):
     def test_the_statuses(self):
         self.assertEqual([c[0] for c in Stay.Status.choices], ['UPCOMING', 'ACTIVE', 'NOTICE', 'ENDED', 'CANCELLED'])
 
+    def test_the_vacate_fields_start_empty(self):
+        stay = self.make_stay()
+        self.assertIsNone(stay.vacate_requested_at)
+        self.assertIsNone(stay.planned_move_out_date)
+        self.assertIsNone(stay.vacate_reason)
+
+    def test_the_vacate_reasons_are_the_ones_on_the_request_to_vacate_screen(self):
+        """Wording from the approved 'Request to vacate' board: Course completed, Moving city, Found another place, Other."""
+        self.assertEqual([c[0] for c in Stay.VacateReason.choices],
+                         ['COURSE_COMPLETED', 'MOVING_CITY', 'FOUND_ANOTHER_PLACE', 'OTHER'])
+        self.assertEqual([str(c[1]) for c in Stay.VacateReason.choices],
+                         ['Course completed', 'Moving city', 'Found another place', 'Other'])
+
+    def test_a_vacate_request_is_stored_in_full(self):
+        stay = self.make_stay(status='NOTICE', vacate_requested_at=datetime(2026, 11, 3, 9, 0, tzinfo=timezone.utc),
+                              planned_move_out_date=date(2026, 11, 30), vacate_reason='MOVING_CITY')
+        stay.refresh_from_db()
+        self.assertEqual(stay.planned_move_out_date, date(2026, 11, 30))
+        self.assertEqual(stay.vacate_reason, 'MOVING_CITY')
+        self.assertEqual(stay.get_vacate_reason_display(), 'Moving city')
+        self.assertTrue(stay.is_current)  # a stay on notice still counts as the student's current stay
+
+    def test_an_unknown_vacate_reason_is_refused_by_validation(self):
+        stay = self.make_stay()
+        stay.vacate_reason = 'BORED'
+        with self.assertRaises(ValidationError):
+            stay.full_clean()
+
     def test_the_current_statuses_are_upcoming_active_and_notice(self):
         self.assertEqual(Stay.CURRENT_STATUSES, ('UPCOMING', 'ACTIVE', 'NOTICE'))
         self.assertTrue(self.make_stay(status='NOTICE').is_current)
