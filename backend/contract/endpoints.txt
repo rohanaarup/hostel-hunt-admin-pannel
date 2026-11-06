@@ -81,6 +81,11 @@ admin POST   /bookings/{id}/reject/
 admin POST   /bookings/{id}/verify/
 admin PATCH  /bookings/{id}/mark-paid/
 
+# ---- admin: stays ----
+# (Phase 5) The app's own line, `app POST /stays/{id}/vacate-request/`, is added in Phase 10 together with the
+# app's copy (app CI fails on a listed path the Dart code does not call).
+admin POST   /stays/{id}/end/
+
 # ---- admin: payments ----
 admin GET    /payments/admin-list/
 

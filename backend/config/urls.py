@@ -40,6 +40,7 @@ urlpatterns = [
         path('', include('apps.dashboard.urls')),
         path('', include('apps.residents.urls')),
         path('', include('apps.notices.urls')),
+        path('', include('apps.stays.urls')),
     ])),
 ]
 

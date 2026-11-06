@@ -383,6 +383,7 @@ SPECTACULAR_SETTINGS = {
     ],
     'ENUM_NAME_OVERRIDES': {
         'PaymentStatusEnum': 'apps.payments.models.PAYMENT_STATUS_CHOICES',
+        'VacateReasonEnum': 'apps.stays.models.VACATE_REASON_CHOICES',
     },
 }
 

@@ -13,7 +13,8 @@ Inside one transaction, in this lock order (see holds.py): Payment -> Bed -> Boo
     -> FLAGGED: the money was captured but cannot be honoured. Nothing is confirmed, the payment is closed and
        marked needs_review with a note, and an ERROR is logged (Sentry), so a person refunds it. No automatic
        refund: money never moves without a person.
-  * Otherwise -> the attempt, payment, booking and bed are all updated together: CONFIRMED.
+  * Otherwise -> the attempt, payment, booking and bed are all updated together, and the booking's Stay is created
+    in the same transaction (Phase 5): CONFIRMED.
 """
 import logging
 from enum import Enum
@@ -23,6 +24,7 @@ from django.utils import timezone
 
 from apps.bookings.models import Booking
 from apps.rooms.models import Bed
+from apps.stays import services as stay_services
 
 from . import holds
 from .models import Payment, PaymentAttempt
@@ -135,6 +137,10 @@ def confirm_payment(payment_id, razorpay_payment_id, signature='', *, amount_pai
             bed.save(update_fields=['is_available', 'held_until', 'hold_payment_id'])
         else:
             logger.warning('Payment %s confirmed but booking %s has no usable bed number', payment.id, booking.id)
+
+        # Phase 5: the paid booking becomes a Stay (Due 1 paid, Due 2 coming) in this same transaction. It runs in a
+        # savepoint and never raises, so a failure there can never undo the payment (reconcile_stays heals it later).
+        stay_services.ensure_stay_for_paid_booking(booking, payment)
 
     logger.info('Payment %s confirmed SUCCESS', payment_id)
     return Outcome.CONFIRMED

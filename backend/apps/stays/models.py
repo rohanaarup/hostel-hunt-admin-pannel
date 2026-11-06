@@ -180,6 +180,10 @@ class Stay(TenantScopedModel, UserScopedModel):
         return self.status in self.CURRENT_STATUSES
 
 
+# Importable by the API schema settings (ENUM_NAME_OVERRIDES): the request and the model share one enum name.
+VACATE_REASON_CHOICES = Stay.VacateReason.choices
+
+
 class Due(TenantScopedModel, UserScopedModel):
     """One billing cycle of a stay. Overdue is never stored: it is worked out when read from the due date, today and the
     hostel's grace days (E8, billing.effective_status)."""

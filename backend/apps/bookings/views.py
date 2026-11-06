@@ -2,8 +2,10 @@ from rest_framework import viewsets, status, generics
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from django.db import transaction
 from django.utils import timezone
 from apps.payments import holds
+from apps.stays import services as stay_services
 from .models import Booking
 from .serializers import BookingSerializer, BookingCreateSerializer
 from apps.core.querysets import TenantScopedQuerysetMixin
@@ -110,6 +112,29 @@ class BookingViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             )
         return None
 
+    @classmethod
+    def _finish_paid(cls, booking, user):
+        """
+        Mark a booking paid and create its stay, all or nothing for the booking: bed first, then the booking row (the
+        payment code's lock order), the status re-checked under the lock so two calls at once make one stay.
+        """
+        with transaction.atomic():
+            busy = cls._take_bed(booking)
+            if busy is not None:
+                return busy
+            booking = Booking.objects.select_for_update(of=('self',)).select_related('hostel', 'room').get(pk=booking.pk)
+            if booking.status != 'paid':
+                if booking.status in ('cancelled', 'rejected'):
+                    transaction.set_rollback(True)  # undo the bed taken just above
+                    return Response({"error": "A cancelled or rejected booking cannot be marked paid"},
+                                    status=status.HTTP_400_BAD_REQUEST)
+                booking.status = 'paid'
+                booking.marked_paid_by = user
+                booking.marked_paid_at = timezone.now()
+                booking.save(update_fields=['status', 'marked_paid_by', 'marked_paid_at', 'updated_at'])
+                stay_services.ensure_stay_for_paid_booking(booking)
+        return Response({"success": True, "data": BookingSerializer(booking).data})
+
     # ------------------------------------------------------------------ #
     #  Custom actions                                                       #
     # ------------------------------------------------------------------ #
@@ -155,14 +180,16 @@ class BookingViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        busy = self._take_bed(booking)
-        if busy is not None:
-            return busy
-        booking.status = 'paid'
-        booking.marked_paid_by = request.user
-        booking.marked_paid_at = timezone.now()
-        booking.save(update_fields=['status', 'marked_paid_by', 'marked_paid_at', 'updated_at'])
-        return Response({"success": True, "data": BookingSerializer(booking).data})
+        if booking.status == 'paid':
+            # Already paid: a second call is a no-op (no second stay, no new timestamp).
+            return Response({"success": True, "data": BookingSerializer(booking).data})
+        if booking.status in ('cancelled', 'rejected'):
+            return Response(
+                {"error": "A cancelled or rejected booking cannot be verified"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return self._finish_paid(booking, request.user)
 
     @action(detail=True, methods=['patch'], permission_classes=[IsAuthenticated], url_path='mark-paid')
     def mark_paid(self, request, pk=None):
@@ -175,11 +202,4 @@ class BookingViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        busy = self._take_bed(booking)
-        if busy is not None:
-            return busy
-        booking.status = 'paid'
-        booking.marked_paid_by = request.user
-        booking.marked_paid_at = timezone.now()
-        booking.save(update_fields=['status', 'marked_paid_by', 'marked_paid_at', 'updated_at'])
-        return Response({"success": True, "data": BookingSerializer(booking).data})
+        return self._finish_paid(booking, request.user)

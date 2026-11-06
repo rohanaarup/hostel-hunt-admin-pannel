@@ -1719,6 +1719,80 @@ paths:
               schema:
                 $ref: '#/components/schemas/ResidentCreate'
           description: ''
+  /api/v1/stays/{id}/end/:
+    post:
+      operationId: stays_end_create
+      summary: End a stay (owner or admin)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - stays
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StayLifecycle'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StayError'
+          description: ''
+  /api/v1/stays/{id}/vacate-request/:
+    post:
+      operationId: stays_vacate_request_create
+      summary: Ask to vacate (student)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - stays
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VacateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/VacateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VacateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StayLifecycle'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StayError'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StayError'
+          description: ''
   /api/v1/wishlist/:
     get:
       operationId: wishlist_retrieve
@@ -3547,6 +3621,74 @@ components:
         * `triple` - Triple
         * `quad` - Quad
         * `dormitory` - Dormitory
+    StayError:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        error:
+          type: string
+      required:
+      - code
+      - error
+      - message
+    StayLifecycle:
+      type: object
+      description: What the two lifecycle actions answer with. The full stay payload
+        (billing summary and so on) is Phase 7.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StayLifecycleStatusEnum'
+          readOnly: true
+        planned_move_out_date:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        vacate_reason:
+          readOnly: true
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/VacateReasonEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        vacate_requested_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        ended_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - ended_at
+      - id
+      - planned_move_out_date
+      - status
+      - vacate_reason
+      - vacate_requested_at
+    StayLifecycleStatusEnum:
+      enum:
+      - UPCOMING
+      - ACTIVE
+      - NOTICE
+      - ENDED
+      - CANCELLED
+      type: string
+      description: |-
+        * `UPCOMING` - Upcoming
+        * `ACTIVE` - Active
+        * `NOTICE` - On notice
+        * `ENDED` - Ended
+        * `CANCELLED` - Cancelled
     TokenRefresh:
       type: object
       properties:
@@ -3559,6 +3701,31 @@ components:
       required:
       - access
       - refresh
+    VacateReasonEnum:
+      enum:
+      - COURSE_COMPLETED
+      - MOVING_CITY
+      - FOUND_ANOTHER_PLACE
+      - OTHER
+      type: string
+      description: |-
+        * `COURSE_COMPLETED` - Course completed
+        * `MOVING_CITY` - Moving city
+        * `FOUND_ANOTHER_PLACE` - Found another place
+        * `OTHER` - Other
+    VacateRequest:
+      type: object
+      description: 'The ''Request to vacate'' board: a planned move-out date and one
+        of four reasons.'
+      properties:
+        planned_move_out_date:
+          type: string
+          format: date
+        reason:
+          $ref: '#/components/schemas/VacateReasonEnum'
+      required:
+      - planned_move_out_date
+      - reason
     WishlistIds:
       type: object
       properties:

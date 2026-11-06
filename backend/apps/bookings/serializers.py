@@ -1,7 +1,15 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
+from rest_framework.exceptions import APIException
 from apps.rooms.models import Bed
+from apps.stays import services as stay_services
 from .models import Booking
+
+
+class ActiveStayExists(APIException):
+    """409 for a signed-in student who already has a current stay (decision D2): the BookingBlocked board."""
+    status_code = 409
+    default_code = 'ACTIVE_STAY_EXISTS'
 
 
 class BookingSerializer(serializers.ModelSerializer):
@@ -63,6 +71,17 @@ class BookingCreateSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, attrs):
+        # D2/E3: one current stay per student. Only for a signed-in student; an anonymous booking is allowed, and a second
+        # PAID booking is never refused after the money is taken (it makes a stay flagged needs_review instead).
+        request = self.context.get('request')
+        current = stay_services.find_current_stay(getattr(request, 'user', None))
+        if current is not None:
+            raise ActiveStayExists({
+                'code': 'ACTIVE_STAY_EXISTS',
+                'message': 'You already have a current stay. You can hold one stay at a time, so booking another '
+                           'hostel opens after your current stay ends.',
+                'current_stay': stay_services.current_stay_payload(current),
+            })
         # A bed that is already paid for cannot be requested again. (Beds are locked when a payment starts;
         # this only keeps an obviously taken bed from reaching the owner as a new request.)
         room, number = attrs.get('room'), attrs.get('bed_number')

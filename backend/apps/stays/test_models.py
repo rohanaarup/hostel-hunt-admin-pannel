@@ -411,11 +411,21 @@ class WiringTests(SimpleTestCase):
     def test_the_outbox_cannot_be_added_to_by_hand_in_the_admin(self):
         self.assertFalse(admin.site._registry[OutboxEvent].has_add_permission(None))
 
-    def test_there_is_no_endpoint_no_view_no_serializer(self):
-        for name in ('views.py', 'urls.py', 'serializers.py', 'viewsets.py'):
-            self.assertFalse((STAYS_DIR / name).exists(), name)
-        patterns = [str(p.pattern) for p in get_resolver().url_patterns]
-        self.assertFalse(any('stays' in p for p in patterns), patterns)
+    def test_only_the_two_phase_5_endpoints_exist(self):
+        """Phase 4 had no endpoint at all. Phase 5 adds exactly the two lifecycle actions; reads are Phase 7."""
+        from django.urls import get_resolver
+        found = []
+
+        def walk(patterns, prefix=''):
+            for p in patterns:
+                text = prefix + str(p.pattern)
+                if hasattr(p, 'url_patterns'):
+                    walk(p.url_patterns, text)
+                elif text.startswith('api/') and 'stays/' in text:
+                    found.append(text)
+
+        walk(get_resolver().url_patterns)
+        self.assertEqual(sorted(found), ['api/v1/stays/<uuid:pk>/end/', 'api/v1/stays/<uuid:pk>/vacate-request/'])
 
     def test_no_environment_variable_was_added(self):
         source = ''.join(path.read_text(encoding='utf-8') for path in STAYS_DIR.glob('*.py') if not path.name.startswith('test'))
