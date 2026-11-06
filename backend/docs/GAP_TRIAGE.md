@@ -252,3 +252,10 @@ Evidence for the G1 rows is in `backend/docs/STAY_BASELINE.md`; G2-01 is from Ph
 | G5-05 | needs_review stays and outbox events have no screen or consumer | Moderate | LATER | 8, 9 | KNOWN_GAPS G5-05. |
 | G5-06 | Ending a stay leaves the Resident row and the booking unchanged | Low | LATER | 9 | KNOWN_GAPS G5-06. |
 | G5-07 | `reconcile_stays --dry-run` not yet run on staging | Low | LATER | with FOUNDER_DEFERRED 1 | KNOWN_GAPS G5-07. |
+| G6-01 | Rent scenarios not run on staging (paused, no test keys) | Moderate | LATER | before go-live | KNOWN_GAPS G6-01; local rehearsal done. |
+| G6-02 | Owner dashboard totals include rent and offline rent | Moderate | LATER | 9 | KNOWN_GAPS G6-02. |
+| G6-03 | A refunded rent stays paid | Moderate | LATER | 9 or a decision | KNOWN_GAPS G6-03. |
+| G6-04 | Rent orders never expire | Low | LATER | later | KNOWN_GAPS G6-04. |
+| G6-05 | `paid_via` empty on booking payments | Low | LATER | 7 | KNOWN_GAPS G6-05. |
+| G6-06 | Card callback cannot know the real method | Low | LATER | later | KNOWN_GAPS G6-06. |
+| G6-07 | App contract line for create-rent-order deferred | Low | LATER | 10 | KNOWN_GAPS G6-07. |

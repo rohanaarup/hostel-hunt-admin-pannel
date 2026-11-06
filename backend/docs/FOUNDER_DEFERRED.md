@@ -64,6 +64,13 @@ Not dashboard steps: a decision and a run, both after staging is restored (item 
 | 26 | Run `python manage.py reconcile_stays --dry-run` on a copy of production data (or staging), read the counts, **decide a cutoff date for old bookings**, and only then run it for real | It creates a stay for every paid booking that has none. Old bookings of students who have left would become ACTIVE stays with an overdue rent and would block those students from booking again (G5-03). The command has no cutoff yet; ask for a `--since` option before the first real run | Before the production deploy of Phase 5 | Open |
 | 27 | Decide what a PRORATE hostel's student pays on the first booking (G5-01): the whole month (as `create-order` charges today) or the prorated amount on the board | The board says the student paid 2,600 for 13 days; the payment code charges 6,000 | Before PRORATE is offered to owners (Phase 9) | Open |
 
+## Added by Phase 6 (rent payments)
+
+| # | Action | Why | Needed by | Status |
+|---|---|---|---|---|
+| 28 | After items 1, 12 and 13 (staging restored, email, Razorpay TEST keys and webhook), run the rent scenarios R1 to R7 in `PAYMENT_TEST.md` | Rent was proven by tests and a local signed-webhook rehearsal, not with a real Razorpay test payment (G6-01) | Before go-live | Open |
+| 29 | Decide: when a rent payment is refunded, should the due reopen as unpaid (G6-03)? And should owner revenue totals include rent (G6-02)? | The refund and dashboard code are outside Phase 6 | Phase 9 | Open |
+
 ## Added by later phases
 
 (none yet)

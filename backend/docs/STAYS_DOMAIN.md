@@ -114,3 +114,19 @@ Endpoints: `POST /api/v1/stays/<id>/vacate-request/` (the stay's student) and `P
 else gets 404 (not 403), so a stay's existence is not revealed.
 
 **Lock order:** Payment, Bed, Booking (as in `holds.py`). `end_stay` locks the Bed, then the Stay.
+
+## Phase 6: rent payments
+
+| Piece | Behaviour |
+|---|---|
+| `Payment` additions (migration `payments.0006`, additive, every column defaulted in the database) | `purpose` (BOOKING default, RENT), `due` (null FK to `stays.Due`), `source` (ONLINE default, OFFLINE_OWNER), `recorded_by`, `reference_note`, `paid_via`, and for a void `voided_at`, `voided_by`, `void_reason`. Status gains VOIDED. `receipt_number` is a property (`HH-<date>-<6 characters of the id>`), not a column. A RENT payment keeps `booking` = the stay's booking (the column is required and the payment screens look payments up through it). |
+| `POST /payments/create-rent-order/` `{due_id}` | Only the stay's student (404 for anyone else). Due must be payable now (inside the window) or overdue; PAID, WAIVED and CANCELLED give 409 `DUE_PAID` and so on, a due not yet payable gives 409 `DUE_NOT_PAYABLE`. Amount is the due's own amount. Same reply as create-order. A repeat call returns the open order (200). No bed is held. |
+| `confirm_payment` RENT branch | Lock order Payment, then Due. Due becomes PAID with `paid_at` and the payment link; one outbox row `rent.paid` (dedupe `rent-paid-<payment id>`). A due already paid, cancelled or waived flags the payment `needs_review` (money to refund by a person). Never touches the booking, bed or stay. The booking branch is unchanged. |
+| Holds | `expire_if_lapsed`, `expire_stale`, `peek_hold_has_lapsed` and the `cleanup_expired` holds step skip RENT payments (E7). `payment.failed` closes a rent payment and releases no bed. |
+| Webhook method | Read from the Razorpay payment entity: upi, card, netbanking, wallet, anything else is OTHER; an entity with no method is still recorded as CARD (the old behaviour). |
+| `POST /stays/dues/<id>/record-payment/` | Owner of the hostel or an admin. `paid_at` (date and time, not in the future), `method` CASH, BANK_TRANSFER or UPI_DIRECT, a required `reference_note` (200 characters). Creates a SUCCESS payment (source OFFLINE_OWNER, `recorded_by`, a synthetic `offline_<random>` order id because the column is required and unique), marks the due PAID and writes the same `rent.paid` row. One record per due: a second call is 409. |
+| `POST /stays/dues/<id>/void-payment/` | Same people. Only for an OFFLINE_OWNER rent payment, with a required reason. The payment is kept and marked VOIDED (who, when, why); the due is open again (PAYABLE or SCHEDULED by the window, overdue by date); one outbox row `rent.payment_voided`. A second void is 409. An online payment answers 409 `ONLINE_PAYMENT_NEEDS_REFUND`. |
+| Status poll | `GET /payments/status/<id>/` now also returns `purpose` and `due_id`. The payment lists return `purpose`. |
+
+**Lock order for rent:** Payment, then Due (record-payment locks the Due only; void locks Payment then Due). Free-text notes and reasons stay on the
+payment row; outbox payloads carry ids and codes only.

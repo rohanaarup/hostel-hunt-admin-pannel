@@ -1,6 +1,6 @@
 # Known gaps register (Hostel Hunt)
 
-**Started:** 2026-10-18 · **Last reviewed:** 2026-10-29 (after Phase 5 of the stay plan) · **Owner:** the developer and Claude, together
+**Started:** 2026-10-18 · **Last reviewed:** 2026-10-29 (after Phase 6 of the stay plan) · **Owner:** the developer and Claude, together
 
 This file lists what we have **not** built, **not** verified, or **chosen to ignore**, phase by phase, and how much each
 item matters. It exists because no phase gets finished at 100%: many things need a paid service, infrastructure that
@@ -315,6 +315,13 @@ Evidence for G1 is in `backend/docs/STAY_BASELINE.md` and `backend/docs/GAP_TRIA
 | G5-05 | Stays flagged `needs_review` (a second current stay, or an amount difference) have no screen yet; the owner sees them in Django admin only. The outbox rows (`stay.created`, `stay.vacate_requested`) are written but nothing reads them until Phase 8, so the owner is not yet notified of a vacate request. | DEFERRED | Moderate | Phase 8 (consumer) and Phase 9 (owner screens). | Open |
 | G5-06 | Ending a stay does not update the linked `Resident` (status stays active) and does not touch the booking (kept `paid` as history). | DEFERRED | Low | Owners may need to mark the resident vacated by hand until a later phase decides. | Open |
 | G5-07 | `reconcile_stays --dry-run` was run against the local scratch database only: the staging Supabase project is paused (G1-12). The counts to expect on staging are unknown. | HUMAN | Low | Run it on staging after item 1 of `FOUNDER_DEFERRED.md`. | Open |
+| G6-01 | **The rent scenarios were not run on staging.** Staging (Supabase) is paused (G1-12) and holds no Razorpay test keys yet. They were rehearsed on the local scratch database through a real local server, a real signed webhook and `ops/replay_webhook.py` (results in the Phase 6 report), with the Razorpay client mocked in the tests. A real test-card rent payment has NOT been made. | HUMAN | Moderate before go-live | Money flow proven by tests and a local replay only. | Open; items 1, 12, 13 of `FOUNDER_DEFERRED.md` |
+| G6-02 | **The owner dashboard counts rent.** `online_collected` and the 'Payment Received' feed sum every SUCCESS payment of the owner (`apps/dashboard/views.py`), so online rent is added to the totals and rent the owner recorded offline (source OFFLINE_OWNER) is counted as online. Dashboard code is outside Phase 6. | DEFERRED | Moderate | Owner revenue figures mix booking money, rent and offline rent. | Open; decide in Phase 9 (filter by `purpose` and `source`) |
+| G6-03 | **A refunded rent stays paid.** The refund endpoint (unchanged) refunds an online rent payment, but nothing reopens the due, so it still reads PAID. | DEFERRED | Moderate | After a rent refund the student keeps a paid month. | Open; needs a founder decision (reopen or keep) |
+| G6-04 | **A rent order never expires** (E7: no hold). An abandoned order stays CREATED and a new create-rent-order call returns it again. Razorpay orders do not expire by themselves; a late capture is still honoured. | DEFERRED | Low | Old open rent payments pile up unseen. | Open |
+| G6-05 | `paid_via` is filled for rent payments only; booking payments keep it empty (the booking branch of `confirm_payment` is untouched by design). | DEFERRED | Low | Phase 7 history must read the method of a booking payment from its attempt. | Open |
+| G6-06 | **The card callback cannot know the method.** If a student chooses UPI or net banking inside Razorpay's checkout and the app's card callback reaches the server before the webhook, the rent is stored as paid by CARD (the later webhook is 'already confirmed' and does not correct it). Fixing it needs a Razorpay API read (`razorpay_client`, out of scope). | DEFERRED | Low | The Method line on PaymentDone and History can read Card for a UPI payment. | Open |
+| G6-07 | The app contract line for `create-rent-order` (and the app copy `test/contract/app_endpoints.txt`) is not added: the app does not call it until Phase 10 and its CI fails on a listed path the Dart code does not call. | DEFERRED | Low | None until Phase 10. | Open |
 
 # Cross-cutting gaps
 
