@@ -55,6 +55,15 @@ A decision, not a dashboard step; nothing is blocked by it.
 |---|---|---|---|---|
 | 25 | Confirm the PRORATE rule, or name another: first rent for a fixed-day hostel = monthly rent x days from the join date to the next fixed due day / days in the fixed period (previous to next fixed due day) containing the join date, rounded to a WHOLE RUPEE with halves up (the same as the Billing Simulator and the AdminBilling board). Example from the board: rent 6,000, fixed day 1, joining 18 Sep = 6,000 x 13 / 30 = 2,600, next due 1 Oct. | Decision D1 supports both PRORATE and FULL_MONTH; the amount rule for PRORATE is the proposal in the plan document and is built into ONE function, so a different rule is a one-function change | Before an owner can choose PRORATE (Phase 9 owner screens); the default is FULL_MONTH | Open |
 
+## Added by Phase 5 (stay lifecycle)
+
+Not dashboard steps: a decision and a run, both after staging is restored (item 1). Nothing is blocked.
+
+| # | Action | Why | Needed by | Status |
+|---|---|---|---|---|
+| 26 | Run `python manage.py reconcile_stays --dry-run` on a copy of production data (or staging), read the counts, **decide a cutoff date for old bookings**, and only then run it for real | It creates a stay for every paid booking that has none. Old bookings of students who have left would become ACTIVE stays with an overdue rent and would block those students from booking again (G5-03). The command has no cutoff yet; ask for a `--since` option before the first real run | Before the production deploy of Phase 5 | Open |
+| 27 | Decide what a PRORATE hostel's student pays on the first booking (G5-01): the whole month (as `create-order` charges today) or the prorated amount on the board | The board says the student paid 2,600 for 13 days; the payment code charges 6,000 | Before PRORATE is offered to owners (Phase 9) | Open |
+
 ## Added by later phases
 
 (none yet)

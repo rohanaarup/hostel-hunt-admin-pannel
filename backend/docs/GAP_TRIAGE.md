@@ -245,3 +245,10 @@ Evidence for the G1 rows is in `backend/docs/STAY_BASELINE.md`; G2-01 is from Ph
 | G3-03 | Redis alone cannot give a per-endpoint cache hit rate. | Low | LATER | 3 | Use two `cache_stats` snapshots plus the request log. |
 | G4-01 | The FIXED_DAY proration rule is a proposal awaiting the founder; isolated in `prorated_amount`; the default policy is FULL_MONTH. | Low | LATER | 5 (before PRORATE is offered to owners) | `FOUNDER_DEFERRED.md` item 25; `STAYS_DOMAIN.md`. |
 | G4-02 | The UI pack `docs/ui` named in the Phase 4 brief is not in the repositories; the board was read from the founder's Downloads. | Low | LATER | 7, 9, 10 (the UI phases) | KNOWN_GAPS G4-02. |
+| G5-01 | PRORATE first rent versus the whole-month payment (create-order is frozen) | Moderate | LATER | 6 or 9 (before PRORATE is offered) | KNOWN_GAPS G5-01; stay flagged needs_review. |
+| G5-02 | Offline booking with no room and no payment has no stay | Low | LATER | later | KNOWN_GAPS G5-02. |
+| G5-03 | Backfill would create stays for students who already left (D2 would block them) | High on first real run | LAUNCH-BLOCKER (for the backfill only) | before running `reconcile_stays` for real | KNOWN_GAPS G5-03; decide a `--since` cutoff. |
+| G5-04 | `Room.available_beds` never maintained | Moderate | SCALE | stay phases | KNOWN_GAPS G5-04 (same root as G1-10). |
+| G5-05 | needs_review stays and outbox events have no screen or consumer | Moderate | LATER | 8, 9 | KNOWN_GAPS G5-05. |
+| G5-06 | Ending a stay leaves the Resident row and the booking unchanged | Low | LATER | 9 | KNOWN_GAPS G5-06. |
+| G5-07 | `reconcile_stays --dry-run` not yet run on staging | Low | LATER | with FOUNDER_DEFERRED 1 | KNOWN_GAPS G5-07. |

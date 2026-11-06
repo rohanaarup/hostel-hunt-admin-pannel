@@ -1,8 +1,8 @@
 # The stays domain (Phase 4)
 
-**Status:** the data model and the billing engine exist and are tested. **Nothing is user-visible**: no endpoint, no view, no
-serializer, and nothing creates a stay yet (Phase 5 does that from a paid booking). `apps/payments` and `apps/bookings`
-were not touched. This page is what Phases 5 to 8 may rely on.
+**Status (Phase 5 added):** the data model, the billing engine **and the stay lifecycle** exist and are tested. A paid booking
+creates its stay (see "Phase 5: the lifecycle" at the end); two endpoints exist (vacate request, end). Reading stays and dues
+is Phase 7. This page is what Phases 6 to 8 may rely on.
 
 ## The words
 
@@ -94,3 +94,23 @@ explicit app list (`apps/core/tenancy/checks.py`) and the startup check passes.
 Create the stay inside the payment transaction: copy `HostelBillingConfig.effective_for(hostel).snapshot()` and the room's
 `price_per_month` onto the stay (never `Booking.amount`, which a client can set: KNOWN_GAPS G1-04), call `build_periods(...,
 count=2)`, write Due 1 as `PAID` and Due 2 as `SCHEDULED`, and guard `BookingViewSet.verify` against a second call (G1-02).
+
+## Phase 5: the lifecycle (`apps/stays/services.py`)
+
+**What the first payment covers (confirmed in `STAY_BASELINE.md` A8):** one month's rent at `Room.price_per_month`, nothing else.
+So Due 1 (`BOOKING_PERIOD`) is that first period, `PAID`, linked to the payment; Due 2 is the next period.
+
+| Piece | Behaviour |
+|---|---|
+| `create_stay_for_booking(booking, payment)` | Idempotent (one stay per booking). Takes the booking row lock, so two callers at once make one stay. Needs a PAID booking; rent is the room price (or, with no room, the successful payment's amount), never `Booking.amount`. Writes Stay, Due 1 (PAID, `paid_at` = the booking's paid time), Due 2 (PAYABLE inside the window, else SCHEDULED), links a Resident only if exactly one has `linked_booking` = this booking, and one outbox row `stay.created` (dedupe `stay-created-<booking id>`). Join date = `check_in_date`, else the paid date in IST. Status UPCOMING if the join date is in the future, else ACTIVE. |
+| `ensure_stay_for_paid_booking` | What the paid paths call, inside their own transaction, in a **savepoint**. Any failure is logged (`hh.stays`, which Sentry sees) and swallowed: **the payment is never rolled back** because a stay could not be built. `reconcile_stays` heals it later. |
+| The three paid paths | `confirm_payment` (card callback and webhook), `BookingViewSet.verify` (owner), `BookingViewSet.mark_paid` (offline). `verify` now has the missing status guard (G1-02). Both owner actions take the bed first and the booking row second, the payment code's lock order. |
+| D2 guard | `BookingCreateSerializer.validate`: a signed-in student with a stay in UPCOMING, ACTIVE or NOTICE gets **409** `{code: ACTIVE_STAY_EXISTS, message, current_stay: {id, hostel_name, room_label, bed_label, paid_until}}` (the BookingBlocked board). Anonymous bookings are allowed. A second PAID booking is never refused: its stay is created with `needs_review = True`. |
+| `request_vacate` | Student, own stay, ACTIVE to NOTICE; date today (IST) or later; reason one of Course completed, Moving city, Found another place, Other; one outbox row `stay.vacate_requested`. A second request is refused (409). |
+| `end_stay` | Owner of the hostel, or an admin (`is_staff`). ENDED, `ended_at`, **future** unpaid dues cancelled (a cycle that already started stays payable), the bed released (`Bed.is_available = True`, locked first; it stays taken if another current stay holds the same bed). The booking stays `paid` (history). Ending an ended stay is a no-op. |
+| `reconcile_stays [--dry-run] [--batch-size N]` | Creates the missing stay for paid bookings (oldest first, at most N per run, resumable by running again); prints counts only. **Read KNOWN_GAPS G5-03 before the first real run.** |
+
+Endpoints: `POST /api/v1/stays/<id>/vacate-request/` (the stay's student) and `POST /api/v1/stays/<id>/end/` (owner or admin). Anyone
+else gets 404 (not 403), so a stay's existence is not revealed.
+
+**Lock order:** Payment, Bed, Booking (as in `holds.py`). `end_stay` locks the Bed, then the Stay.
