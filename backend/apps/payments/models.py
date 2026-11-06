@@ -16,6 +16,7 @@ NOTE: The old offline-payment model (amount_due/amount_paid/mode) has been
 """
 
 import uuid
+from django.conf import settings
 from django.db import models
 from apps.bookings.models import Booking
 from apps.core.models import GlobalModel, TenantScopedModel, UserScopedModel
@@ -50,6 +51,15 @@ class Payment(TenantScopedModel, UserScopedModel):
         SUCCESS  = 'SUCCESS',  'Success'
         FAILED   = 'FAILED',   'Failed'
         REFUNDED = 'REFUNDED', 'Refunded'
+        VOIDED   = 'VOIDED',   'Voided'   # an offline rent record the owner took back (never for an online payment)
+
+    class Purpose(models.TextChoices):
+        BOOKING = 'BOOKING', 'Booking'
+        RENT    = 'RENT',    'Rent'
+
+    class Source(models.TextChoices):
+        ONLINE        = 'ONLINE',        'Online (Razorpay)'
+        OFFLINE_OWNER = 'OFFLINE_OWNER', 'Recorded by the owner'
 
     id = models.UUIDField(
         primary_key=True, default=uuid.uuid4, editable=False, db_column='payment_id'
@@ -92,6 +102,23 @@ class Payment(TenantScopedModel, UserScopedModel):
                   "unknown refund outcome). A person must look at it; see review_note.",
     )
     review_note = models.CharField(max_length=200, blank=True, default='', db_default='')
+    # Phase 6 (rent). Every column is defaulted in the database, so the previous app version keeps inserting rows.
+    purpose = models.CharField(max_length=10, choices=Purpose.choices, default=Purpose.BOOKING,
+                               db_default=Purpose.BOOKING)
+    # A RENT payment pays one Due. `booking` stays the stay's booking (the column is required and the student-facing
+    # payment screens look payments up through it).
+    due = models.ForeignKey('stays.Due', null=True, blank=True, on_delete=models.SET_NULL, related_name='rent_payments')
+    source = models.CharField(max_length=20, choices=Source.choices, default=Source.ONLINE, db_default=Source.ONLINE)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                    related_name='recorded_payments')
+    reference_note = models.CharField(max_length=200, blank=True, default='', db_default='')
+    # UPI, CARD, NETBANKING, WALLET, OTHER (online, from Razorpay) or CASH, BANK_TRANSFER, UPI_DIRECT (offline).
+    paid_via = models.CharField(max_length=20, blank=True, default='', db_default='')
+    # A void of an offline record: who, when and why (the original row is kept, status VOIDED).
+    voided_at = models.DateTimeField(null=True, blank=True)
+    voided_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                  related_name='voided_payments')
+    void_reason = models.CharField(max_length=200, blank=True, default='', db_default='')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -101,6 +128,11 @@ class Payment(TenantScopedModel, UserScopedModel):
 
     def __str__(self):
         return f"Payment {self.razorpay_order_id} [{self.status}] — Booking {self.booking_id}"
+
+    @property
+    def receipt_number(self):
+        """A readable receipt number worked out from the payment itself (not a column): HH-<date>-<6 characters of the id>."""
+        return f"HH-{self.created_at:%Y%m%d}-{self.id.hex[:6].upper()}"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -131,6 +163,11 @@ class PaymentAttempt(TenantScopedModel, UserScopedModel):
         UPI_PHONEPE = 'UPI_PHONEPE', 'PhonePe'
         UPI_PAYTM   = 'UPI_PAYTM',   'Paytm'
         CARD        = 'CARD',        'Credit / Debit Card'
+        # Read from the Razorpay payment entity by the webhook (Phase 6); a UPI app we did not start shows as UPI.
+        UPI         = 'UPI',         'UPI'
+        NETBANKING  = 'NETBANKING',  'Net banking'
+        WALLET      = 'WALLET',      'Wallet'
+        OTHER       = 'OTHER',       'Other'
 
     class Status(models.TextChoices):
         INITIATED = 'INITIATED', 'Initiated'

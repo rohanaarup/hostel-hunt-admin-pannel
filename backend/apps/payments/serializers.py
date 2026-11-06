@@ -68,6 +68,7 @@ class PaymentSerializer(serializers.ModelSerializer):
             'amount',
             'currency',
             'status',
+            'purpose',
             'created_at',
             'attempts',
         ]
@@ -104,6 +105,7 @@ class AdminPaymentSerializer(serializers.ModelSerializer):
             'amount',
             'currency',
             'status',
+            'purpose',
             'verified_at',
             'created_at',
             'updated_at',

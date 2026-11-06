@@ -411,8 +411,9 @@ class WiringTests(SimpleTestCase):
     def test_the_outbox_cannot_be_added_to_by_hand_in_the_admin(self):
         self.assertFalse(admin.site._registry[OutboxEvent].has_add_permission(None))
 
-    def test_only_the_two_phase_5_endpoints_exist(self):
-        """Phase 4 had no endpoint at all. Phase 5 adds exactly the two lifecycle actions; reads are Phase 7."""
+    def test_only_the_known_stay_endpoints_exist(self):
+        """Phase 4 had no endpoint at all. Phase 5 added the two lifecycle actions and Phase 6 the two rent-recording actions;
+        reading stays and dues is Phase 7."""
         from django.urls import get_resolver
         found = []
 
@@ -425,7 +426,9 @@ class WiringTests(SimpleTestCase):
                     found.append(text)
 
         walk(get_resolver().url_patterns)
-        self.assertEqual(sorted(found), ['api/v1/stays/<uuid:pk>/end/', 'api/v1/stays/<uuid:pk>/vacate-request/'])
+        self.assertEqual(sorted(found), [
+            'api/v1/stays/<uuid:pk>/end/', 'api/v1/stays/<uuid:pk>/vacate-request/',
+            'api/v1/stays/dues/<uuid:pk>/record-payment/', 'api/v1/stays/dues/<uuid:pk>/void-payment/'])
 
     def test_no_environment_variable_was_added(self):
         source = ''.join(path.read_text(encoding='utf-8') for path in STAYS_DIR.glob('*.py') if not path.name.startswith('test'))

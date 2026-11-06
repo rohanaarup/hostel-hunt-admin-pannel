@@ -42,13 +42,15 @@ class PaymentAdmin(admin.ModelAdmin):
 
     list_display = (
         'id', 'razorpay_order_id', 'booking', 'amount', 'currency',
-        'status', 'needs_review', 'refunded_amount', 'verified_at', 'created_at',
+        'status', 'purpose', 'source', 'needs_review', 'refunded_amount', 'verified_at', 'created_at',
     )
-    list_filter = ('needs_review', 'status', 'currency', 'created_at')
+    list_filter = ('needs_review', 'status', 'purpose', 'source', 'currency', 'created_at')
     search_fields = ('razorpay_order_id', 'booking__student_name', 'booking__student_phone')
     readonly_fields = (
         'id', 'booking', 'razorpay_order_id', 'amount', 'currency',
         'status', 'verified_at', 'refunded_amount', 'needs_review', 'review_note',
+        'purpose', 'due', 'source', 'recorded_by', 'reference_note', 'paid_via',
+        'voided_at', 'voided_by', 'void_reason',
         'created_at', 'updated_at',
     )
     inlines = [PaymentAttemptInline]

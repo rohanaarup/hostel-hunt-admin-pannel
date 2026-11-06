@@ -85,6 +85,9 @@ admin PATCH  /bookings/{id}/mark-paid/
 # (Phase 5) The app's own line, `app POST /stays/{id}/vacate-request/`, is added in Phase 10 together with the
 # app's copy (app CI fails on a listed path the Dart code does not call).
 admin POST   /stays/{id}/end/
+admin POST   /stays/dues/{id}/record-payment/
+admin POST   /stays/dues/{id}/void-payment/
+# (Phase 6) `app POST /payments/create-rent-order/` is added in Phase 10 with the app's copy, for the same reason.
 
 # ---- admin: payments ----
 admin GET    /payments/admin-list/

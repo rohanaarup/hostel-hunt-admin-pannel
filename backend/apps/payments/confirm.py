@@ -13,6 +13,8 @@ Inside one transaction, in this lock order (see holds.py): Payment -> Bed -> Boo
     -> FLAGGED: the money was captured but cannot be honoured. Nothing is confirmed, the payment is closed and
        marked needs_review with a note, and an ERROR is logged (Sentry), so a person refunds it. No automatic
        refund: money never moves without a person.
+  * A RENT payment (Phase 6) takes its own branch (_confirm_rent): lock order Payment -> Due, the due is marked PAID,
+    and the booking, the bed and the stay are never touched.
   * Otherwise -> the attempt, payment, booking and bed are all updated together, and the booking's Stay is created
     in the same transaction (Phase 5): CONFIRMED.
 """
@@ -27,6 +29,7 @@ from apps.rooms.models import Bed
 from apps.stays import services as stay_services
 
 from . import holds
+from .methods import paid_via_for
 from .models import Payment, PaymentAttempt
 
 logger = logging.getLogger('apps.payments')
@@ -57,8 +60,43 @@ def _flag(payment, note, razorpay_payment_id):
     logger.error('Payment %s needs a manual refund or review: %s', payment.id, note)
 
 
+def _confirm_rent(payment, razorpay_payment_id, signature, now, method, paid_via):
+    """The RENT branch of confirm_payment, inside its transaction with the Payment row already locked.
+    Lock order: Payment -> Due. No Bed, no Booking: a rent payment never holds or takes a bed (E7)."""
+    due = stay_services.lock_due(payment.due_id) if payment.due_id else None
+    if due is None:
+        _flag(payment, 'The rent this payment was for no longer exists. Refund it in Razorpay.', razorpay_payment_id)
+        return Outcome.FLAGGED
+    if due.status == 'PAID':
+        _flag(payment, 'This rent was already paid (online or recorded by the owner) when the payment arrived. '
+                       'Refund the duplicate in Razorpay.', razorpay_payment_id)
+        return Outcome.FLAGGED
+    if due.status in ('CANCELLED', 'WAIVED'):
+        _flag(payment, f'The rent was {due.status.lower()} before the payment arrived. Refund it in Razorpay.',
+              razorpay_payment_id)
+        return Outcome.FLAGGED
+
+    open_attempts = payment.attempts.select_for_update().filter(status=PaymentAttempt.Status.INITIATED)
+    attempt = open_attempts.filter(method=method).order_by('-created_at').first() \
+        or open_attempts.order_by('-created_at').first()
+    if attempt is None:
+        attempt = PaymentAttempt(payment=payment, method=method)
+    open_attempts.exclude(pk=attempt.pk).update(status=PaymentAttempt.Status.FAILED)
+    attempt.razorpay_payment_id = razorpay_payment_id
+    attempt.razorpay_signature = signature or ''
+    attempt.status = PaymentAttempt.Status.SUCCESS
+    attempt.save()
+
+    payment.status = Payment.Status.SUCCESS
+    payment.verified_at = now
+    payment.paid_via = paid_via or paid_via_for(attempt.method)
+    payment.save(update_fields=['status', 'verified_at', 'paid_via', 'updated_at'])
+    stay_services.pay_due(due, payment, now, Payment.Source.ONLINE)
+    return Outcome.CONFIRMED
+
+
 def confirm_payment(payment_id, razorpay_payment_id, signature='', *, amount_paise=None, currency=None,
-                    method=PaymentAttempt.Method.CARD):
+                    method=PaymentAttempt.Method.CARD, paid_via=None):
     with transaction.atomic():
         payment = Payment.objects.select_for_update(of=('self',)).select_related('booking').get(pk=payment_id)
         now = timezone.now()
@@ -85,6 +123,12 @@ def confirm_payment(payment_id, razorpay_payment_id, signature='', *, amount_pai
             _flag(payment, f'Razorpay reported {amount_paise} {currency or ""} but the order is for '
                            f'{int(payment.amount * 100)} {payment.currency}.', razorpay_payment_id)
             return Outcome.AMOUNT_MISMATCH
+
+        if payment.purpose == Payment.Purpose.RENT:
+            outcome = _confirm_rent(payment, razorpay_payment_id, signature, now, method, paid_via)
+            if outcome == Outcome.CONFIRMED:
+                logger.info('Rent payment %s confirmed SUCCESS', payment_id)
+            return outcome
 
         key = holds.bed_key(payment.booking)
         bed = None

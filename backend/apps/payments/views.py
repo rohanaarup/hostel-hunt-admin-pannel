@@ -22,6 +22,7 @@ KEY RULE: Amount is ALWAYS computed server-side from Room.price_per_month.
 
 import hashlib
 import logging
+import uuid
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 
@@ -39,8 +40,11 @@ from apps.bookings.models import Booking
 from apps.rooms.models import Bed
 from apps.core.querysets import TenantScopedQuerysetMixin
 from apps.core.utils import get_tenant_scoped_object_or_404
+from apps.core.tenancy.utils import get_user_scoped_object_or_404
+from apps.stays import services as stay_services
+from apps.stays.models import Due
 
-from . import holds
+from . import holds, methods
 from .confirm import Outcome, confirm_payment
 from .models import Payment, PaymentAttempt, PaymentRefund, PaymentWebhookEvent
 from apps.core.tenancy.permissions import IsTenantOwner, IsResourceUser
@@ -306,6 +310,109 @@ class CreateOrderView(APIView):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 1b. CreateRentOrderView (Phase 6)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _order_reply(payment, http_status):
+    """The same body create-order returns, so the app's payment screen and status poller work unchanged."""
+    return Response({
+        'payment_id':        str(payment.id),
+        'razorpay_order_id': payment.razorpay_order_id,
+        'amount':            str(payment.amount),
+        'currency':          payment.currency,
+        'razorpay_key_id':   django_settings.RAZORPAY_KEY_ID,
+    }, status=http_status)
+
+
+def _open_rent_payment(due):
+    return (Payment.objects
+            .filter(due=due, purpose=Payment.Purpose.RENT, source=Payment.Source.ONLINE, status__in=holds.OPEN_STATUSES)
+            .order_by('-created_at').first())
+
+
+def _due_refusal(code, message):
+    return Response({'code': code, 'message': message, 'error': message}, status=status.HTTP_409_CONFLICT)
+
+
+def _refuse_rent_order(due):
+    """The 409 for a due that cannot be paid right now, or None when it can. PAID, WAIVED and CANCELLED are refused;
+    a due that is not yet inside the payable window is refused; a late (overdue) due can be paid."""
+    effective = stay_services.due_effective_status(due)
+    if effective in (Due.Status.PAID, Due.Status.WAIVED, Due.Status.CANCELLED):
+        return _due_refusal(f'DUE_{effective}', f'This rent is already {effective.lower()}.')
+    if effective == Due.Status.SCHEDULED:
+        return _due_refusal('DUE_NOT_PAYABLE', 'This rent cannot be paid yet. It opens a few days before the due date.')
+    return None
+
+
+class CreateRentOrderView(APIView):
+    """
+    POST /api/v1/payments/create-rent-order/
+
+    Body: {"due_id": "<uuid>"}
+
+    Creates a Razorpay order for one Due and returns exactly what create-order returns. Only the stay's student may pay it.
+    The amount is the due's own amount (never a client value). No bed is held (E7). A repeat call while an order is open
+    returns that same order instead of creating a second one.
+    """
+    permission_classes = [IsAuthenticated, IsResourceUser]
+
+    def post(self, request):
+        due_id = request.data.get('due_id')
+        if not due_id:
+            return Response({'error': 'due_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            uuid.UUID(str(due_id))
+        except ValueError:
+            return Response({'error': 'Rent not found.'}, status=status.HTTP_404_NOT_FOUND)
+        due = get_user_scoped_object_or_404(Due, due_id, request)
+        self.check_object_permissions(request, due)
+        due = Due.objects.select_related('stay__booking').get(pk=due.pk)
+
+        refusal = _refuse_rent_order(due)
+        if refusal is not None:
+            return refusal
+        if due.amount <= 0:
+            return Response({'error': 'There is nothing to pay on this rent.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        existing = _open_rent_payment(due)
+        if existing is not None:
+            return _order_reply(existing, status.HTTP_200_OK)
+
+        # The Razorpay call happens outside any lock or transaction, as in create-order.
+        amount_paise = int(due.amount * 100)
+        try:
+            order = razorpay_client.create_order(amount_paise=amount_paise, receipt_id=str(due.id))
+        except razorpay_client.RazorpayAuthError as exc:
+            logger.error("CreateRentOrderView: Razorpay rejected credentials for due %s: %s", due.id, exc)
+            return Response({'error': 'Payment gateway rejected the request — check API credentials.'},
+                            status=status.HTTP_502_BAD_GATEWAY)
+        except Exception as exc:
+            logger.exception("Razorpay create_order failed for due %s: %s", due.id, exc)
+            return Response({'error': 'Failed to create payment order. Please try again.'},
+                            status=status.HTTP_502_BAD_GATEWAY)
+
+        # Short locked re-check (Due row only): the due may have been paid, or another order opened, meanwhile.
+        with transaction.atomic():
+            locked = stay_services.lock_due(due.pk)
+            refusal = _refuse_rent_order(locked)
+            existing = _open_rent_payment(locked) if refusal is None else None
+            abandoned = refusal is not None or existing is not None
+            payment = Payment.objects.create(
+                booking_id=due.stay.booking_id, purpose=Payment.Purpose.RENT, due=locked,
+                source=Payment.Source.ONLINE, razorpay_order_id=order['id'], amount=due.amount,
+                currency=order.get('currency', 'INR'),
+                # An order that lost the race is recorded as FAILED so a stray webhook can never confirm it.
+                status=Payment.Status.FAILED if abandoned else Payment.Status.CREATED,
+            )
+        if refusal is not None:
+            return refusal
+        if existing is not None:
+            return _order_reply(existing, status.HTTP_200_OK)
+        return _order_reply(payment, status.HTTP_201_CREATED)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 2a. InitiateUpiIntentView
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -460,6 +567,9 @@ class PaymentStatusPollView(APIView):
             'payment_id':        str(payment.id),
             'status':            payment.status,
             'razorpay_order_id': payment.razorpay_order_id,
+            # Phase 6: which kind of payment this is, so the one confirming screen can word itself for rent.
+            'purpose':           payment.purpose,
+            'due_id':            str(payment.due_id) if payment.due_id else None,
         })
 
 
@@ -604,7 +714,10 @@ class WebhookView(APIView):
                 outcome = confirm_payment(
                     payment_id, razorpay_payment_id, payment_entity.get('razorpay_signature', ''),
                     amount_paise=payment_entity.get('amount'), currency=payment_entity.get('currency'),
-                    method=PaymentAttempt.Method.CARD,  # Best guess; the webhook lacks method info
+                    # The method comes from the Razorpay payment entity (UPI, CARD, NETBANKING, WALLET, other); an entity
+                    # with no method at all is still recorded as CARD, as before.
+                    method=methods.attempt_method_for(payment_entity.get('method')),
+                    paid_via=methods.paid_via_from_entity(payment_entity.get('method')),
                 )
                 record.outcome = outcome.value
                 logger.info("Webhook: Payment %s %s via %s", payment_id, outcome.value, event)

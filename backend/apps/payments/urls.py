@@ -6,6 +6,7 @@ main urls.py (path('', include('apps.payments.urls'))).
 
 Full URL table:
   POST  /api/v1/payments/create-order/           → CreateOrderView
+  POST  /api/v1/payments/create-rent-order/      → CreateRentOrderView (Phase 6, same reply as create-order)
   POST  /api/v1/payments/initiate-upi-intent/    → InitiateUpiIntentView
   POST  /api/v1/payments/initiate-card-checkout/ → InitiateCardCheckoutView
   GET   /api/v1/payments/status/<uuid>/          → PaymentStatusPollView
@@ -19,6 +20,7 @@ Full URL table:
 from django.urls import path
 from .views import (
     CreateOrderView,
+    CreateRentOrderView,
     InitiateUpiIntentView,
     InitiateCardCheckoutView,
     PaymentStatusPollView,
@@ -31,6 +33,7 @@ from .views import (
 
 urlpatterns = [
     path('payments/create-order/',           CreateOrderView.as_view(),           name='payment-create-order'),
+    path('payments/create-rent-order/',      CreateRentOrderView.as_view(),       name='payment-create-rent-order'),
     path('payments/initiate-upi-intent/',    InitiateUpiIntentView.as_view(),     name='payment-upi-intent'),
     path('payments/initiate-card-checkout/', InitiateCardCheckoutView.as_view(),  name='payment-card-checkout'),
     path('payments/status/<uuid:payment_id>/', PaymentStatusPollView.as_view(),   name='payment-status-poll'),

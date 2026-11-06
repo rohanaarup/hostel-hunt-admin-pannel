@@ -42,7 +42,10 @@ def bed_key(booking):
 
 
 def hold_has_lapsed(payment, bed, now):
-    """True when the bed hold that backed `payment` is over (or was taken over by someone else)."""
+    """True when the bed hold that backed `payment` is over (or was taken over by someone else).
+    A RENT payment holds no bed (E7), so it never lapses."""
+    if payment.purpose == Payment.Purpose.RENT:
+        return False
     if bed is not None and bed.hold_payment_id == payment.id:
         return bed.held_until is None or bed.held_until <= now
     if bed is not None and bed.hold_payment_id is not None:
@@ -75,7 +78,7 @@ def _locked_open_payment(payment_id):
     return (
         Payment.objects.select_for_update(skip_locked=True, of=('self',))
         .select_related('booking')
-        .filter(pk=payment_id, status__in=OPEN_STATUSES)
+        .filter(pk=payment_id, status__in=OPEN_STATUSES, purpose=Payment.Purpose.BOOKING)
         .first()
     )
 
@@ -90,6 +93,8 @@ def _locked_bed(booking):
 def peek_hold_has_lapsed(payment, now=None):
     """Read-only version for hot paths (status polling): no locks, one query."""
     now = now or timezone.now()
+    if payment.purpose == Payment.Purpose.RENT:
+        return False
     key = bed_key(payment.booking)
     bed = Bed.objects.filter(room_id=key[0], bed_number=key[1]).first() if key else None
     return hold_has_lapsed(payment, bed, now)
@@ -118,7 +123,8 @@ def fail_payment(payment_id):
         )
         if payment.status in (Payment.Status.SUCCESS, Payment.Status.REFUNDED, Payment.Status.FAILED):
             return False
-        close_payment(payment, _locked_bed(payment.booking))
+        # A rent payment holds no bed, so there is nothing to look up or release (E7).
+        close_payment(payment, _locked_bed(payment.booking) if payment.purpose == Payment.Purpose.BOOKING else None)
     return True
 
 
@@ -126,7 +132,7 @@ def expire_stale(dry_run=False, now=None):
     """Close every open payment with a lapsed hold, then free beds whose hold has no live payment behind it."""
     now = now or timezone.now()
     expired = 0
-    for payment in Payment.objects.filter(status__in=OPEN_STATUSES).select_related('booking'):
+    for payment in Payment.objects.filter(status__in=OPEN_STATUSES, purpose=Payment.Purpose.BOOKING).select_related('booking'):
         if dry_run:
             expired += peek_hold_has_lapsed(payment, now)
         else:

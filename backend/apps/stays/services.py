@@ -16,6 +16,7 @@ Rules the callers rely on:
   * Logs and outbox payloads carry ids and codes only: no names, phone numbers or emails.
 """
 import logging
+import uuid
 
 from django.db import transaction
 from django.utils import timezone
@@ -126,7 +127,8 @@ def create_stay_for_booking(booking, payment=None):
             raise StayError('BOOKING_NOT_PAID', 'A stay is created only from a paid booking.')
 
         if payment is None:
-            payment = booking.payments.filter(status=Payment.Status.SUCCESS).order_by('-verified_at', '-created_at').first()
+            payment = booking.payments.filter(status=Payment.Status.SUCCESS, purpose=Payment.Purpose.BOOKING).order_by(
+                '-verified_at', '-created_at').first()
         if booking.room is not None:
             rent = booking.room.price_per_month
         elif payment is not None:
@@ -249,3 +251,102 @@ def end_stay(stay, now=None):
                 bed.is_available = True
                 bed.save(update_fields=['is_available'])
     return stay, True
+
+
+# --------------------------------------------------------------------------------------------------- rent (Phase 6)
+
+OFFLINE_METHODS = ('CASH', 'BANK_TRANSFER', 'UPI_DIRECT')
+_OPEN_DUE_STATUSES = (Due.Status.SCHEDULED, Due.Status.PAYABLE)
+
+
+def lock_due(due_id):
+    """The Due row, locked (`FOR UPDATE` on the dues table only). In every rent path the order is Payment, then Due."""
+    return Due.objects.select_for_update(of=('self',)).select_related('stay').get(pk=due_id)
+
+
+def due_effective_status(due, today=None):
+    """What the due is today: SCHEDULED, PAYABLE, OVERDUE, PAID, WAIVED or CANCELLED (overdue is derived, E8)."""
+    snapshot = due.stay.billing_snapshot or {}
+    return billing.effective_status(due.status, today or today_ist(), due.due_date,
+                                    snapshot.get('payable_window_days', 7), snapshot.get('grace_days', 0))
+
+
+def refuse_unless_open(due):
+    """Raise the refusal a rent action gives for a due that is not open (PAID, WAIVED, CANCELLED)."""
+    if due.status not in _OPEN_DUE_STATUSES:
+        raise StayError(f'DUE_{due.status}', f'This rent is already {due.get_status_display().lower()}.')
+
+
+def pay_due(due, payment, paid_at, source):
+    """Mark a locked due PAID by `payment` and write the one event row both rent paths write (rent.paid, one per payment)."""
+    due.status = Due.Status.PAID
+    due.paid_at = paid_at
+    due.payment = payment
+    due.save(update_fields=['status', 'paid_at', 'payment', 'updated_at'])
+    OutboxEvent.objects.get_or_create(
+        dedupe_key=f'rent-paid-{payment.id}',
+        defaults={'topic': 'rent.paid', 'payload': {
+            'payment_id': str(payment.id), 'due_id': str(due.id), 'stay_id': str(due.stay_id), 'source': source}},
+    )
+
+
+def record_offline_payment(due, user, paid_at, method, reference_note, now=None):
+    """The owner (or an admin) records rent received outside the app (decision D3). One record per due: a second call is
+    refused. Never touches the booking or the bed. Returns the Payment."""
+    now = now or timezone.now()
+    if method not in OFFLINE_METHODS:
+        raise StayError('INVALID_METHOD', 'Choose cash, bank transfer or UPI direct.', 400)
+    if paid_at > now:
+        raise StayError('PAID_AT_IN_THE_FUTURE', 'The payment time cannot be in the future.', 400)
+    with transaction.atomic():
+        locked = lock_due(due.pk)
+        refuse_unless_open(locked)
+        payment = Payment.objects.create(
+            booking_id=locked.stay.booking_id, purpose=Payment.Purpose.RENT, due=locked,
+            source=Payment.Source.OFFLINE_OWNER, recorded_by=user, reference_note=reference_note, paid_via=method,
+            amount=locked.amount, currency='INR', status=Payment.Status.SUCCESS, verified_at=paid_at,
+            razorpay_order_id=f'offline_{uuid.uuid4().hex}',  # the column is unique and required; no Razorpay order exists
+        )
+        pay_due(locked, payment, paid_at, Payment.Source.OFFLINE_OWNER)
+    logger.info('offline rent recorded: payment %s for due %s by user %s', payment.id, locked.id, getattr(user, 'pk', None))
+    return payment
+
+
+def void_offline_payment(due, user, reason, now=None):
+    """Take back an offline rent record: the Payment row is kept and marked VOIDED, the due is open again. An online
+    (Razorpay) payment can never be voided here: money that moved through the gateway goes back through a refund."""
+    now = now or timezone.now()
+    payment_id = Due.objects.filter(pk=due.pk).values_list('payment_id', flat=True).first()
+    with transaction.atomic():
+        # Same order as the payment code: the Payment first, then the Due.
+        payment = (Payment.objects.select_for_update(of=('self',)).filter(pk=payment_id).first()
+                   if payment_id else None)
+        locked = lock_due(due.pk)
+        if locked.status != Due.Status.PAID:
+            raise StayError('DUE_NOT_PAID', 'Only a paid rent can be voided.')
+        if payment is None or locked.payment_id != payment.id:
+            raise StayError('NO_PAYMENT_TO_VOID', 'This rent has no payment record to void.')
+        if payment.source != Payment.Source.OFFLINE_OWNER or payment.purpose != Payment.Purpose.RENT:
+            raise StayError('ONLINE_PAYMENT_NEEDS_REFUND',
+                            'This was paid online. Refund it from the payment instead of voiding it.')
+        payment.status = Payment.Status.VOIDED
+        payment.voided_at = now
+        payment.voided_by = user
+        payment.void_reason = reason
+        payment.save(update_fields=['status', 'voided_at', 'voided_by', 'void_reason', 'updated_at'])
+
+        snapshot = locked.stay.billing_snapshot or {}
+        payable = billing.is_payable(locked.due_date, today_ist(now), snapshot.get('payable_window_days', 7))
+        locked.status = Due.Status.PAYABLE if payable else Due.Status.SCHEDULED
+        locked.paid_at = None
+        locked.payment = None  # the Payment keeps its own `due` link, so the history stays readable
+        locked.save(update_fields=['status', 'paid_at', 'payment', 'updated_at'])
+        OutboxEvent.objects.get_or_create(
+            dedupe_key=f'rent-voided-{payment.id}',
+            defaults={'topic': 'rent.payment_voided', 'payload': {
+                'payment_id': str(payment.id), 'due_id': str(locked.id), 'stay_id': str(locked.stay_id),
+                'voided_by': str(getattr(user, 'pk', ''))}},
+        )
+    logger.info('offline rent voided: payment %s for due %s by user %s', payment.id, locked.id, getattr(user, 'pk', None))
+    return payment
+

@@ -24,7 +24,8 @@ class Command(BaseCommand):
             raise CommandError('--batch-size must be from 1 to 1000.')
 
         paid_without_stay = Booking.objects.filter(status='paid', stay__isnull=True)
-        has_payment = Exists(Payment.objects.filter(booking=OuterRef('pk'), status=Payment.Status.SUCCESS))
+        has_payment = Exists(Payment.objects.filter(booking=OuterRef('pk'), status=Payment.Status.SUCCESS,
+                                                         purpose=Payment.Purpose.BOOKING))
         # A booking with no room and no successful payment has no known rent: it cannot be turned into a stay.
         priceable = paid_without_stay.annotate(has_payment=has_payment).filter(Q(room__isnull=False) | Q(has_payment=True))
         skipped = paid_without_stay.count() - priceable.count()

@@ -1467,6 +1467,24 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/v1/payments/create-rent-order/:
+    post:
+      operationId: payments_create_rent_order_create
+      description: |-
+        POST /api/v1/payments/create-rent-order/
+
+        Body: {"due_id": "<uuid>"}
+
+        Creates a Razorpay order for one Due and returns exactly what create-order returns. Only the stay's student may pay it.
+        The amount is the due's own amount (never a client value). No bed is held (E7). A repeat call while an order is open
+        returns that same order instead of creating a second one.
+      tags:
+      - payments
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
   /api/v1/payments/initiate-card-checkout/:
     post:
       operationId: payments_initiate_card_checkout_create
@@ -1793,6 +1811,98 @@ paths:
               schema:
                 $ref: '#/components/schemas/StayError'
           description: ''
+  /api/v1/stays/dues/{id}/record-payment/:
+    post:
+      operationId: stays_dues_record_payment_create
+      summary: Record rent paid offline (owner or admin)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - stays
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordPayment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RecordPayment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RecordPayment'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RentPaymentRecord'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StayError'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StayError'
+          description: ''
+  /api/v1/stays/dues/{id}/void-payment/:
+    post:
+      operationId: stays_dues_void_payment_create
+      summary: Void an offline rent record (owner or admin)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - stays
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VoidPayment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/VoidPayment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VoidPayment'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RentPaymentRecord'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StayError'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StayError'
+          description: ''
   /api/v1/wishlist/:
     get:
       operationId: wishlist_retrieve
@@ -1944,6 +2054,10 @@ components:
           allOf:
           - $ref: '#/components/schemas/PaymentStatusEnum'
           readOnly: true
+        purpose:
+          allOf:
+          - $ref: '#/components/schemas/PurposeEnum'
+          readOnly: true
         verified_at:
           type: string
           format: date-time
@@ -1987,6 +2101,7 @@ components:
       - currency
       - hostel_name
       - id
+      - purpose
       - razorpay_order_id
       - room_number
       - status
@@ -2546,18 +2661,6 @@ components:
       - file_url
       - id
       - remote_url
-    MethodEnum:
-      enum:
-      - UPI_GPAY
-      - UPI_PHONEPE
-      - UPI_PAYTM
-      - CARD
-      type: string
-      description: |-
-        * `UPI_GPAY` - Google Pay
-        * `UPI_PHONEPE` - PhonePe
-        * `UPI_PAYTM` - Paytm
-        * `CARD` - Credit / Debit Card
     Notice:
       type: object
       properties:
@@ -3303,6 +3406,10 @@ components:
           allOf:
           - $ref: '#/components/schemas/PaymentStatusEnum'
           readOnly: true
+        purpose:
+          allOf:
+          - $ref: '#/components/schemas/PurposeEnum'
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -3319,6 +3426,7 @@ components:
       - created_at
       - currency
       - id
+      - purpose
       - razorpay_order_id
       - status
     PaymentAttempt:
@@ -3336,7 +3444,7 @@ components:
           readOnly: true
         method:
           allOf:
-          - $ref: '#/components/schemas/MethodEnum'
+          - $ref: '#/components/schemas/PaymentAttemptMethodEnum'
           readOnly: true
         razorpay_payment_id:
           type: string
@@ -3358,6 +3466,26 @@ components:
       - method
       - razorpay_payment_id
       - status
+    PaymentAttemptMethodEnum:
+      enum:
+      - UPI_GPAY
+      - UPI_PHONEPE
+      - UPI_PAYTM
+      - CARD
+      - UPI
+      - NETBANKING
+      - WALLET
+      - OTHER
+      type: string
+      description: |-
+        * `UPI_GPAY` - Google Pay
+        * `UPI_PHONEPE` - PhonePe
+        * `UPI_PAYTM` - Paytm
+        * `CARD` - Credit / Debit Card
+        * `UPI` - UPI
+        * `NETBANKING` - Net banking
+        * `WALLET` - Wallet
+        * `OTHER` - Other
     PaymentAttemptStatusEnum:
       enum:
       - INITIATED
@@ -3383,6 +3511,7 @@ components:
       - SUCCESS
       - FAILED
       - REFUNDED
+      - VOIDED
       type: string
       description: |-
         * `CREATED` - Created
@@ -3390,6 +3519,7 @@ components:
         * `SUCCESS` - Success
         * `FAILED` - Failed
         * `REFUNDED` - Refunded
+        * `VOIDED` - Voided
     ProfileEnvelope:
       type: object
       properties:
@@ -3403,6 +3533,76 @@ components:
       - data
       - message
       - success
+    PurposeEnum:
+      enum:
+      - BOOKING
+      - RENT
+      type: string
+      description: |-
+        * `BOOKING` - Booking
+        * `RENT` - Rent
+    RecordPayment:
+      type: object
+      description: 'The AdminRecord board: when it was paid (date and time), how,
+        and a reference note.'
+      properties:
+        paid_at:
+          type: string
+          format: date-time
+        method:
+          $ref: '#/components/schemas/RecordPaymentMethodEnum'
+        reference_note:
+          type: string
+          maxLength: 200
+      required:
+      - method
+      - paid_at
+      - reference_note
+    RecordPaymentMethodEnum:
+      enum:
+      - CASH
+      - BANK_TRANSFER
+      - UPI_DIRECT
+      type: string
+      description: |-
+        * `CASH` - CASH
+        * `BANK_TRANSFER` - BANK_TRANSFER
+        * `UPI_DIRECT` - UPI_DIRECT
+    RentPaymentRecord:
+      type: object
+      description: 'What recording rent answers with: the receipt data the owner and,
+        later, the student''s receipt screen need.'
+      properties:
+        payment_id:
+          type: string
+          format: uuid
+        due_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        paid_at:
+          type: string
+          format: date-time
+        method:
+          type: string
+        source:
+          type: string
+        receipt_number:
+          type: string
+      required:
+      - amount
+      - due_id
+      - method
+      - paid_at
+      - payment_id
+      - receipt_number
+      - source
+      - status
     Resident:
       type: object
       properties:
@@ -3725,6 +3925,14 @@ components:
           $ref: '#/components/schemas/VacateReasonEnum'
       required:
       - planned_move_out_date
+      - reason
+    VoidPayment:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 200
+      required:
       - reason
     WishlistIds:
       type: object
