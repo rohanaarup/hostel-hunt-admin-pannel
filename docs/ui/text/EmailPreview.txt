@@ -1,0 +1,18 @@
+Email reminder
+==============
+From Hostel Hunt
+To [student email]
+Subject Your rent of ₹6,000 is due today
+Hostel Hunt
+Your rent is due today
+Hi [Student name], your rent for Sample PG · Dilsukhnagar is due today. Paying on time keeps your stay record clear.
+Amount
+₹6,000
+Due date
+18 Oct 2026
+Rent period
+18 Oct – 17 Nov 2026
+Room and bed
+Room 204, Bed B
+Pay rent in the app
+You are receiving this because you have an active stay on Hostel Hunt. Reminder emails are sent on the due date and when rent is overdue.

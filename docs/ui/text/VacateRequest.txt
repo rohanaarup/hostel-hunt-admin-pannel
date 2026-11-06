@@ -1,0 +1,13 @@
+Request to vacate
+=================
+Request to vacate
+Sample PG · Dilsukhnagar
+PLANNED MOVE-OUT DATE
+{{ d.label }}
+REASON
+{{ r.label }}
+Rent for the current cycle stays payable. Your owner confirms check-out, after which future rent is cancelled and your bed is released. Until then your stay stays active.
+Request sent to your owner
+We told Sample PG · Dilsukhnagar that you plan to move out. Your stay stays active until the owner confirms check-out.
+Back to my stay
+Send request

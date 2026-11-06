@@ -1,0 +1,45 @@
+Admin: billing and rent
+=======================
+Hostel Hunt
+Admin panel
+Dashboard
+Hostels
+Bookings
+Stays and rent
+Students
+Settings
+Stays and rent › Sample PG · Dilsukhnagar › Billing rule
+Billing and rent
+Choose when students pay each month. The preview updates as you change the rule.
+View stays and dues
+RENT DUE DATE RULE
+Same day each month
+Default
+A student who joins on the 18th pays on the 18th of every month.
+Fixed day of the month
+Everyone pays on the same day, for example the 1st. Used by a few hostels.
+DUE DAY
+{{ d.label }}
+FIRST PART-MONTH
+{{ p.title }}{{ p.text }}
+Monthly rent
+₹6,000
+Booking payment covers
+First period rent
+Payable window
+7 days before due
+Grace period
+0 days
+Save billing rule
+Applies to new stays. Students already staying keep the rule they joined with.
+PREVIEW: A STUDENT JOINS ON
+{{ c.label }}
+ITEM
+RENT PERIOD
+DUE ON
+AMOUNT
+{{ r.label }}
+{{ r.period }}
+{{ r.due }}
+{{ r.amount }}
+{{ summary }}

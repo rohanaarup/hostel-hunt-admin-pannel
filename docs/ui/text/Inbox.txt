@@ -1,0 +1,21 @@
+Notifications
+=============
+Notifications
+All
+Rent
+Stay
+THIS WEEK
+Rent due in 7 days
+Sun 11 Oct, 9:00 AM · Push, in-app
+₹6,000 for Sample PG is due on 18 Oct. You can pay now in the app.
+Pay now
+EARLIER
+Payment received
+16 Sep, 6:12 PM
+₹6,000 for 18 Sep – 17 Oct rent. Your receipt is ready.
+Rent due in 7 days
+11 Sep, 9:00 AM · Push, in-app
+₹6,000 for Sample PG is due on 18 Sep.
+Owner recorded your payment
+20 Jul, 11:30 AM
+₹6,000 cash payment for 18 Jul – 17 Aug was recorded by the hostel owner.

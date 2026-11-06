@@ -1,0 +1,21 @@
+Bookings
+========
+Bookings
+
+Your stays, rent and receipts
+
+CURRENT STAY
+Sample PG · Dilsukhnagar
+Room 204, Bed B · Joined 18 Jun 2026
+Active
+Next rent, due 18 Oct 2026
+In 4 days
+₹6,000
+Pay this month's rent
+Payment history
+PAST STAYS
+Sample PG · Kondapur
+12 Jan – 30 Apr 2026
+Ended
+
+Past stays are kept for your records and can't be opened.

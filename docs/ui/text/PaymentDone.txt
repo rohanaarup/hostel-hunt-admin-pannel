@@ -1,0 +1,19 @@
+Rent paid
+=========
+Rent paid
+
+Your payment for 18 Oct – 17 Nov 2026 is recorded.
+
+Amount
+₹6,000
+Date and time
+14 Oct 2026, 10:42 AM
+Method
+UPI
+Transaction
+pay_••••7Q2K
+Next rent due
+18 Nov 2026
+We'll remind you before the next due date.
+View payment history
+Back to bookings

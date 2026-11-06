@@ -1,0 +1,29 @@
+Push reminders (reminder ladder)
+================================
+Sunday, 11 October
+9:00
+7 days before
+HOSTEL HUNT
+9:00 AM
+Rent due in 7 days
+₹6,000 for Sample PG is due on 18 Oct. You can pay now.
+3 days before
+HOSTEL HUNT
+9:00 AM
+Rent due in 3 days
+Pay ₹6,000 by 18 Oct. Tap to pay in the app.
+1 day before
+HOSTEL HUNT
+9:00 AM
+Rent due tomorrow
+₹6,000 is due tomorrow, 18 Oct.
+Due day
+HOSTEL HUNT
+9:00 AM
+Rent is due today
+Pay ₹6,000 now to stay on track.
+3 days overdue
+HOSTEL HUNT
+9:00 AM
+Rent is 3 days overdue
+₹6,000 was due on 18 Oct. Please pay as soon as you can.

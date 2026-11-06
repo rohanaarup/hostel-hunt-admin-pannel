@@ -1,0 +1,12 @@
+Payment failed
+==============
+Payment was not completed
+Your rent is still unpaid. If any amount was debited from your account, it will show in Payment history once the bank confirms the status.
+Amount
+₹6,000
+Rent for
+18 Oct – 17 Nov
+Status
+Not paid
+Try again
+Check payment history
