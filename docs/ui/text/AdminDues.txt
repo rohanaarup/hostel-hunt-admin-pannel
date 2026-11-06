@@ -1,0 +1,72 @@
+Admin: stays and dues
+=====================
+Hostel Hunt
+Admin panel
+Dashboard
+Hostels
+Bookings
+Stays and rent
+Students
+Settings
+Stays and rent › Sample PG · Dilsukhnagar
+Stays and dues
+See who has paid, who is due soon and who is overdue.
+Billing rule
+Collected this month
+₹1,86,000
+31 of 38 stays
+Due this week
+₹42,000
+7 stays
+Overdue
+₹12,000
+2 stays
+Active stays
+38
+Sample PG · Dilsukhnagar
+All
+Overdue 2
+Due this week 7
+Paid 29
+STUDENT
+ROOM AND BED
+RENT
+NEXT DUE
+STATUS
+ACTION
+Student A
+Room 101, Bed A
+₹6,000
+12 Oct
+Overdue
+Record payment
+Student B
+Room 101, Bed B
+₹6,000
+14 Oct
+Overdue
+Record payment
+Student C
+Room 204, Bed B
+₹6,000
+18 Oct
+Payable
+Send reminder
+Student D
+Room 205, Bed A
+₹6,000
+19 Oct
+Payable
+Send reminder
+Student E
+Room 301, Bed C
+₹5,500
+1 Nov
+Scheduled
+View
+Student F
+Room 302, Bed A
+₹6,500
+5 Nov
+Paid
+Receipt

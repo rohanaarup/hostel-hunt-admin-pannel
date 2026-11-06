@@ -1,0 +1,21 @@
+Bookings: pending after stay ended (proposal)
+=============================================
+Bookings
+
+Your stays, rent and receipts
+
+CURRENT STAY
+No current stay. Book a hostel from Home to start one.
+PAST STAYS
+Sample PG · Kondapur
+12 Jan – 30 Apr 2026
+Ended
+Pending from this stay
+Rent for 18 Apr – 30 Apr
+₹2,400
+Pay pending amount
+Sample PG · Gachibowli
+2 Aug – 15 Dec 2025
+Ended
+
+Past stays stay locked. Only an unpaid amount from a past stay can be opened, so it can be settled.

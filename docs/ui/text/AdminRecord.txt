@@ -1,0 +1,21 @@
+Admin: record offline payment
+=============================
+Record offline payment
+Student A · Room 101, Bed A
+Rent period
+12 Oct – 11 Nov
+Amount
+₹6,000
+Paid on
+14 Oct 2026
+Time
+11:30 AM
+How was it paid
+Cash
+Bank transfer
+UPI direct
+Reference note
+Received in person, receipt book no. 214
+The student sees this as paid with the source "Recorded by owner". The entry is logged with your name and can be voided later.
+Cancel
+Save payment

@@ -1,0 +1,9 @@
+Confirming payment
+==================
+Confirming your payment
+This usually takes a few seconds. Please keep the app open. We will show your receipt as soon as the bank confirms.
+Amount
+₹6,000
+For
+Rent, 18 Oct – 17 Nov
+Prototype: continue to confirmation

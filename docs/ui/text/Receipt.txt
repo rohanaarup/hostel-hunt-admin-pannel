@@ -1,0 +1,27 @@
+Receipt
+=======
+Receipt
+Sep 2026 rent
+₹6,000
+Rent received · 18 Sep – 17 Oct 2026
+Receipt no.
+RCPT-••••3M9X
+Paid on
+16 Sep 2026, 6:12 PM
+Method
+UPI
+Transaction
+pay_••••3M9X
+Hostel
+Sample PG · Dilsukhnagar
+Room and bed
+Room 204, Bed B
+Paid by
+[Student name]
+Rent period
+18 Sep – 17 Oct 2026
+
+This receipt confirms a rent payment recorded in Hostel Hunt. Keep it for your records.
+
+Download
+Share

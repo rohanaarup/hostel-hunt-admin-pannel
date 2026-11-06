@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Payment history</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc><!-- RETHEMED -->
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+body{margin:0;font-family:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;color:#F4ECE8}
+a{color:inherit;text-decoration:none}
+</style>
+</helmet>
+<div style="width:390px;height:844px;box-sizing:border-box;display:flex;flex-direction:column;background:#181514;overflow:hidden">
+  <div style="flex:1;min-height:0;overflow:hidden;padding:16px 16px 0;display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <a href="ActiveStay.dc.html" aria-label="Back to my stay" style="width:44px;height:44px;margin-left:-8px;display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F4ECE8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></a>
+      <h1 style="margin:0;font-size:20px;font-weight:600">Payment history</h1>
+    </div>
+    <div style="font-size:13px;color:#B3A59F;margin-top:-6px">Sample PG · Dilsukhnagar · Room 204, Bed B</div>
+
+    <div style="display:flex;gap:8px">
+      <span style="font-size:13px;font-weight:600;padding:0 14px;min-height:36px;display:flex;align-items:center;border-radius:999px;background:#D32F2F;color:#FFFFFF">All</span>
+      <span style="font-size:13px;font-weight:500;padding:0 14px;min-height:36px;display:flex;align-items:center;border-radius:999px;background:#262120;border:1px solid #3A3230;color:#F4ECE8">Paid</span>
+      <span style="font-size:13px;font-weight:500;padding:0 14px;min-height:36px;display:flex;align-items:center;border-radius:999px;background:#262120;border:1px solid #3A3230;color:#F4ECE8">Upcoming</span>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="background:#262120;border:1px solid #3A3230;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+          <span style="font-size:15px;font-weight:600">Rent, 18 Oct – 17 Nov</span>
+          <span style="font-size:15px;font-weight:600;font-variant-numeric:tabular-nums">₹6,000</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+          <span style="font-size:13px;color:#B3A59F">Due 18 Oct 2026</span>
+          <span style="font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:#3B2E12;color:#F5C76A">Payable</span>
+        </div>
+      </div>
+
+      <div style="background:#262120;border:1px solid #3A3230;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+          <span style="font-size:15px;font-weight:600">Rent, 18 Sep – 17 Oct</span>
+          <span style="font-size:15px;font-weight:600;font-variant-numeric:tabular-nums">₹6,000</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+          <span style="font-size:13px;color:#B3A59F">16 Sep 2026, 6:12 PM · UPI</span>
+          <span style="font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:#1E3B2F;color:#7FD6A8">Paid</span>
+        </div>
+        <div style="font-size:12px;color:#B3A59F;font-variant-numeric:tabular-nums">Transaction pay_••••3M9X</div>
+      </div>
+
+      <div style="background:#262120;border:1px solid #3A3230;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+          <span style="font-size:15px;font-weight:600">Rent, 18 Aug – 17 Sep</span>
+          <span style="font-size:15px;font-weight:600;font-variant-numeric:tabular-nums">₹6,000</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+          <span style="font-size:13px;color:#B3A59F">18 Aug 2026, 9:05 AM · Card</span>
+          <span style="font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:#1E3B2F;color:#7FD6A8">Paid</span>
+        </div>
+        <div style="font-size:12px;color:#B3A59F;font-variant-numeric:tabular-nums">Transaction pay_••••5K1D</div>
+      </div>
+
+      <div style="background:#262120;border:1px solid #3A3230;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+          <span style="font-size:15px;font-weight:600">Rent, 18 Jul – 17 Aug</span>
+          <span style="font-size:15px;font-weight:600;font-variant-numeric:tabular-nums">₹6,000</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+          <span style="font-size:13px;color:#B3A59F">20 Jul 2026, 11:30 AM · Cash</span>
+          <span style="font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:#1E3B2F;color:#7FD6A8">Paid</span>
+        </div>
+        <div style="font-size:12px;color:#B3A59F">Recorded by the hostel owner</div>
+      </div>
+
+      <div style="background:#262120;border:1px solid #3A3230;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+          <span style="font-size:15px;font-weight:600">Booking, 18 Jun – 17 Jul</span>
+          <span style="font-size:15px;font-weight:600;font-variant-numeric:tabular-nums">₹6,000</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+          <span style="font-size:13px;color:#B3A59F">10 Jun 2026, 4:48 PM · UPI</span>
+          <span style="font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:#1E3B2F;color:#7FD6A8">Paid</span>
+        </div>
+        <div style="font-size:12px;color:#B3A59F;font-variant-numeric:tabular-nums">Transaction pay_••••8H4C</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="flex:none;height:82px;box-sizing:border-box;padding:6px 14px 14px;background:#181514"><nav style="display:flex;align-items:center;height:62px;border-radius:31px;background:#2B2423;border:1px solid #3A3230;padding:0 8px;gap:2px;box-sizing:border-box"><a href="HomeDue.dc.html" aria-label="Home" style="flex:1;height:46px;display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B3A59F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></a><a href="#" aria-label="Search" style="flex:1;height:46px;display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B3A59F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></a><a href="#" aria-label="Saved" style="flex:1;height:46px;display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B3A59F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M12 20s-7-4.5-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.5-7 10-7 10z"/></svg></a><a href="Main.dc.html" aria-label="Bookings" style="flex:1;height:46px;display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B3A59F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></a><a href="#" aria-label="Profile" style="flex:1;height:46px;display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B3A59F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></a></nav></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

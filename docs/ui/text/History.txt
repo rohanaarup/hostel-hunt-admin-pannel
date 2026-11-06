@@ -1,0 +1,31 @@
+Payment history
+===============
+Payment history
+Sample PG · Dilsukhnagar · Room 204, Bed B
+All
+Paid
+Upcoming
+Rent, 18 Oct – 17 Nov
+₹6,000
+Due 18 Oct 2026
+Payable
+Rent, 18 Sep – 17 Oct
+₹6,000
+16 Sep 2026, 6:12 PM · UPI
+Paid
+Transaction pay_••••3M9X
+Rent, 18 Aug – 17 Sep
+₹6,000
+18 Aug 2026, 9:05 AM · Card
+Paid
+Transaction pay_••••5K1D
+Rent, 18 Jul – 17 Aug
+₹6,000
+20 Jul 2026, 11:30 AM · Cash
+Paid
+Recorded by the hostel owner
+Booking, 18 Jun – 17 Jul
+₹6,000
+10 Jun 2026, 4:48 PM · UPI
+Paid
+Transaction pay_••••8H4C
