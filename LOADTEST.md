@@ -63,6 +63,13 @@ Other scenarios: `LoginStormUser` (everyone logging in at once; password hashing
    a minute per address, and every virtual user shares your computer's address. Without the change you measure the
    limit, not the server.
 
+## Stay and Rent reads (Phase 7)
+
+`StudentUser` also calls `GET /stays/home/`, `/stays/`, `/stays/<id>/dues/` and `/stays/<id>/payments/` (names `stays: home`, `stays: list`,
+`stays: dues`, `stays: payments`; p95 limit 800 ms in `thresholds.json`). The seeded students have paid bookings but no stays, so on the
+staging copy run `python manage.py reconcile_stays --dry-run` and then `python manage.py reconcile_stays` ONCE (staging only; see
+KNOWN_GAPS G5-03) before the run, and set `STAYS_ENABLED=true` on staging, otherwise Home answers `{"enabled": false}`.
+
 ## Commands
 
 Every command runs from `tools\loadtest`. Set these first in the same window:

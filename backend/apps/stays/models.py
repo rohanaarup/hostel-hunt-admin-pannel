@@ -227,6 +227,8 @@ class Due(TenantScopedModel, UserScopedModel):
         indexes = [
             models.Index(fields=['status', 'due_date'], name='dues_status_due_idx'),
             models.Index(fields=['stay', 'due_date'], name='dues_stay_due_idx'),
+            # The read endpoints filter one stay's dues by status and sort by due date (paid, upcoming).
+            models.Index(fields=['stay', 'status', 'due_date'], name='dues_stay_status_due_idx'),
         ]
 
     def __str__(self):

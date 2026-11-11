@@ -88,6 +88,8 @@ admin POST   /stays/{id}/end/
 admin POST   /stays/dues/{id}/record-payment/
 admin POST   /stays/dues/{id}/void-payment/
 # (Phase 6) `app POST /payments/create-rent-order/` is added in Phase 10 with the app's copy, for the same reason.
+# (Phase 7) The student read endpoints (`GET /stays/`, `/stays/home/`, `/stays/calendar/`, `/stays/{id}/`, `/dues/`, `/payments/`,
+# `/receipts/{payment_id}/`, `/analytics/`) are added as `app` lines in Phase 10 with the app's copy, for the same reason.
 
 # ---- admin: payments ----
 admin GET    /payments/admin-list/

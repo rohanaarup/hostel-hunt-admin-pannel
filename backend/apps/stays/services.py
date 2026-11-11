@@ -22,6 +22,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.bookings.models import Booking
+from apps.core import cache as shared_cache
 from apps.payments import holds
 from apps.payments.models import Payment
 from apps.residents.models import Resident
@@ -32,6 +33,21 @@ from .dates import today_ist
 from .models import Due, HostelBillingConfig, OutboxEvent, Stay
 
 logger = logging.getLogger('hh.stays')
+
+
+def home_cache_name(user_id):
+    return f'stays-home-{user_id}'
+
+
+def bump_home_cache(user_id):
+    """Make the student's cached Home answer unreachable (the version is per user). Called whenever money or stay state
+    changes: a stay is created or ended, rent is paid, recorded or voided, a vacate request is sent. It bumps at once and
+    again after the transaction commits, so a read in between can never leave a stale answer behind. Safe with the cache down."""
+    if user_id is None:
+        return
+    name = home_cache_name(user_id)
+    shared_cache.bump_version(name)
+    transaction.on_commit(lambda: shared_cache.bump_version(name))
 
 
 class StayError(Exception):
@@ -78,6 +94,7 @@ def current_stay_payload(stay):
     return {
         'id': str(stay.id),
         'hostel_name': stay.hostel.name,
+        'locality': stay.hostel.locality,
         'room_label': room_label(stay.room),
         'bed_label': bed_label(stay.bed_number),
         'paid_until': until.isoformat() if until else None,
@@ -165,6 +182,7 @@ def create_stay_for_booking(booking, payment=None):
             defaults={'topic': 'stay.created', 'payload': {
                 'stay_id': str(stay.id), 'booking_id': str(booking.id), 'hostel_id': str(booking.hostel_id)}},
         )
+        bump_home_cache(booking.student_id)
         if needs_review:
             logger.warning('stay %s needs review (second current stay: %s, amount differs: %s)',
                            stay.id, other_current, amount_differs)
@@ -205,6 +223,7 @@ def request_vacate(stay, planned_move_out_date, reason, now=None):
         stay.planned_move_out_date = planned_move_out_date
         stay.vacate_reason = reason
         stay.save(update_fields=['status', 'vacate_requested_at', 'planned_move_out_date', 'vacate_reason', 'updated_at'])
+        bump_home_cache(stay.student_id)
         OutboxEvent.objects.get_or_create(
             dedupe_key=f'stay-vacate-requested-{stay.id}',
             defaults={'topic': 'stay.vacate_requested', 'payload': {
@@ -237,6 +256,7 @@ def end_stay(stay, now=None):
         stay.status = Stay.Status.ENDED
         stay.ended_at = now
         stay.save(update_fields=['status', 'ended_at', 'updated_at'])
+        bump_home_cache(stay.student_id)
 
         today = today_ist(now)
         stay.dues.filter(status__in=(Due.Status.SCHEDULED, Due.Status.PAYABLE), period_start__gt=today).update(
@@ -283,6 +303,7 @@ def pay_due(due, payment, paid_at, source):
     due.paid_at = paid_at
     due.payment = payment
     due.save(update_fields=['status', 'paid_at', 'payment', 'updated_at'])
+    bump_home_cache(due.stay.student_id)
     OutboxEvent.objects.get_or_create(
         dedupe_key=f'rent-paid-{payment.id}',
         defaults={'topic': 'rent.paid', 'payload': {
@@ -341,6 +362,7 @@ def void_offline_payment(due, user, reason, now=None):
         locked.paid_at = None
         locked.payment = None  # the Payment keeps its own `due` link, so the history stays readable
         locked.save(update_fields=['status', 'paid_at', 'payment', 'updated_at'])
+        bump_home_cache(locked.stay.student_id)
         OutboxEvent.objects.get_or_create(
             dedupe_key=f'rent-voided-{payment.id}',
             defaults={'topic': 'rent.payment_voided', 'payload': {

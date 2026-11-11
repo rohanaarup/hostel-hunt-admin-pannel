@@ -170,6 +170,38 @@ class StudentUser(_Student):
         ])
         self.call('GET', path, name, auth=True)
 
+    # ---- Stay and Rent reads (Phase 7). The student needs a stay: run `python manage.py reconcile_stays` on the seeded
+    # staging data first (LOADTEST.md). Without one the calls still answer 200 (no_stay, an empty list) and the
+    # dues and payments tasks do nothing. With STAYS_ENABLED off, /stays/home/ answers {"enabled": false}.
+    stay_id = None
+
+    @task(12)
+    def stays_home(self):
+        self.call('GET', '/stays/home/', 'stays: home', auth=True)
+
+    @task(5)
+    def stays_list(self):
+        response = self.call('GET', '/stays/', 'stays: list', auth=True)
+        try:
+            rows = response.json().get('results') or []
+        except ValueError:
+            return
+        current = [row['id'] for row in rows if isinstance(row, dict) and row.get('openable')]
+        self.stay_id = current[0] if current else None
+
+    @task(5)
+    def stays_dues(self):
+        if not self.stay_id:
+            return self.stays_list()
+        self.call('GET', f'/stays/{self.stay_id}/dues/', 'stays: dues', auth=True)
+
+    @task(4)
+    def stays_payments(self):
+        if not self.stay_id:
+            return self.stays_list()
+        self.call('GET', f'/stays/{self.stay_id}/payments/', 'stays: payments', auth=True,
+                  params={'filter': random.choice(['paid', 'upcoming'])})
+
     @task(3)
     def save_and_unsave(self):
         if not self.hostel_ids:

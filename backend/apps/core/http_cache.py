@@ -91,3 +91,26 @@ class PublicCacheMiddleware:
                 not_modified[key] = response[key]
             return not_modified
         return response
+
+
+def private_json_response(request, data):
+    """A signed-in user's own JSON, with a validator the app can send back (Phase 7, the stays read endpoints).
+
+    `Cache-Control: private, no-cache` (a browser or the app may keep it but must ask first; no shared cache may keep it) and a
+    strong `ETag` of the body. A matching `If-None-Match` gets a bodiless 304. Nothing is stored on the server for this."""
+    import json
+
+    from rest_framework.response import Response
+
+    body = json.dumps(data, sort_keys=True, separators=(',', ':'), default=str)
+    etag = '"%s"' % hashlib.md5(body.encode('utf-8'), usedforsecurity=False).hexdigest()
+    header = request.META.get('HTTP_IF_NONE_MATCH')
+    if header and _etag_matches(header, etag):
+        not_modified = HttpResponseNotModified()
+        not_modified['ETag'] = etag
+        not_modified['Cache-Control'] = 'private, no-cache'
+        return not_modified
+    response = Response(data)
+    response['ETag'] = etag
+    response['Cache-Control'] = 'private, no-cache'
+    return response

@@ -298,7 +298,7 @@ class D2Guard(Base):
             self.assertEqual(body['code'], 'ACTIVE_STAY_EXISTS')
             self.assertTrue(body['message'])
             current = body['current_stay']
-            self.assertEqual(set(current), {'id', 'hostel_name', 'room_label', 'bed_label', 'paid_until'})
+            self.assertEqual(set(current), {'id', 'hostel_name', 'locality', 'room_label', 'bed_label', 'paid_until'})
             self.assertEqual(current['id'], str(stay.id))
             self.assertEqual(current['hostel_name'], 'Seed Alpha Residency')
             self.assertEqual(current['bed_label'], 'Bed A')

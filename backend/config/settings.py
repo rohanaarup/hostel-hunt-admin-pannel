@@ -371,6 +371,10 @@ EXPOSE_DEV_OTP = config('EXPOSE_DEV_OTP', default=False, cast=bool)
 APP_ENV = config('APP_ENV', default='development' if DEBUG else 'production')
 
 # OpenAPI schema (committed as backend/schema.yml; CI regenerates it and fails on any difference).
+# Stay and Rent feature switch (Phase 7). Off by default: GET /stays/home/ then answers {"enabled": false} and nothing else, so
+# the app can ship ahead of the feature. Read per request, so changing the variable and restarting is enough.
+STAYS_ENABLED = config('STAYS_ENABLED', default=False, cast=bool)
+
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Hostel Hunt API',
     'DESCRIPTION': 'REST API for the Hostel Hunt app and owner admin.',

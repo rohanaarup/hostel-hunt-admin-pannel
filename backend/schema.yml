@@ -1737,6 +1737,104 @@ paths:
               schema:
                 $ref: '#/components/schemas/ResidentCreate'
           description: ''
+  /api/v1/stays/:
+    get:
+      operationId: stays_list_mine
+      description: 'Base: signed in, GET only (APIView answers 405 to anything else,
+        because only `get` is defined).'
+      summary: 'My stays: current first, then past'
+      tags:
+      - stays
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/stays/{id}/:
+    get:
+      operationId: stays_retrieve
+      description: 'Base: signed in, GET only (APIView answers 405 to anything else,
+        because only `get` is defined).'
+      summary: One stay
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - stays
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/stays/{id}/analytics/:
+    get:
+      operationId: stays_analytics_retrieve
+      description: 'Base: signed in, GET only (APIView answers 405 to anything else,
+        because only `get` is defined).'
+      summary: Stay analytics
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: query
+        name: range
+        schema:
+          type: string
+        description: stay (default), 6m or 12m
+      tags:
+      - stays
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/stays/{id}/dues/:
+    get:
+      operationId: stays_dues_retrieve
+      description: 'Base: signed in, GET only (APIView answers 405 to anything else,
+        because only `get` is defined).'
+      summary: 'Dues of a stay: stored, then projected (not yet created)'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - stays
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/stays/{id}/end/:
     post:
       operationId: stays_end_create
@@ -1764,6 +1862,67 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StayError'
+          description: ''
+  /api/v1/stays/{id}/payments/:
+    get:
+      operationId: stays_payments_retrieve
+      description: 'Base: signed in, GET only (APIView answers 405 to anything else,
+        because only `get` is defined).'
+      summary: Payment history of a stay
+      parameters:
+      - in: query
+        name: filter
+        schema:
+          type: string
+        description: 'paid or upcoming (default: all)'
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - stays
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/stays/{id}/receipts/{payment_id}/:
+    get:
+      operationId: stays_receipts_retrieve
+      description: 'Base: signed in, GET only (APIView answers 405 to anything else,
+        because only `get` is defined).'
+      summary: One receipt
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: payment_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - stays
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/v1/stays/{id}/vacate-request/:
     post:
@@ -1810,6 +1969,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StayError'
+          description: ''
+  /api/v1/stays/calendar/:
+    get:
+      operationId: stays_calendar_retrieve
+      description: 'Base: signed in, GET only (APIView answers 405 to anything else,
+        because only `get` is defined).'
+      summary: Payment calendar of the current stay
+      parameters:
+      - in: query
+        name: month
+        schema:
+          type: string
+        description: YYYY-MM
+        required: true
+      tags:
+      - stays
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/v1/stays/dues/{id}/record-payment/:
     post:
@@ -1902,6 +2086,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StayError'
+          description: ''
+  /api/v1/stays/home/:
+    get:
+      operationId: stays_home_retrieve
+      description: |-
+        The Home screen in ONE call. With STAYS_ENABLED off it answers {"enabled": false} and nothing else. The answer is
+        cached per user for a few seconds through the shared cache (never a per-process dict); paying, recording or voiding
+        rent, creating or ending a stay and a vacate request all bump that user's version, so money is never stale.
+      summary: Home screen data
+      tags:
+      - stays
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/v1/wishlist/:
     get:

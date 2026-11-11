@@ -413,7 +413,7 @@ class WiringTests(SimpleTestCase):
 
     def test_only_the_known_stay_endpoints_exist(self):
         """Phase 4 had no endpoint at all. Phase 5 added the two lifecycle actions and Phase 6 the two rent-recording actions;
-        reading stays and dues is Phase 7."""
+        Phase 7 the eight read-only student endpoints."""
         from django.urls import get_resolver
         found = []
 
@@ -427,8 +427,11 @@ class WiringTests(SimpleTestCase):
 
         walk(get_resolver().url_patterns)
         self.assertEqual(sorted(found), [
-            'api/v1/stays/<uuid:pk>/end/', 'api/v1/stays/<uuid:pk>/vacate-request/',
-            'api/v1/stays/dues/<uuid:pk>/record-payment/', 'api/v1/stays/dues/<uuid:pk>/void-payment/'])
+            'api/v1/stays/', 'api/v1/stays/<uuid:pk>/', 'api/v1/stays/<uuid:pk>/analytics/',
+            'api/v1/stays/<uuid:pk>/dues/', 'api/v1/stays/<uuid:pk>/end/', 'api/v1/stays/<uuid:pk>/payments/',
+            'api/v1/stays/<uuid:pk>/receipts/<uuid:payment_id>/', 'api/v1/stays/<uuid:pk>/vacate-request/',
+            'api/v1/stays/calendar/', 'api/v1/stays/dues/<uuid:pk>/record-payment/',
+            'api/v1/stays/dues/<uuid:pk>/void-payment/', 'api/v1/stays/home/'])
 
     def test_no_environment_variable_was_added(self):
         source = ''.join(path.read_text(encoding='utf-8') for path in STAYS_DIR.glob('*.py') if not path.name.startswith('test'))
