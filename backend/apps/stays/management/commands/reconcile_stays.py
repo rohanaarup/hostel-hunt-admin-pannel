@@ -1,4 +1,7 @@
+from datetime import date, datetime, timedelta
+
 from django.core.management.base import BaseCommand, CommandError
+from django.utils import timezone
 from django.db.models import Exists, OuterRef, Q
 
 from apps.bookings.models import Booking
@@ -17,6 +20,9 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('--dry-run', action='store_true', help='Show the counts and change nothing.')
         parser.add_argument('--batch-size', type=int, default=500, help='Bookings handled per run (1 to 1000).')
+        parser.add_argument('--since', default='', help='Only bookings paid on or after this date (YYYY-MM-DD). Use it for a backfill.')
+        parser.add_argument('--max-age-days', type=int, default=0,
+                            help='Only bookings paid in the last N days (what the daily job uses). 0 = no limit.')
 
     def handle(self, *args, **options):
         batch = options['batch_size']
@@ -24,6 +30,17 @@ class Command(BaseCommand):
             raise CommandError('--batch-size must be from 1 to 1000.')
 
         paid_without_stay = Booking.objects.filter(status='paid', stay__isnull=True)
+        cutoff = None
+        if options['since']:
+            try:
+                cutoff = timezone.make_aware(datetime.combine(date.fromisoformat(options['since']), datetime.min.time()))
+            except ValueError:
+                raise CommandError('--since must look like 2026-10-01.')
+        if options['max_age_days']:
+            recent = timezone.now() - timedelta(days=options['max_age_days'])
+            cutoff = max(cutoff, recent) if cutoff else recent
+        if cutoff is not None:
+            paid_without_stay = paid_without_stay.filter(marked_paid_at__gte=cutoff)
         has_payment = Exists(Payment.objects.filter(booking=OuterRef('pk'), status=Payment.Status.SUCCESS,
                                                          purpose=Payment.Purpose.BOOKING))
         # A booking with no room and no successful payment has no known rent: it cannot be turned into a stay.

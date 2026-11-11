@@ -1410,6 +1410,140 @@ paths:
               schema:
                 $ref: '#/components/schemas/NoticeCreate'
           description: ''
+  /api/v1/notifications/:
+    get:
+      operationId: notifications_retrieve
+      summary: My notifications
+      parameters:
+      - in: query
+        name: category
+        schema:
+          type: string
+        description: 'rent or stay (default: all)'
+      tags:
+      - notifications
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/notifications/{id}/read/:
+    post:
+      operationId: notifications_read_create
+      summary: Mark one notification read
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - notifications
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/notifications/preferences/:
+    get:
+      operationId: notifications_preferences_retrieve
+      summary: My notification preferences
+      tags:
+      - notifications
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Preferences'
+          description: ''
+    patch:
+      operationId: notifications_preferences_partial_update
+      summary: Change my notification preferences
+      tags:
+      - notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPreferences'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPreferences'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPreferences'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Preferences'
+          description: ''
+  /api/v1/notifications/read-all/:
+    post:
+      operationId: notifications_read_all_create
+      summary: Mark every notification read
+      tags:
+      - notifications
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/notifications/unread-count/:
+    get:
+      operationId: notifications_unread_count_retrieve
+      summary: Unread count (cached 15 seconds per user)
+      tags:
+      - notifications
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/ops/status/:
+    get:
+      operationId: ops_status_retrieve
+      description: 'Admin only. Counts and times: no personal data.'
+      summary: Engine status (admin)
+      tags:
+      - ops
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/payments/admin-list/:
     get:
       operationId: payments_admin_list_list
@@ -2036,6 +2170,43 @@ paths:
                 $ref: '#/components/schemas/StayError'
           description: ''
         '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StayError'
+          description: ''
+  /api/v1/stays/dues/{id}/send-reminder/:
+    post:
+      operationId: stays_dues_send_reminder_create
+      description: 'POST /stays/dues/<id>/send-reminder/ : the Send reminder button
+        on the AdminDues board.'
+      summary: Send a rent reminder now (owner or admin; once per due per day)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - stays
+      security:
+      - jwtAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StayError'
+          description: ''
+        '429':
           content:
             application/json:
               schema:
@@ -3516,6 +3687,15 @@ components:
         phone_number:
           type: string
           maxLength: 20
+    PatchedPreferences:
+      type: object
+      properties:
+        inbox:
+          type: boolean
+        push:
+          type: boolean
+        email:
+          type: boolean
     PatchedRoom:
       type: object
       properties:
@@ -3724,6 +3904,15 @@ components:
         * `FAILED` - Failed
         * `REFUNDED` - Refunded
         * `VOIDED` - Voided
+    Preferences:
+      type: object
+      properties:
+        inbox:
+          type: boolean
+        push:
+          type: boolean
+        email:
+          type: boolean
     ProfileEnvelope:
       type: object
       properties:

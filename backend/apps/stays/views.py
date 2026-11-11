@@ -113,6 +113,24 @@ class DueRecordPaymentView(APIView):
         return Response(RentPaymentRecordSerializer(_payment_record(payment)).data, status=status.HTTP_201_CREATED)
 
 
+class DueSendReminderView(APIView):
+    """POST /stays/dues/<id>/send-reminder/ : the Send reminder button on the AdminDues board."""
+    permission_classes = [IsAuthenticated, IsTenantOwnerOrStaff]
+
+    @extend_schema(request=None, responses={202: dict, 409: StayErrorSerializer, 429: StayErrorSerializer},
+                   summary='Send a rent reminder now (owner or admin; once per due per day)')
+    def post(self, request, pk):
+        from apps.notifications import services as notification_services
+        due = _owned_due(request, pk)
+        self.check_object_permissions(request, due)
+        due = Due.objects.select_related('stay').get(pk=due.pk)
+        try:
+            notification_services.request_manual_reminder(due)
+        except services.StayError as exc:
+            return _refusal(exc)
+        return Response({'status': 'queued'}, status=status.HTTP_202_ACCEPTED)
+
+
 class DueVoidPaymentView(APIView):
     permission_classes = [IsAuthenticated, IsTenantOwnerOrStaff]
 

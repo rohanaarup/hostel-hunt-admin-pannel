@@ -283,7 +283,8 @@ class RenderYamlTests(SimpleTestCase):
     def test_plans_and_instance_counts_are_unchanged(self):
         plans = {s['name']: s['plan'] for s in load_render()['services']}
         self.assertEqual(plans, {'hostel-hunt-backend': 'free', 'hostel-hunt-backend-staging': 'free',
-                                 'hostel-hunt-cleanup': 'starter'})
+                                 'hostel-hunt-cleanup': 'starter', 'hostel-hunt-outbox': 'starter',
+                                 'hostel-hunt-daily': 'starter'})
         self.assertFalse(any('numInstances' in s for s in load_render()['services']))
 
 

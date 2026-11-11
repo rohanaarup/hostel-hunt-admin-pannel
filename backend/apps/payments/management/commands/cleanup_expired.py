@@ -9,6 +9,9 @@ batches, and a failure in one step does not stop the others.
                              tokens that were never used)
   3. webhook events          delete Razorpay event ids older than 30 days
   4. flushexpiredtokens      simplejwt's own command: delete expired blacklisted refresh tokens
+  5. outbox_done, notification_logs, notifications, job_runs
+                             Phase 8: finished outbox rows, reminder logs, notifications and job runs older than
+                             NOTIFICATION_RETENTION_DAYS (90) are deleted in batches of 1000
 
   python manage.py cleanup_expired [--dry-run]
 """
@@ -60,6 +63,14 @@ class Command(BaseCommand):
         step('holds', lambda: holds.expire_stale(dry_run=dry_run))
         step('otp_records', lambda: purge(OTPRecord.objects.filter(expires_at__lt=now - OTP_KEEP), dry_run))
         step('webhook_events', lambda: purge(PaymentWebhookEvent.objects.filter(received_at__lt=now - WEBHOOK_KEEP), dry_run))
+        from django.conf import settings
+        from apps.notifications.models import JobRun, Notification, NotificationLog
+        from apps.stays.models import OutboxEvent
+        keep = now - timedelta(days=getattr(settings, 'NOTIFICATION_RETENTION_DAYS', 90))
+        step('outbox_done', lambda: purge(OutboxEvent.objects.filter(status='DONE', processed_at__lt=keep), dry_run))
+        step('notification_logs', lambda: purge(NotificationLog.objects.filter(created_at__lt=keep), dry_run))
+        step('notifications', lambda: purge(Notification.objects.filter(created_at__lt=keep), dry_run))
+        step('job_runs', lambda: purge(JobRun.objects.filter(started_at__lt=keep), dry_run))
         if dry_run:
             self.stdout.write("tokens: skipped in a dry run")
         else:

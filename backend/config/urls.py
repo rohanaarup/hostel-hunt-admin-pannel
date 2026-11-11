@@ -41,6 +41,7 @@ urlpatterns = [
         path('', include('apps.residents.urls')),
         path('', include('apps.notices.urls')),
         path('', include('apps.stays.urls')),
+        path('', include('apps.notifications.urls')),
     ])),
 ]
 

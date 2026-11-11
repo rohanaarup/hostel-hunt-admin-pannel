@@ -90,6 +90,7 @@ INSTALLED_APPS = [
     'apps.residents',
     'apps.notices',
     'apps.stays',
+    'apps.notifications',
 ]
 
 MIDDLEWARE = [
@@ -374,6 +375,20 @@ APP_ENV = config('APP_ENV', default='development' if DEBUG else 'production')
 # Stay and Rent feature switch (Phase 7). Off by default: GET /stays/home/ then answers {"enabled": false} and nothing else, so
 # the app can ship ahead of the feature. Read per request, so changing the variable and restarting is enough.
 STAYS_ENABLED = config('STAYS_ENABLED', default=False, cast=bool)
+
+# Reminders and the outbox engine (Phase 8; docs/ENGINE.md).
+# Most reminder emails one day may send. The free email plans are small and the real limit is unconfirmed (KNOWN_GAPS F7-09):
+# set it from the plan you actually have. Reminders are sent most urgent first (overdue before upcoming) until it is reached.
+EMAIL_DAILY_CAP = config('EMAIL_DAILY_CAP', default=80, cast=int)
+# Times an outbox event is tried before it is left FAILED for a person (backoff 60 s, 120 s, 240 s ... at most 6 hours).
+OUTBOX_MAX_ATTEMPTS = config('OUTBOX_MAX_ATTEMPTS', default=8, cast=int)
+# Nothing is sent between these two hours (India time): from QUIET_HOURS_START to QUIET_HOURS_END.
+QUIET_HOURS_START = config('QUIET_HOURS_START', default=21, cast=int)
+QUIET_HOURS_END = config('QUIET_HOURS_END', default=8, cast=int)
+# The daily job heals bookings paid in the last N days that have no stay. Older ones are a deliberate backfill (G5-03).
+RECONCILE_STAYS_MAX_AGE_DAYS = config('RECONCILE_STAYS_MAX_AGE_DAYS', default=3, cast=int)
+# How long finished outbox rows, reminder logs, notifications and job runs are kept before cleanup_expired removes them.
+NOTIFICATION_RETENTION_DAYS = config('NOTIFICATION_RETENTION_DAYS', default=90, cast=int)
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Hostel Hunt API',

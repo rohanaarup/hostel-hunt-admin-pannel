@@ -4,7 +4,9 @@ from .read_views import (
     StayAnalyticsView, StayCalendarView, StayDetailView, StayDuesView, StayHomeView, StayListView, StayPaymentsView,
     StayReceiptView,
 )
-from .views import DueRecordPaymentView, DueVoidPaymentView, StayEndView, StayVacateRequestView
+from .views import (
+    DueRecordPaymentView, DueSendReminderView, DueVoidPaymentView, StayEndView, StayVacateRequestView,
+)
 
 urlpatterns = [
     # Phase 7: read-only student endpoints (fixed paths first, then the ones with an id)
@@ -21,4 +23,5 @@ urlpatterns = [
     path('stays/<uuid:pk>/end/', StayEndView.as_view(), name='stay-end'),
     path('stays/dues/<uuid:pk>/record-payment/', DueRecordPaymentView.as_view(), name='due-record-payment'),
     path('stays/dues/<uuid:pk>/void-payment/', DueVoidPaymentView.as_view(), name='due-void-payment'),
+    path('stays/dues/<uuid:pk>/send-reminder/', DueSendReminderView.as_view(), name='due-send-reminder'),
 ]

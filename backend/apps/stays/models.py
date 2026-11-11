@@ -254,6 +254,9 @@ class OutboxEvent(GlobalModel):
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     attempts = models.PositiveSmallIntegerField(default=0)
     next_attempt_at = models.DateTimeField(default=timezone.now)
+    # Higher is drained first (overdue reminders before upcoming ones). Defaulted in the database so the previous app
+    # version keeps inserting rows.
+    priority = models.SmallIntegerField(default=0, db_default=0)
     created_at = models.DateTimeField(default=timezone.now)
     processed_at = models.DateTimeField(null=True, blank=True)
 
@@ -261,7 +264,11 @@ class OutboxEvent(GlobalModel):
         db_table = 'outbox_events'
         ordering = ['id']
         # The consumer's query: PENDING rows that are due, oldest first, in batches.
-        indexes = [models.Index(fields=['status', 'next_attempt_at'], name='outbox_status_next_idx')]
+        indexes = [
+            models.Index(fields=['status', 'next_attempt_at'], name='outbox_status_next_idx'),
+            # process_outbox claims the most urgent due rows first.
+            models.Index(fields=['status', '-priority', 'next_attempt_at'], name='outbox_status_prio_next_idx'),
+        ]
 
     def __str__(self):
         return f'{self.topic} ({self.status})'

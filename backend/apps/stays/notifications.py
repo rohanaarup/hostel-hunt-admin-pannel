@@ -1,10 +1,10 @@
 """
-Unread notices for the badge on the Home screen's Notices action and on the Active stay screen.
-
-Phase 8 adds notifications; until then there is nothing to count, so this returns 0. It is the one place that changes when
-Phase 8 lands (the Home and stay payloads already carry the number).
+Unread notices for the badge on the Home screen Notices action and on the Active stay screen: the real count from
+apps/notifications (cached 15 seconds per user). Kept as one small function so the stay payloads do not import the
+notifications app at module load.
 """
 
 
 def unread_count(user):
-    return 0
+    from apps.notifications import services
+    return services.unread_count(user)
