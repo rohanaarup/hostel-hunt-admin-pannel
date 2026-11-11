@@ -130,3 +130,18 @@ else gets 404 (not 403), so a stay's existence is not revealed.
 
 **Lock order for rent:** Payment, then Due (record-payment locks the Due only; void locks Payment then Due). Free-text notes and reasons stay on the
 payment row; outbox payloads carry ids and codes only.
+
+## Phase 7: read APIs (student, GET only)
+
+Fixed query counts (measured on the scratch Postgres at 2, 6 and 26 dues): list 3, detail 2, dues 2, payments 3, receipt 3,
+analytics 3, calendar 2, home 2 (the cache hit makes it 0 plus the cache read). The stay with its hostel, room and student is one
+query; all its dues (with the payment, and the successful attempt where a payment is shown) are prefetched once; the rest is Python.
+
+| Endpoint | Notes |
+|---|---|
+| `GET /stays/` | Current stay first, then past, paginated like `bookings/my/` (page size 10, at most 100). `openable` is false for ENDED and CANCELLED; their own pages answer 403 `STAY_NOT_OPENABLE`. |
+| `GET /stays/home/` | One call for the Home screen. With `STAYS_ENABLED` off: `{"enabled": false}` and nothing else. Cached per user for 20 seconds through `apps/core/cache.py` (key `hh:<env>:stays-home-<user>:u<user>:v<N>`), version bumped on stay creation, end, vacate request, rent paid, recorded and voided. |
+| `GET /stays/<id>/`, `/dues/`, `/payments/?filter=`, `/receipts/<payment_id>/`, `/analytics/?range=`, `GET /stays/calendar/?month=` | Shapes and wording are mapped board by board in `docs/UI_DATA_MAP.md`. |
+| Projected dues | Rents after the stored ones are computed on read from the stay's own copied billing settings (`schedule.py`), marked `projected`, never written by a GET. |
+| Caching | `ETag` plus `Cache-Control: private, no-cache` (`apps/core/http_cache.py: private_json_response`); a matching `If-None-Match` gets a bodiless 304. |
+| Index | `dues_stay_status_due_idx` on (stay, status, due date) for the status filters (`stays.0002`, additive). The (stay, due date) and (student, status) indexes already existed. |

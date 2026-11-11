@@ -1,6 +1,6 @@
 # Known gaps register (Hostel Hunt)
 
-**Started:** 2026-10-18 · **Last reviewed:** 2026-10-29 (after Phase 6 of the stay plan) · **Owner:** the developer and Claude, together
+**Started:** 2026-10-18 · **Last reviewed:** 2026-10-29 (after Phase 7 of the stay plan) · **Owner:** the developer and Claude, together
 
 This file lists what we have **not** built, **not** verified, or **chosen to ignore**, phase by phase, and how much each
 item matters. It exists because no phase gets finished at 100%: many things need a paid service, infrastructure that
@@ -322,6 +322,13 @@ Evidence for G1 is in `backend/docs/STAY_BASELINE.md` and `backend/docs/GAP_TRIA
 | G6-05 | `paid_via` is filled for rent payments only; booking payments keep it empty (the booking branch of `confirm_payment` is untouched by design). | DEFERRED | Low | Phase 7 history must read the method of a booking payment from its attempt. | Open |
 | G6-06 | **The card callback cannot know the method.** If a student chooses UPI or net banking inside Razorpay's checkout and the app's card callback reaches the server before the webhook, the rent is stored as paid by CARD (the later webhook is 'already confirmed' and does not correct it). Fixing it needs a Razorpay API read (`razorpay_client`, out of scope). | DEFERRED | Low | The Method line on PaymentDone and History can read Card for a UPI payment. | Open |
 | G6-07 | The app contract line for `create-rent-order` (and the app copy `test/contract/app_endpoints.txt`) is not added: the app does not call it until Phase 10 and its CI fails on a listed path the Dart code does not call. | DEFERRED | Low | None until Phase 10. | Open |
+| G7-01 | **Rents beyond Due 2 are projected, not stored.** Only Due 1 and Due 2 exist until Phase 8's cron creates the next ones, so the read API computes later rents on read (marked `projected`). A projected due has no row and cannot be paid: after the student pays Due 2 there is nothing payable until the cron creates the next due. | DEFERRED | Moderate | The Home card after paying shows the next rent with `payable: false`; Phase 8 must create dues ahead of their payable window. | Open; Phase 8 |
+| G7-02 | The new stay's id is not in the booking confirm replies; the app finds it with `GET /stays/` (current first). | DEFERRED | Low | StayCreated and StayCreatedFixed need one extra call. | Open |
+| G7-03 | **The Phase 7 Locust scenarios were not run on staging.** Staging is paused (G1-12) and the seeded students have no stays until `reconcile_stays` runs. No p50, p95 or error rate for the new endpoints was measured against the Phase 1 baseline. Query counts were measured instead (2 to 3 per endpoint, flat at 2, 6 and 26 dues). | HUMAN | Moderate before go-live | The speed under load is unproven. | Open; items 1, 18, 26 and 30 of `FOUNDER_DEFERRED.md` |
+| G7-04 | `STAYS_ENABLED` switches only `GET /stays/home/`. The other read endpoints answer whatever the setting; they return empty or 404 for a student with no stay and nothing else. | DEFERRED | Low | The flag is a Home switch, not a kill switch for the whole feature. | Open |
+| G7-05 | The Home answer is cached for 20 seconds per user (jittered). Money and stay changes bump the user's version at once; only the calendar day rolling over inside that window can lag by up to about 22 seconds. With Redis down every call builds the answer (correct, slower). | DEFERRED | Low | None for money state. | Accepted |
+| G7-06 | These endpoints are for the student only. An owner calling them for a student's stay gets 404; owners see stays through the Phase 9 admin endpoints. | DEFERRED | Low | Phase 9. | Open |
+| G7-07 | The booking payment always counts as on time in Analytics, and its method is read from the successful attempt (G6-05). More wording and edge cases are in `docs/UI_DATA_MAP.md` sections 3 and 4. | DEFERRED | Low | Numbers on the analytics board. | Open |
 
 # Cross-cutting gaps
 

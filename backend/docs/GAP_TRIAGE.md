@@ -259,3 +259,10 @@ Evidence for the G1 rows is in `backend/docs/STAY_BASELINE.md`; G2-01 is from Ph
 | G6-05 | `paid_via` empty on booking payments | Low | LATER | 7 | KNOWN_GAPS G6-05. |
 | G6-06 | Card callback cannot know the real method | Low | LATER | later | KNOWN_GAPS G6-06. |
 | G6-07 | App contract line for create-rent-order deferred | Low | LATER | 10 | KNOWN_GAPS G6-07. |
+| G7-01 | Rents beyond Due 2 are projected and cannot be paid until Phase 8 creates them | Moderate | LATER | 8 | KNOWN_GAPS G7-01; UI_DATA_MAP G7-01. |
+| G7-02 | New stay id not in the booking confirm replies | Low | LATER | 10 | KNOWN_GAPS G7-02. |
+| G7-03 | Phase 7 Locust run not done on staging | Moderate | LATER | before go-live | KNOWN_GAPS G7-03. |
+| G7-04 | STAYS_ENABLED gates only Home | Low | LATER | later | KNOWN_GAPS G7-04. |
+| G7-05 | Home cached 20 s per user | Low | LATER | none | KNOWN_GAPS G7-05 (accepted). |
+| G7-06 | Student-only read endpoints | Low | LATER | 9 | KNOWN_GAPS G7-06. |
+| G7-07 | Analytics wording and edge cases | Low | LATER | 10 | KNOWN_GAPS G7-07. |

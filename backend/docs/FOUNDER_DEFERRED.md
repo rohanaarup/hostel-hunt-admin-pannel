@@ -71,6 +71,13 @@ Not dashboard steps: a decision and a run, both after staging is restored (item 
 | 28 | After items 1, 12 and 13 (staging restored, email, Razorpay TEST keys and webhook), run the rent scenarios R1 to R7 in `PAYMENT_TEST.md` | Rent was proven by tests and a local signed-webhook rehearsal, not with a real Razorpay test payment (G6-01) | Before go-live | Open |
 | 29 | Decide: when a rent payment is refunded, should the due reopen as unpaid (G6-03)? And should owner revenue totals include rent (G6-02)? | The refund and dashboard code are outside Phase 6 | Phase 9 | Open |
 
+## Added by Phase 7 (read APIs)
+
+| # | Action | Why | Needed by | Status |
+|---|---|---|---|---|
+| 30 | When staging is back (item 1) and Redis exists (item 18): set `STAYS_ENABLED=true` on staging, run `reconcile_stays` there once (G5-03), seed the load-test students, run the Phase 7 Locust scenarios (`LOADTEST.md`, section 'Stay and Rent reads') and paste p50, p95 and the error rate into `STAY_BASELINE.md` | The speed of the new endpoints under load is unproven (G7-03) | Before go-live | Open |
+| 31 | Decide when to turn `STAYS_ENABLED` on in production (it is off by default) | The app can ship ahead of the feature; the flag shows Home when you are ready | At go-live | Open |
+
 ## Added by later phases
 
 (none yet)
