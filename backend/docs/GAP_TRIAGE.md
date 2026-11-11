@@ -266,3 +266,10 @@ Evidence for the G1 rows is in `backend/docs/STAY_BASELINE.md`; G2-01 is from Ph
 | G7-05 | Home cached 20 s per user | Low | LATER | none | KNOWN_GAPS G7-05 (accepted). |
 | G7-06 | Student-only read endpoints | Low | LATER | 9 | KNOWN_GAPS G7-06. |
 | G7-07 | Analytics wording and edge cases | Low | LATER | 10 | KNOWN_GAPS G7-07. |
+| G8-01 | Push (Part F) not built; gate F7-02 open | Moderate | LAUNCH-BLOCKER (for push only) | 10 / release | KNOWN_GAPS G8-01. |
+| G8-02 | Engine not run on staging, real email or Sentry | Moderate | LATER | before go-live | KNOWN_GAPS G8-02. |
+| G8-03 | EMAIL_DAILY_CAP is a guess | Moderate | LATER | before go-live | KNOWN_GAPS G8-03; same root as F7-09. |
+| G8-04 | Upcoming reminder steps are dropped after an outage | Low | LATER | none | KNOWN_GAPS G8-04 (accepted). |
+| G8-05 | Owner notifications have no screen | Low | LATER | 9 | KNOWN_GAPS G8-05. |
+| G8-06 | Engine capacity measured on a laptop only | Low | SCALE | 11 | KNOWN_GAPS G8-06. |
+| G8-07 | App contract lines for notifications deferred | Low | LATER | 10 | KNOWN_GAPS G8-07. |

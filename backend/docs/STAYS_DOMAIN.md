@@ -145,3 +145,12 @@ query; all its dues (with the payment, and the successful attempt where a paymen
 | Projected dues | Rents after the stored ones are computed on read from the stay's own copied billing settings (`schedule.py`), marked `projected`, never written by a GET. |
 | Caching | `ETag` plus `Cache-Control: private, no-cache` (`apps/core/http_cache.py: private_json_response`); a matching `If-None-Match` gets a bodiless 304. |
 | Index | `dues_stay_status_due_idx` on (stay, status, due date) for the status filters (`stays.0002`, additive). The (stay, due date) and (student, status) indexes already existed. |
+
+## Phase 8: the engine
+
+`stays_daily` (03:30 UTC) activates stays, creates the next dues, queues the reminder ladder; `process_outbox` (every 5 minutes) sends notices and reminders; `apps/notifications` holds the
+inbox, the per-channel log, the preferences and the job-run record. Everything is in `backend/docs/ENGINE.md`. Facts other phases rely on:
+
+- Dues now exist ahead of the payable window (the next one is created when the latest is paid or its window opens), so there is something to pay after Due 2 (closes G7-01 for the daily job; reads still project further ahead).
+- `OutboxEvent.priority` (higher first) and the index `(status, -priority, next_attempt_at)` keep the claim fast on a big backlog.
+- Events written by payments and stays (`stay.created`, `rent.paid`, `stay.vacate_requested`) are now consumed: the student gets an inbox notice, the owner a payment, new-stay or vacate notice.

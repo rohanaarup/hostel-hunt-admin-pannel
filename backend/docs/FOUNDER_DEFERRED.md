@@ -78,6 +78,13 @@ Not dashboard steps: a decision and a run, both after staging is restored (item 
 | 30 | When staging is back (item 1) and Redis exists (item 18): set `STAYS_ENABLED=true` on staging, run `reconcile_stays` there once (G5-03), seed the load-test students, run the Phase 7 Locust scenarios (`LOADTEST.md`, section 'Stay and Rent reads') and paste p50, p95 and the error rate into `STAY_BASELINE.md` | The speed of the new endpoints under load is unproven (G7-03) | Before go-live | Open |
 | 31 | Decide when to turn `STAYS_ENABLED` on in production (it is off by default) | The app can ship ahead of the feature; the flag shows Home when you are ready | At go-live | Open |
 
+## Added by Phase 8 (engine, reminders)
+
+| # | Action | Why | Needed by | Status |
+|---|---|---|---|---|
+| 32 | Create the two Render cron services (`hostel-hunt-outbox`, `hostel-hunt-daily` in `render.yaml`) with their own heartbeat monitors, set `EMAIL_DAILY_CAP` from your real email plan, then on STAGING run each command twice with `--dry-run` and once for real, and deliberately fail one handler to see it in Sentry (`docs/ENGINE.md`) | Nothing runs the reminders until the crons exist; the engine was proven locally only (G8-02, G8-03) | Before go-live | Open |
+| 33 | Resolve KNOWN_GAPS F7-02 (choose the Android application id, make the upload keystore) or waive push in writing; then ask for Part F (Firebase push). The Firebase steps will be written then: project, Android app, `google-services.json`, service account stored as the Render secret `FCM_SERVICE_ACCOUNT_JSON` | Push was skipped because the gate is open (G8-01) | Before the Android release | Open |
+
 ## Added by later phases
 
 (none yet)
