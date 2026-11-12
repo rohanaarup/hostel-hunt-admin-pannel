@@ -70,7 +70,11 @@ class QueryCountTests(Base):
         with CaptureQueriesContext(connection) as queries:
             response = api.get('/api/v1/dashboard/stats/')
         self.assertEqual(response.status_code, 200)
-        self.assertLessEqual(len(queries), 4, [q['sql'][:90] for q in queries])
+        # Four for the owner's numbers, plus ONE for the rent counts (Phase 9) when they are not in the 30-second cache.
+        self.assertLessEqual(len(queries), 5, [q['sql'][:90] for q in queries])
+        with CaptureQueriesContext(connection) as cached:
+            api.get('/api/v1/dashboard/stats/')
+        self.assertLessEqual(len(cached), 4, 'the rent counts come from the cache the second time')
 
         data = response.json()['data']
         mine = Booking.objects.filter(hostel__owner=self.owner)

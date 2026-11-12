@@ -293,6 +293,8 @@ OWNER_STATS = inline_serializer('OwnerDashboardStats', {
         'revenue_collected': serializers.FloatField(),
         'revenue_pending': serializers.FloatField(),
         'pending_bookings': serializers.IntegerField(),
+        'overdue_rent_count': serializers.IntegerField(help_text='Stays of the owner with rent overdue (Phase 9).'),
+        'due_this_week_count': serializers.IntegerField(help_text='Stays of the owner with rent due in the next 7 days.'),
     }),
 })
 
@@ -345,6 +347,14 @@ class DashboardStatsView(APIView):
         by_status = {s: booking_totals[f'status_{s}'] for s in statuses}
         by_mode = {m: booking_totals[f'mode_{m}'] for m in modes}
 
+        # Rent counts (Phase 9): two small aggregates, cached 30 s per owner through the shared cache (the key holds the
+        # owner's id, so one owner can never be handed another's numbers).
+        from apps.core import cache as shared_cache
+        from apps.stays import admin_queries
+        from apps.stays.dates import today_ist
+        rent = shared_cache.get_or_set(
+            'dash-rent', 30, lambda: admin_queries.rent_counts(user, today_ist()), user_id=user.id, per_user=True)
+
         return Response({
             "success": True,
             "data": {
@@ -357,6 +367,8 @@ class DashboardStatsView(APIView):
                 "revenue_collected": float(revenue_collected),
                 "revenue_pending": float(revenue_pending),
                 "pending_bookings": pending_bookings,
+                "overdue_rent_count": rent['overdue_rent_count'],
+                "due_this_week_count": rent['due_this_week_count'],
             }
         })
 

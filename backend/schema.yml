@@ -1193,6 +1193,70 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/hostels/{id}/billing/:
+    get:
+      operationId: hostels_billing_retrieve
+      summary: A hostel's billing rule
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - hostels
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+    put:
+      operationId: hostels_billing_update
+      summary: Save a hostel's billing rule (applies to new stays only)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - hostels
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BillingRule'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BillingRule'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BillingRule'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/hostels/localities/:
     get:
       operationId: hostels_localities_retrieve
@@ -2104,6 +2168,98 @@ paths:
               schema:
                 $ref: '#/components/schemas/StayError'
           description: ''
+  /api/v1/stays/admin/:
+    get:
+      operationId: stays_admin_retrieve
+      summary: Stays and rent (owner or admin)
+      parameters:
+      - in: query
+        name: due_this_week
+        schema:
+          type: boolean
+      - in: query
+        name: hostel
+        schema:
+          type: string
+      - in: query
+        name: needs_review
+        schema:
+          type: boolean
+      - in: query
+        name: overdue
+        schema:
+          type: boolean
+      - in: query
+        name: paid
+        schema:
+          type: boolean
+      - in: query
+        name: status
+        schema:
+          type: string
+      tags:
+      - stays
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/stays/admin/overdue/:
+    get:
+      operationId: stays_admin_overdue_retrieve
+      summary: Overdue stays (owner or admin)
+      tags:
+      - stays
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/stays/billing/preview/:
+    post:
+      operationId: stays_billing_preview_create
+      summary: Preview a billing rule for join dates (nothing is saved)
+      tags:
+      - stays
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Preview'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Preview'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Preview'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/stays/calendar/:
     get:
       operationId: stays_calendar_retrieve
@@ -2433,6 +2589,21 @@ components:
           allOf:
           - $ref: '#/components/schemas/PurposeEnum'
           readOnly: true
+        source:
+          allOf:
+          - $ref: '#/components/schemas/SourceEnum'
+          readOnly: true
+        paid_via:
+          type: string
+          readOnly: true
+        receipt_number:
+          type: string
+          readOnly: true
+        due:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
         verified_at:
           type: string
           format: date-time
@@ -2474,16 +2645,58 @@ components:
       - booking
       - created_at
       - currency
+      - due
       - hostel_name
       - id
+      - paid_via
       - purpose
       - razorpay_order_id
+      - receipt_number
       - room_number
+      - source
       - status
       - student_name
       - student_phone
       - updated_at
       - verified_at
+    BillingModeEnum:
+      enum:
+      - ANNIVERSARY
+      - FIXED_DAY
+      type: string
+      description: |-
+        * `ANNIVERSARY` - ANNIVERSARY
+        * `FIXED_DAY` - FIXED_DAY
+    BillingRule:
+      type: object
+      description: The part of a rule that decides the dates and the first amount
+        (what the preview needs).
+      properties:
+        billing_mode:
+          $ref: '#/components/schemas/BillingModeEnum'
+        fixed_due_day:
+          type: integer
+          nullable: true
+        fixed_due_last_day:
+          type: boolean
+          default: false
+        first_period_policy:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/FirstPeriodPolicyEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        payable_window_days:
+          type: integer
+          maximum: 15
+          minimum: 1
+          default: 7
+        grace_days:
+          type: integer
+          maximum: 15
+          minimum: 0
+          default: 0
+      required:
+      - billing_mode
     BlankEnum:
       enum:
       - ''
@@ -2560,6 +2773,17 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        stay_id:
+          type: string
+          nullable: true
+          readOnly: true
+        stay_status:
+          type: string
+          nullable: true
+          readOnly: true
+        stay_needs_review:
+          type: boolean
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -2575,6 +2799,9 @@ components:
       - id
       - marked_paid_at
       - room_display
+      - stay_id
+      - stay_needs_review
+      - stay_status
       - updated_at
     BookingCreate:
       type: object
@@ -2700,6 +2927,14 @@ components:
       - errors
       - message
       - success
+    FirstPeriodPolicyEnum:
+      enum:
+      - PRORATE
+      - FULL_MONTH
+      type: string
+      description: |-
+        * `PRORATE` - PRORATE
+        * `FULL_MONTH` - FULL_MONTH
     GenderTypeEnum:
       enum:
       - boys
@@ -3177,10 +3412,18 @@ components:
           format: double
         pending_bookings:
           type: integer
+        overdue_rent_count:
+          type: integer
+          description: Stays of the owner with rent overdue (Phase 9).
+        due_this_week_count:
+          type: integer
+          description: Stays of the owner with rent due in the next 7 days.
       required:
       - bookings_by_payment_mode
       - bookings_by_status
+      - due_this_week_count
       - occupancy_rate
+      - overdue_rent_count
       - pending_bookings
       - revenue_collected
       - revenue_pending
@@ -3496,6 +3739,17 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        stay_id:
+          type: string
+          nullable: true
+          readOnly: true
+        stay_status:
+          type: string
+          nullable: true
+          readOnly: true
+        stay_needs_review:
+          type: boolean
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -3913,6 +4167,45 @@ components:
           type: boolean
         email:
           type: boolean
+    Preview:
+      type: object
+      description: The part of a rule that decides the dates and the first amount
+        (what the preview needs).
+      properties:
+        billing_mode:
+          $ref: '#/components/schemas/BillingModeEnum'
+        fixed_due_day:
+          type: integer
+          nullable: true
+        fixed_due_last_day:
+          type: boolean
+          default: false
+        first_period_policy:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/FirstPeriodPolicyEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        monthly_rent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        join_date:
+          type: string
+          format: date
+        join_dates:
+          type: array
+          items:
+            type: string
+            format: date
+          maxItems: 6
+        count:
+          type: integer
+          maximum: 12
+          minimum: 1
+          default: 5
+      required:
+      - billing_mode
+      - monthly_rent
     ProfileEnvelope:
       type: object
       properties:
@@ -4214,6 +4507,14 @@ components:
         * `triple` - Triple
         * `quad` - Quad
         * `dormitory` - Dormitory
+    SourceEnum:
+      enum:
+      - ONLINE
+      - OFFLINE_OWNER
+      type: string
+      description: |-
+        * `ONLINE` - Online (Razorpay)
+        * `OFFLINE_OWNER` - Recorded by the owner
     StayError:
       type: object
       properties:

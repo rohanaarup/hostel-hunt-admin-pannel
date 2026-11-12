@@ -89,6 +89,11 @@ admin POST   /stays/dues/{id}/record-payment/
 admin POST   /stays/dues/{id}/void-payment/
 admin POST   /stays/dues/{id}/send-reminder/
 admin GET    /ops/status/
+admin GET    /hostels/{id}/billing/
+admin PUT    /hostels/{id}/billing/
+admin POST   /stays/billing/preview/
+admin GET    /stays/admin/
+admin GET    /stays/admin/overdue/
 # (Phase 6) `app POST /payments/create-rent-order/` is added in Phase 10 with the app's copy, for the same reason.
 # (Phase 8) The student notification endpoints (`GET /notifications/`, `POST /notifications/{id}/read/`, `/notifications/read-all/`,
 # `GET /notifications/unread-count/`, `GET` and `PATCH /notifications/preferences/`) are added as `app` lines in Phase 10 with the

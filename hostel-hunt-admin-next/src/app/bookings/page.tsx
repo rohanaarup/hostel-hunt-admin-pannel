@@ -85,7 +85,22 @@ const BookingCard: React.FC<CardProps> = ({ booking, onAction }) => {
             </p>
           </div>
         </div>
-        <StatusBadge status={status} />
+        <div className="flex flex-col items-end gap-1">
+          <StatusBadge status={status} />
+          {booking.stay_id ? (
+            <span data-testid="stay-badge" className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+              style={{ color: 'var(--color-success)', borderColor: 'var(--color-success)' }}>
+              Stay {String(booking.stay_status || '').toLowerCase().replace('_', ' ') || 'created'}
+            </span>
+          ) : null}
+          {booking.stay_needs_review ? (
+            <span data-testid="stay-review" title="A second paid booking or an amount mismatch: a person should look at this stay"
+              className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+              style={{ color: 'var(--color-warning)', borderColor: 'var(--color-warning)' }}>
+              Needs review
+            </span>
+          ) : null}
+        </div>
       </div>
 
       {/* Hostel chip */}

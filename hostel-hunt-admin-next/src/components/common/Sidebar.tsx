@@ -7,7 +7,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   UilGrids, UilUsersAlt, UilCalendarAlt, UilMoneyBill,
-  UilBuilding, UilEdit, UilBedDouble, UilSignout, UilSun, UilMoon,
+  UilBuilding, UilEdit, UilBedDouble, UilSignout, UilSun, UilMoon, UilReceipt,
 } from '@iconscout/react-unicons';
 import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
@@ -26,6 +26,7 @@ const NAV_ITEMS: { label: string; items: NavItem[] }[] = [
       { to: '/residents',  label: 'Residents',  Icon: UilUsersAlt },
       { to: '/bookings',   label: 'Bookings',   Icon: UilCalendarAlt },
       { to: '/payments',   label: 'Payments',   Icon: UilMoneyBill },
+      { to: '/stays',      label: 'Stays and rent', Icon: UilReceipt },
     ],
   },
   {

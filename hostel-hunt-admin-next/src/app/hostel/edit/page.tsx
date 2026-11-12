@@ -8,6 +8,7 @@ import Step3Amenities from '@/components/hostel/steps/Step3Amenities';
 import Step4MediaUpload from '@/components/hostel/steps/Step4MediaUpload';
 import Step5RoomConfig from '@/components/hostel/steps/Step5RoomConfig';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import BillingRuleEditor from '@/components/stays/BillingRuleEditor';
 import Icon from '@/components/ui/Icon';
 import { INITIAL_ENROLLMENT_STATE } from '@/types';
 import type { HostelEnrollmentState } from '@/types';
@@ -24,6 +25,7 @@ const SECTIONS = [
   { id: 'amenities', label: 'Amenities',     icon: 'sparkles' as const, step: 2 },
   { id: 'media',     label: 'Media',         icon: 'image' as const, step: 3 },
   { id: 'rooms',     label: 'Rooms',         icon: 'bed' as const, step: 4 },
+  { id: 'billing',   label: 'Billing',       icon: 'money' as const, step: 5 },
 ];
 
 export default function EditHostelPage() {
@@ -300,6 +302,21 @@ export default function EditHostelPage() {
             {activeSection === 2 && <Step3Amenities data={data} onChange={handleChange} />}
             {activeSection === 3 && <Step4MediaUpload data={data} onChange={handleChange} />}
             {activeSection === 4 && <Step5RoomConfig data={data} onChange={handleChange} />}
+            {activeSection === 5 && (
+              data.hostel_id ? (
+                <div className="space-y-4">
+                  <div>
+                    <h2 className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>Billing</h2>
+                    <p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>
+                      When students pay each month. This has its own Save button and does not change students who are already staying.
+                    </p>
+                  </div>
+                  <BillingRuleEditor hostelId={data.hostel_id} />
+                </div>
+              ) : (
+                <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Save the hostel first, then set its billing rule here.</p>
+              )
+            )}
           </div>
         </div>
       </div>

@@ -9,8 +9,14 @@ import ErrorState from '@/components/ui/ErrorState';
 import { usePayments } from '@/hooks/queries';
 import gsap from 'gsap';
 
-// Payments here are the online (Razorpay) payments students make for bookings, read from
-// GET /payments/admin-list/. The page is read-only: there is no offline rent ledger in the backend.
+// Every payment of the owner's hostels, read from GET /payments/admin-list/: online (Razorpay) booking and rent payments, and
+// rent the owner recorded by hand (Source: Offline). Recording and voiding rent happen on the Stays and rent page.
+const PURPOSE_LABEL: Record<string, string> = { BOOKING: 'Booking', RENT: 'Rent' };
+const SOURCE_LABEL: Record<string, string> = { ONLINE: 'Online', OFFLINE_OWNER: 'Offline (recorded by owner)' };
+const METHOD_LABEL: Record<string, string> = {
+  UPI: 'UPI', CARD: 'Card', NETBANKING: 'Net banking', WALLET: 'Wallet', OTHER: 'Other',
+  CASH: 'Cash', BANK_TRANSFER: 'Bank transfer', UPI_DIRECT: 'UPI direct',
+};
 
 function formatDate(d: string | null | undefined) {
   if (!d) return '—';
@@ -28,9 +34,11 @@ function sumOf(payments: Payment[], statuses: PaymentStatus[]) {
 
 export default function PaymentsPage() {
   const [filter, setFilter] = useState<PaymentStatus | 'all'>('all');
+  const [purpose, setPurpose] = useState<'' | 'BOOKING' | 'RENT'>('');
+  const [source, setSource] = useState<'' | 'ONLINE' | 'OFFLINE_OWNER'>('');
   const tableRef = useRef<HTMLTableSectionElement>(null);
 
-  const { data, isLoading, error, refetch, isFetching } = usePayments();
+  const { data, isLoading, error, refetch, isFetching } = usePayments(undefined, purpose || undefined, source || undefined);
 
   const all = data?.items ?? [];
   const total = data?.count ?? 0;
@@ -85,6 +93,7 @@ export default function PaymentsPage() {
     { id: 'SUCCESS',  label: 'Paid' },
     { id: 'FAILED',   label: 'Failed' },
     { id: 'REFUNDED', label: 'Refunded' },
+    { id: 'VOIDED',   label: 'Voided' },
   ];
 
   return (
@@ -100,7 +109,7 @@ export default function PaymentsPage() {
             Payments
           </h1>
           <p className="mt-1 text-sm font-medium" style={{ color: 'var(--color-text-muted)' }}>
-            Online payments for your hostels. Offline rent tracking is not available yet.
+            Online payments for your hostels, and rent you recorded by hand.
           </p>
         </div>
 
@@ -172,6 +181,25 @@ export default function PaymentsPage() {
             ))}
           </div>
 
+          <div className="flex flex-wrap gap-3 px-3 py-2 border-b" style={{ borderColor: 'var(--color-border)' }}>
+            <label className="text-xs font-semibold flex items-center gap-2" style={{ color: 'var(--color-text-muted)' }}>
+              Type
+              <select aria-label="Payment type" value={purpose} onChange={e => setPurpose(e.target.value as typeof purpose)}
+                className="min-h-[40px] rounded-[8px] px-2 text-sm border"
+                style={{ background: 'var(--color-surface)', color: 'var(--color-text-primary)', borderColor: 'var(--color-border)' }}>
+                <option value="">All</option><option value="BOOKING">Booking</option><option value="RENT">Rent</option>
+              </select>
+            </label>
+            <label className="text-xs font-semibold flex items-center gap-2" style={{ color: 'var(--color-text-muted)' }}>
+              Source
+              <select aria-label="Payment source" value={source} onChange={e => setSource(e.target.value as typeof source)}
+                className="min-h-[40px] rounded-[8px] px-2 text-sm border"
+                style={{ background: 'var(--color-surface)', color: 'var(--color-text-primary)', borderColor: 'var(--color-border)' }}>
+                <option value="">All</option><option value="ONLINE">Online</option><option value="OFFLINE_OWNER">Offline</option>
+              </select>
+            </label>
+          </div>
+
           {isLoading ? (
             <div className="py-16 text-center">
               <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin mx-auto" style={{ borderColor: 'var(--color-primary)' }} />
@@ -191,10 +219,11 @@ export default function PaymentsPage() {
               <table className="w-full text-left">
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                    {['Student', 'Hostel', 'Amount', 'Status', 'Created', 'Paid on'].map((h, i) => (
+                    {['Student', 'Hostel', 'Type', 'Amount', 'Method', 'Source', 'Status', 'Created', 'Paid on'].map((h, i) => (
                       <th
                         key={h}
-                        className={`px-5 py-3 text-[10px] uppercase tracking-wider font-bold ${i === 1 ? 'hidden sm:table-cell' : i >= 4 ? 'hidden md:table-cell' : ''}`}
+                        scope="col"
+                        className={`px-5 py-3 text-[10px] uppercase tracking-wider font-bold ${i === 1 ? 'hidden sm:table-cell' : i >= 4 && i <= 5 ? 'hidden lg:table-cell' : i >= 7 ? 'hidden md:table-cell' : ''}`}
                         style={{ color: 'var(--color-text-muted)' }}
                       >
                         {h}
@@ -223,10 +252,19 @@ export default function PaymentsPage() {
                           {[pay.room_number && `Room ${pay.room_number}`, pay.bed_number && `Bed ${pay.bed_number}`].filter(Boolean).join(' · ') || '—'}
                         </p>
                       </td>
+                      <td className="px-5 py-4 text-sm" style={{ color: 'var(--color-text-primary)' }}>
+                        {PURPOSE_LABEL[pay.purpose ?? 'BOOKING'] ?? pay.purpose}
+                      </td>
                       <td className="px-5 py-4">
                         <span className="font-bold text-sm" style={{ color: 'var(--color-text-primary)' }}>
                           ₹{amountOf(pay).toLocaleString('en-IN')}
                         </span>
+                      </td>
+                      <td className="px-5 py-4 text-sm hidden lg:table-cell" style={{ color: 'var(--color-text-primary)' }}>
+                        {pay.paid_via ? (METHOD_LABEL[pay.paid_via] ?? pay.paid_via) : '—'}
+                      </td>
+                      <td className="px-5 py-4 text-sm hidden lg:table-cell" style={{ color: 'var(--color-text-primary)' }}>
+                        {SOURCE_LABEL[pay.source ?? 'ONLINE'] ?? pay.source}
                       </td>
                       <td className="px-5 py-4">
                         <StatusBadge status={pay.status.toLowerCase()} />

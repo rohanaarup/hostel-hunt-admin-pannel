@@ -43,6 +43,9 @@ const STATUS_TO_TONE: Record<string, StatusTone> = {
   failed: 'error',
   refunded: 'info',
   overdue: 'error',
+  payable: 'warning',
+  scheduled: 'neutral',
+  voided: 'neutral',
   partial: 'warning',
   // resident
   active: 'success',

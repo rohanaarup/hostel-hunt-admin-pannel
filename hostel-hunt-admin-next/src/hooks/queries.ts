@@ -4,6 +4,8 @@ import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tansta
 import {
   bookingService,
   paymentService,
+  stayService,
+  type AdminStaysParams,
   residentService,
   noticeService,
   hostelService,
@@ -11,7 +13,7 @@ import {
 } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { unwrapList, unwrapObject, unwrapPage, type Page } from '@/services/unwrap';
-import type { DashboardStats, ActivityItem, Booking, Payment, Resident, Notice } from '@/types';
+import type { AdminStaysPage, BillingConfig, BillingRule, DashboardStats, ActivityItem, Booking, Payment, Resident, Notice, OfflineMethod } from '@/types';
 
 /**
  * The one place pages get their data. Every hook reads the server's reply through the unwrap helpers
@@ -26,7 +28,9 @@ export const queryKeys = {
   pendingBookings:   ['bookings', 'pending'] as const,
   recentBookings:    ['bookings', 'recent'] as const,
   bookings:          (paymentMode?: string) => ['bookings', 'all', { paymentMode }] as const,
-  payments:          (status?: string)      => ['payments', { status }] as const,
+  payments:          (status?: string, purpose?: string, source?: string) => ['payments', { status, purpose, source }] as const,
+  adminStays:        (params: AdminStaysParams) => ['stays', 'admin', params] as const,
+  billing:           (hostelId: string) => ['stays', 'billing', hostelId] as const,
   residents:         ['residents'] as const,
   notices:           ['notices'] as const,
   hostels:           ['hostels'] as const,
@@ -121,13 +125,13 @@ export function useBookingActions() {
 
 // ─── Payments ─────────────────────────────────────────────────────────────
 
-export function usePayments(status?: string) {
+export function usePayments(status?: string, purpose?: string, source?: string) {
   const signedIn = useSignedIn();
   return useQuery({
     enabled: signedIn,
-    queryKey: queryKeys.payments(status),
+    queryKey: queryKeys.payments(status, purpose, source),
     queryFn: async (): Promise<Page<Payment>> =>
-      unwrapPage<Payment>(await paymentService.getPayments({ status, page_size: 100 })),
+      unwrapPage<Payment>(await paymentService.getPayments({ status, purpose, source, page_size: 100 })),
   });
 }
 
@@ -211,4 +215,57 @@ export function useRooms(hostelId: string | null) {
     enabled: signedIn && !!hostelId,
     queryFn: async (): Promise<any[]> => unwrapList<any>(await roomService.getRooms(hostelId!)),
   });
+}
+
+// ─── Stays and rent (Phase 9) ─────────────────────────────────────────────
+
+/** One page of the owner's stays with the totals and tab counts of the whole list. */
+export function useAdminStays(params: AdminStaysParams) {
+  const signedIn = useSignedIn();
+  return useQuery({
+    enabled: signedIn,
+    queryKey: queryKeys.adminStays(params),
+    queryFn: async (): Promise<AdminStaysPage> => stayService.getAdminStays(params),
+    placeholderData: (previous) => previous,
+  });
+}
+
+export function useBillingConfig(hostelId: string | undefined) {
+  const signedIn = useSignedIn();
+  return useQuery({
+    enabled: signedIn && Boolean(hostelId),
+    queryKey: queryKeys.billing(hostelId ?? ''),
+    queryFn: async (): Promise<BillingConfig> => stayService.getBilling(hostelId as string),
+  });
+}
+
+export function useSaveBilling(hostelId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (rule: BillingRule) => stayService.saveBilling(hostelId, rule),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.billing(hostelId) }),
+  });
+}
+
+/** Record, void, remind and end: every one refreshes the stays list and the dashboard numbers. */
+export function useStayActions() {
+  const qc = useQueryClient();
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ['stays', 'admin'] });
+    qc.invalidateQueries({ queryKey: queryKeys.dashboardStats });
+    qc.invalidateQueries({ queryKey: ['payments'] });
+  };
+  return {
+    record: useMutation({
+      mutationFn: (v: { dueId: string; paid_at: string; method: OfflineMethod; reference_note: string }) =>
+        stayService.recordPayment(v.dueId, { paid_at: v.paid_at, method: v.method, reference_note: v.reference_note }),
+      onSuccess: refresh,
+    }),
+    voidPayment: useMutation({
+      mutationFn: (v: { dueId: string; reason: string }) => stayService.voidPayment(v.dueId, v.reason),
+      onSuccess: refresh,
+    }),
+    remind: useMutation({ mutationFn: (dueId: string) => stayService.sendReminder(dueId), onSuccess: refresh }),
+    endStay: useMutation({ mutationFn: (stayId: string) => stayService.endStay(stayId), onSuccess: refresh }),
+  };
 }

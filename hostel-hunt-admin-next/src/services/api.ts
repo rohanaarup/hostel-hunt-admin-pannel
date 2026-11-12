@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { AuthUser } from '../types';
+import type { AdminStaysPage, AuthUser, BillingConfig, BillingRule, OfflineMethod, PreviewResult } from '../types';
 
 // The API address comes from NEXT_PUBLIC_API_URL, set in .env.local for development and in the build
 // settings for staging and production. next.config.ts stops the build when it is missing, so a build
@@ -159,7 +159,7 @@ export const bookingService = {
 // ledger, so there is no create / mark-paid / summary call. `status` is CREATED, PENDING, SUCCESS,
 // FAILED or REFUNDED. The response is paginated: { count, next, previous, results }.
 export const paymentService = {
-  getPayments: (params?: { status?: string; page_size?: number }) =>
+  getPayments: (params?: { status?: string; purpose?: string; source?: string; page_size?: number }) =>
     api.get('/payments/admin-list/', { params }).then(res => res.data),
 };
 
@@ -195,4 +195,41 @@ export const locationService = {
     api.get('/cities/', { params: { include_empty: true } }).then(res => res.data),
   getLocalities: (citySlug: string): Promise<Locality[]> =>
     api.get(`/cities/${encodeURIComponent(citySlug)}/localities/`, { params: { include_empty: true } }).then(res => res.data),
+};
+
+// Stays and rent (Phase 9). The server does every piece of billing arithmetic: the admin only asks (preview) and shows.
+export interface AdminStaysParams {
+  hostel?: string;
+  status?: string;
+  overdue?: boolean;
+  due_this_week?: boolean;
+  paid?: boolean;
+  needs_review?: boolean;
+  page?: number;
+  page_size?: number;
+}
+
+export interface PreviewRequest extends Omit<BillingRule, 'payable_window_days' | 'grace_days'> {
+  monthly_rent: string;
+  join_dates: string[];
+  count?: number;
+}
+
+export const stayService = {
+  getBilling: (hostelId: string): Promise<BillingConfig> =>
+    api.get(`/hostels/${hostelId}/billing/`).then(res => res.data),
+  saveBilling: (hostelId: string, rule: BillingRule): Promise<BillingConfig> =>
+    api.put(`/hostels/${hostelId}/billing/`, rule).then(res => res.data),
+  previewBilling: (body: PreviewRequest): Promise<{ results: PreviewResult[] }> =>
+    api.post('/stays/billing/preview/', body).then(res => res.data),
+
+  getAdminStays: (params: AdminStaysParams = {}): Promise<AdminStaysPage> =>
+    api.get('/stays/admin/', { params }).then(res => res.data),
+
+  recordPayment: (dueId: string, body: { paid_at: string; method: OfflineMethod; reference_note: string }) =>
+    api.post(`/stays/dues/${dueId}/record-payment/`, body).then(res => res.data),
+  voidPayment: (dueId: string, reason: string) =>
+    api.post(`/stays/dues/${dueId}/void-payment/`, { reason }).then(res => res.data),
+  sendReminder: (dueId: string) => api.post(`/stays/dues/${dueId}/send-reminder/`).then(res => res.data),
+  endStay: (stayId: string) => api.post(`/stays/${stayId}/end/`).then(res => res.data),
 };

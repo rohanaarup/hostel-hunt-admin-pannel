@@ -785,6 +785,12 @@ class AdminPaymentListView(TenantScopedQuerysetMixin, generics.ListAPIView):
         status_param = self.request.query_params.get('status')
         if status_param:
             qs = qs.filter(status=status_param.upper())
+        purpose = self.request.query_params.get('purpose')
+        if purpose:
+            qs = qs.filter(purpose=purpose.upper())
+        source = self.request.query_params.get('source')
+        if source:
+            qs = qs.filter(source=source.upper())
         return qs.order_by('-created_at')
 
 

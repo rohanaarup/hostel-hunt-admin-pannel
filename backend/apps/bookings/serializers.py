@@ -16,6 +16,10 @@ class BookingSerializer(serializers.ModelSerializer):
     """Full read serializer — enriches FKs with human-readable names."""
     hostel_name = serializers.CharField(source='hostel.name', read_only=True)
     room_display = serializers.SerializerMethodField()
+    # The stay this paid booking became (Phase 9). Read from the row the view already loaded: no query per booking.
+    stay_id = serializers.SerializerMethodField()
+    stay_status = serializers.SerializerMethodField()
+    stay_needs_review = serializers.SerializerMethodField()
 
     class Meta:
         model = Booking
@@ -29,9 +33,29 @@ class BookingSerializer(serializers.ModelSerializer):
             'payment_mode', 'status', 'amount',
             'notes',
             'marked_paid_by', 'marked_paid_at',
+            'stay_id', 'stay_status', 'stay_needs_review',
             'created_at', 'updated_at',
         ]
         read_only_fields = ('id', 'created_at', 'updated_at', 'marked_paid_at', 'hostel_name', 'room_display')
+
+    @staticmethod
+    def _stay(obj):
+        return obj._state.fields_cache.get('stay')  # loaded by select_related('stay'); never triggers a query
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_stay_id(self, obj):
+        stay = self._stay(obj)
+        return str(stay.id) if stay else None
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_stay_status(self, obj):
+        stay = self._stay(obj)
+        return stay.status if stay else None
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_stay_needs_review(self, obj):
+        stay = self._stay(obj)
+        return bool(stay and stay.needs_review)
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_room_display(self, obj):

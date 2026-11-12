@@ -426,13 +426,14 @@ class WiringTests(SimpleTestCase):
                     found.append(text)
 
         walk(get_resolver().url_patterns)
-        self.assertEqual(sorted(found), [
+        self.assertEqual(sorted(found), sorted([
             'api/v1/stays/', 'api/v1/stays/<uuid:pk>/', 'api/v1/stays/<uuid:pk>/analytics/',
             'api/v1/stays/<uuid:pk>/dues/', 'api/v1/stays/<uuid:pk>/end/', 'api/v1/stays/<uuid:pk>/payments/',
             'api/v1/stays/<uuid:pk>/receipts/<uuid:payment_id>/', 'api/v1/stays/<uuid:pk>/vacate-request/',
+            'api/v1/stays/admin/', 'api/v1/stays/admin/overdue/', 'api/v1/stays/billing/preview/',
             'api/v1/stays/calendar/', 'api/v1/stays/dues/<uuid:pk>/record-payment/',
             'api/v1/stays/dues/<uuid:pk>/send-reminder/', 'api/v1/stays/dues/<uuid:pk>/void-payment/',
-            'api/v1/stays/home/'])
+            'api/v1/stays/home/']))
 
     def test_no_environment_variable_was_added(self):
         source = ''.join(path.read_text(encoding='utf-8') for path in STAYS_DIR.glob('*.py') if not path.name.startswith('test'))

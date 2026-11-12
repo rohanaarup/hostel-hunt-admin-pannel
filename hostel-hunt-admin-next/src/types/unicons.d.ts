@@ -12,6 +12,7 @@ declare module '@iconscout/react-unicons' {
   export const UilUsersAlt: UilIcon;
   export const UilCalendarAlt: UilIcon;
   export const UilMoneyBill: UilIcon;
+  export const UilReceipt: UilIcon;
   export const UilBuilding: UilIcon;
   export const UilEdit: UilIcon;
   export const UilBedDouble: UilIcon;

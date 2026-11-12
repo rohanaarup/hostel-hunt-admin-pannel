@@ -95,6 +95,7 @@ class AdminPaymentSerializer(serializers.ModelSerializer):
     hostel_name   = serializers.CharField(source='booking.hostel.name',   read_only=True)
     room_number   = serializers.CharField(source='booking.room_number',   read_only=True)
     bed_number    = serializers.CharField(source='booking.bed_number',    read_only=True)
+    receipt_number = serializers.CharField(read_only=True)  # a property of Payment, derived from its id and date
 
     class Meta:
         model = Payment
@@ -106,6 +107,10 @@ class AdminPaymentSerializer(serializers.ModelSerializer):
             'currency',
             'status',
             'purpose',
+            'source',
+            'paid_via',
+            'receipt_number',
+            'due',
             'verified_at',
             'created_at',
             'updated_at',

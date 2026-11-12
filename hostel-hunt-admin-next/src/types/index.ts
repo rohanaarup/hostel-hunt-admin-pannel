@@ -169,6 +169,10 @@ export interface Booking {
   notes: string | null;
   marked_paid_by: string | null;
   marked_paid_at: string | null;
+  /** The stay this paid booking became (null when it has none yet). */
+  stay_id?: string | null;
+  stay_status?: string | null;
+  stay_needs_review?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -176,7 +180,9 @@ export interface Booking {
 
 // ─── Payment ──────────────────────────────────────────────────────────────────
 
-export type PaymentStatus = 'CREATED' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED';
+export type PaymentStatus = 'CREATED' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED' | 'VOIDED';
+export type PaymentPurpose = 'BOOKING' | 'RENT';
+export type PaymentSource = 'ONLINE' | 'OFFLINE_OWNER';
 
 /** One online (Razorpay) payment, as returned by GET /payments/admin-list/. */
 export interface Payment {
@@ -186,6 +192,11 @@ export interface Payment {
   amount: string; // decimal string in rupees, e.g. "6500.00"
   currency: string;
   status: PaymentStatus;
+  /** Booking or Rent; source Online (Razorpay) or Offline (recorded by the owner); paid_via is UPI, CARD, CASH ... */
+  purpose?: PaymentPurpose;
+  source?: PaymentSource;
+  paid_via?: string;
+  receipt_number?: string;
   verified_at: string | null;
   created_at: string;
   updated_at: string;
@@ -350,3 +361,97 @@ export const AMENITY_OPTIONS = [
   { key: 'study_room', label: 'Study Room', icon: '📚' },
   { key: 'recreation', label: 'Recreation Area', icon: '🎮' },
 ];
+
+// ─── Stays and rent (Phase 9) ─────────────────────────────────────────────────
+
+export type BillingMode = 'ANNIVERSARY' | 'FIXED_DAY';
+export type FirstPeriodPolicy = 'PRORATE' | 'FULL_MONTH';
+
+/** A hostel's rent rule as the server stores it. */
+export interface BillingConfig {
+  hostel_id: string;
+  hostel_name: string;
+  locality: string;
+  billing_mode: BillingMode;
+  fixed_due_day: number | null;
+  fixed_due_last_day: boolean;
+  first_period_policy: FirstPeriodPolicy | null;
+  payable_window_days: number;
+  grace_days: number;
+  monthly_rent: { min: string; max: string } | null;
+  booking_payment_covers: 'FIRST_PERIOD_RENT';
+  applies_to: 'new_stays';
+  is_default: boolean;
+}
+
+/** The editable part of the rule (what PUT /hostels/{id}/billing/ takes). */
+export interface BillingRule {
+  billing_mode: BillingMode;
+  fixed_due_day: number | null;
+  fixed_due_last_day: boolean;
+  first_period_policy: FirstPeriodPolicy | null;
+  payable_window_days: number;
+  grace_days: number;
+}
+
+export interface PreviewRow {
+  label: string;
+  kind: 'BOOKING_PERIOD' | 'RENT';
+  period: string;
+  due: string;
+  amount: string;
+  period_start: string;
+  period_end: string;
+  due_date: string;
+  amount_rupees: string;
+}
+export interface PreviewResult { join_date: string; rows: PreviewRow[]; summary: string }
+
+export type RentStatus = 'OVERDUE' | 'PAYABLE' | 'SCHEDULED' | 'PAID';
+export type StayAction = 'record_payment' | 'send_reminder' | 'view' | 'receipt' | 'void' | 'end_stay';
+
+export interface AdminStayRow {
+  id: string;
+  student_name: string;
+  hostel_id: string;
+  hostel_name: string;
+  room_label: string;
+  bed_label: string;
+  rent_amount: string;
+  join_date: string;
+  stay_status: string;
+  needs_review: boolean;
+  status: RentStatus;
+  status_label: string;
+  next_due: { due_id: string | null; date: string; amount: string; days_left: number; status: string; payable: boolean } | null;
+  primary_action: StayAction;
+  allowed_actions: StayAction[];
+  action_due_id: string | null;
+  action_due: {
+    due_id: string; period_start: string; period_end: string; period_label: string; due_date: string; amount: string;
+  } | null;
+  receipt_payment_id: string | null;
+  void_due_id: string | null;
+  last_payment: {
+    payment_id: string; receipt_number: string; amount: string; paid_at: string | null; method: string; source: string;
+  } | null;
+}
+
+export interface AdminStaysTotals {
+  active_stays: number;
+  overdue: { amount: string; count: number };
+  due_this_week: { amount: string; count: number };
+  collected_this_month: { amount: string; stays_paid: number; stays_total: number };
+}
+
+export interface AdminStaysPage {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: AdminStayRow[];
+  totals: AdminStaysTotals;
+  tab_counts: { all: number; overdue: number; due_this_week: number; paid: number };
+  hostels: { id: string; name: string; locality: string }[];
+}
+
+export type OfflineMethod = 'CASH' | 'BANK_TRANSFER' | 'UPI_DIRECT';

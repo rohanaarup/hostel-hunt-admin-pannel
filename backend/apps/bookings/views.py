@@ -25,14 +25,14 @@ class MyBookingListView(UserScopedQuerysetMixin, generics.ListAPIView):
     """
     serializer_class = BookingSerializer
     permission_classes = [IsAuthenticated]
-    queryset = Booking.objects.select_related('hostel', 'room')
+    queryset = Booking.objects.select_related('hostel', 'room', 'stay')
 
 
 class MyBookingDetailView(UserScopedQuerysetMixin, generics.RetrieveAPIView):
     """GET /api/v1/bookings/my/<uuid:pk>/ — one of the student's own bookings."""
     serializer_class = BookingSerializer
     permission_classes = [IsAuthenticated]
-    queryset = Booking.objects.select_related('hostel', 'room')
+    queryset = Booking.objects.select_related('hostel', 'room', 'stay')
 
 
 class BookingViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
@@ -58,7 +58,7 @@ class BookingViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         status=pending|confirmed|paid|cancelled|rejected
     """
 
-    queryset = Booking.objects.select_related('hostel', 'room')
+    queryset = Booking.objects.select_related('hostel', 'room', 'stay')
     # Disable direct edit/delete through the standard REST verbs;
     # all state changes go through the explicit custom actions.
     http_method_names = ['get', 'post', 'patch', 'head', 'options']

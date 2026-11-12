@@ -1,5 +1,7 @@
 from django.urls import path
 
+from .admin_views import StaysAdminOverdueView, StaysAdminView
+from .billing_views import BillingPreviewView, HostelBillingView
 from .read_views import (
     StayAnalyticsView, StayCalendarView, StayDetailView, StayDuesView, StayHomeView, StayListView, StayPaymentsView,
     StayReceiptView,
@@ -9,6 +11,11 @@ from .views import (
 )
 
 urlpatterns = [
+    # Phase 9: the admin panel (billing rule, preview, the owner and admin list)
+    path('hostels/<uuid:pk>/billing/', HostelBillingView.as_view(), name='hostel-billing'),
+    path('stays/billing/preview/', BillingPreviewView.as_view(), name='billing-preview'),
+    path('stays/admin/', StaysAdminView.as_view(), name='stays-admin'),
+    path('stays/admin/overdue/', StaysAdminOverdueView.as_view(), name='stays-admin-overdue'),
     # Phase 7: read-only student endpoints (fixed paths first, then the ones with an id)
     path('stays/', StayListView.as_view(), name='stay-list'),
     path('stays/home/', StayHomeView.as_view(), name='stay-home'),
