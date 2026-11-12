@@ -85,6 +85,13 @@ Not dashboard steps: a decision and a run, both after staging is restored (item 
 | 32 | Create the two Render cron services (`hostel-hunt-outbox`, `hostel-hunt-daily` in `render.yaml`) with their own heartbeat monitors, set `EMAIL_DAILY_CAP` from your real email plan, then on STAGING run each command twice with `--dry-run` and once for real, and deliberately fail one handler to see it in Sentry (`docs/ENGINE.md`) | Nothing runs the reminders until the crons exist; the engine was proven locally only (G8-02, G8-03) | Before go-live | Open |
 | 33 | Resolve KNOWN_GAPS F7-02 (choose the Android application id, make the upload keystore) or waive push in writing; then ask for Part F (Firebase push). The Firebase steps will be written then: project, Android app, `google-services.json`, service account stored as the Render secret `FCM_SERVICE_ACCOUNT_JSON` | Push was skipped because the gate is open (G8-01) | Before the Android release | Open |
 
+## Added by Phase 9 (admin panel)
+
+| # | Action | Why | Needed by | Status |
+|---|---|---|---|---|
+| 34 | When staging is back (item 1), do the click-through in `docs/ADMIN_CLICKTHROUGH.md`: set a billing rule, watch the preview, record and void an offline payment, send a reminder, end a stay | The screens were proven by tests and a build, never in a browser against a real server (G9-02) | Before go-live | Open |
+| 35 | **Decide the PRORATE questions (items 25 and 27) before any owner picks PRORATE on production.** The billing screen now lets owners choose it | The payment code charges a whole month, so a PRORATE stay is flagged for review (G9-01) | Before the production deploy | Open |
+
 ## Added by later phases
 
 (none yet)

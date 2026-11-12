@@ -154,3 +154,15 @@ inbox, the per-channel log, the preferences and the job-run record. Everything i
 - Dues now exist ahead of the payable window (the next one is created when the latest is paid or its window opens), so there is something to pay after Due 2 (closes G7-01 for the daily job; reads still project further ahead).
 - `OutboxEvent.priority` (higher first) and the index `(status, -priority, next_attempt_at)` keep the claim fast on a big backlog.
 - Events written by payments and stays (`stay.created`, `rent.paid`, `stay.vacate_requested`) are now consumed: the student gets an inbox notice, the owner a payment, new-stay or vacate notice.
+
+## Phase 9: the admin panel
+
+| Endpoint | Notes |
+|---|---|
+| `GET` and `PUT /hostels/<id>/billing/` | The hostel owner or an admin. Validation: mode ANNIVERSARY or FIXED_DAY; due day 1 to 28 or the last-day flag (not both); first-period policy required for FIXED_DAY only; payable window 1 to 15 days; grace 0 to 15 days. A GET never writes (a hostel with no row shows the defaults). A saved rule applies to NEW stays: a stay copies its rule when created and keeps it (proved by tests; there is no "apply to existing stays"). |
+| `POST /stays/billing/preview/` | A rule, a monthly rent and one or more join dates (up to 6); returns the first rows (5 by default, 1 to 12) with the board's own labels and summary, computed by `apps/stays/billing.py`. The admin never does the maths. The 44 cases of the AdminBilling board script are a golden test. Owners and admins only. |
+| `GET /stays/admin/` and `/stays/admin/overdue/` | The AdminDues list: rows with status (Overdue, Payable, Scheduled, Paid), next due, allowed actions and the due each button acts on; four totals; tab counts; the owner's hostels; filters hostel, status, overdue, due_this_week, paid, needs_review; page size 25 (at most 100). Classified in the database (`admin_queries.py`): about 9 queries however many stays. Owners see their own tenant, admins every stay. |
+| Dashboard | `GET /dashboard/stats/` also returns `overdue_rent_count` and `due_this_week_count`, cached 30 s per owner through the shared cache. |
+| Display fields | The owner payment list shows `purpose`, `source`, `paid_via`, `receipt_number`, `due` and filters on `purpose` and `source`; the bookings list shows `stay_id`, `stay_status`, `stay_needs_review`. |
+
+Admin screens: `/stays` (AdminDues), `/stays/billing` (AdminBilling) and a Billing section on Edit details; the Record payment modal (AdminRecord) and a Void modal on `/stays`; Purpose, Method and Source on `/payments`; a stay badge on `/bookings`.

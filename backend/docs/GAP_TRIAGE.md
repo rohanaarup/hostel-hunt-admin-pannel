@@ -273,3 +273,11 @@ Evidence for the G1 rows is in `backend/docs/STAY_BASELINE.md`; G2-01 is from Ph
 | G8-05 | Owner notifications have no screen | Low | LATER | 9 | KNOWN_GAPS G8-05. |
 | G8-06 | Engine capacity measured on a laptop only | Low | SCALE | 11 | KNOWN_GAPS G8-06. |
 | G8-07 | App contract lines for notifications deferred | Low | LATER | 10 | KNOWN_GAPS G8-07. |
+| G9-01 | Owners can choose PRORATE while payment charges a whole month | High before PRORATE is used | LAUNCH-BLOCKER (for PRORATE only) | decision 25 and 27 | KNOWN_GAPS G9-01 (same root as G5-01). |
+| G9-02 | Admin screens not click-tested on staging | Moderate | LATER | before go-live | KNOWN_GAPS G9-02; `docs/ADMIN_CLICKTHROUGH.md`. |
+| G9-03 | Preview uses the lowest room price | Low | LATER | none | KNOWN_GAPS G9-03. |
+| G9-04 | Due this week versus payable window | Low | LATER | none | KNOWN_GAPS G9-04 (accepted). |
+| G9-05 | No Billing step in the new-hostel wizard | Low | LATER | none | KNOWN_GAPS G9-05. |
+| G9-06 | Owner receipt is facts only | Low | LATER | none | KNOWN_GAPS G9-06. |
+| G9-07 | Dashboard page does not show rent counts | Low | LATER | none | KNOWN_GAPS G9-07. |
+| G9-08 | No ESLint config in the admin repo | Low | LATER | none | KNOWN_GAPS G9-08. |

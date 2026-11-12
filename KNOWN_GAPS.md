@@ -1,6 +1,6 @@
 # Known gaps register (Hostel Hunt)
 
-**Started:** 2026-10-18 · **Last reviewed:** 2026-10-29 (after Phase 8 of the stay plan) · **Owner:** the developer and Claude, together
+**Started:** 2026-10-18 · **Last reviewed:** 2026-10-29 (after Phase 9 of the stay plan) · **Owner:** the developer and Claude, together
 
 This file lists what we have **not** built, **not** verified, or **chosen to ignore**, phase by phase, and how much each
 item matters. It exists because no phase gets finished at 100%: many things need a paid service, infrastructure that
@@ -336,6 +336,15 @@ Evidence for G1 is in `backend/docs/STAY_BASELINE.md` and `backend/docs/GAP_TRIA
 | G8-05 | The owner has no inbox screen: owners get notifications (payment received, new stay, vacate request) in the same inbox table, readable through the same endpoints, but no owner app or admin screen shows them until Phase 9. | DEFERRED | Low | Phase 9. | Open |
 | G8-06 | `process_outbox` is capped at about 2,000 to 7,000 events a second on a laptop with a fake sender, and about 840 real reminders a second. The real limit is the email provider and `EMAIL_DAILY_CAP`. Numbers are from the scratch Postgres, not Render. | UNVERIFIED | Low | Capacity on Render is unmeasured (CAPACITY.md item 23). | Open |
 | G8-07 | The app contract lines for the notification endpoints are not added (the app does not call them until Phase 10; its CI fails on a listed path the Dart code does not call). The new crons cost money (about $1 a month each at least). | DEFERRED | Low | None until Phase 10. | Open |
+| G9-01 | **An owner can now choose PRORATE, but the payment still charges a whole month.** The billing screen offers both first-period policies (decision D1). `create-order` is frozen and charges the room price, so a stay of a PRORATE hostel gets a smaller Due 1 than the student paid and is flagged `needs_review` (G5-01). Nothing blocks the choice. | HUMAN | High before an owner uses PRORATE | Wrong first-rent records and a review queue. | Open; founder decisions 25 and 27 (`FOUNDER_DEFERRED.md`) are now needed before PRORATE is used on production |
+| G9-02 | **The Phase 9 admin screens were not click-tested in a browser or on staging.** Staging is paused (G1-12). The backend has 45 tests (including the board's own 44 golden preview cases) and the admin has component tests, a type check and a production build; the manual click-through in `docs/ADMIN_CLICKTHROUGH.md` has not been done. | HUMAN | Moderate | Layout and real-server behaviour are unproven. | Open; deferred item 34 |
+| G9-03 | The preview and the billing form use the **lowest** room price of the hostel as the monthly rent (the board shows one number). Real stays use their own room's price. | DEFERRED | Low | A hostel with very different room prices sees a preview for the cheapest room. | Open |
+| G9-04 | "Due this week" is the next 7 days (today to today + 6) and counts stays; a row's Payable status uses the stay's own payable window (1 to 15 days). The two can differ for a hostel whose window is not 7. | DEFERRED | Low | A stay can be Payable without being in the Due this week tab. | Accepted; documented in `admin_queries.py` |
+| G9-05 | The new-hostel wizard has no Billing step: a new hostel starts with the default rule (same day each month, 7 days window, no grace) and the owner changes it on the Edit details page, Billing section (which needs the hostel to exist). | DEFERRED | Low | One extra step for owners who want a fixed day. | Open |
+| G9-06 | The owner **Receipt** button shows the last successful payment from the list row (number, amount, time, how, source). There is no owner receipt page or PDF; the student receipt endpoint is student-only. | DEFERRED | Low | Owners see the facts, not a printable receipt. | Open |
+| G9-07 | The admin dashboard page does not show the new overdue and due-this-week counts yet (the API returns `overdue_rent_count` and `due_this_week_count`). The owner dashboard totals still add rent to "online collected" (G6-02). | DEFERRED | Low | Owners find rent on the Stays and rent page, not on the dashboard. | Open |
+| G9-08 | The admin repository has no ESLint configuration file, so `npm run lint` fails (it did before Phase 9; CI runs `tsc`, `vitest` and `build` only). | DEFERRED | Low | No lint check on the admin code. | Open |
+| G9-09 | Phase 9 touched three payment and booking files for DISPLAY only: `AdminPaymentSerializer` (new read-only fields), the owner payment list (two filters, `purpose` and `source`), and `BookingSerializer` (stay id, status and needs-review). No payment logic changed. | n/a | Low | None. | Noted |
 
 # Cross-cutting gaps
 

@@ -222,8 +222,8 @@ server must produce the others, the extra wording is ours and is listed in secti
 | Home, ActiveStay | notices badge (real count) | `apps/stays/notifications.unread_count` (returns 0 now) | 8 (pending) |
 | PushPreview | five reminder wordings (7, 3, 1 days before, due day, 3 days overdue) | outbox consumer templates | 8 (pending) |
 | EmailPreview | email wording on the due date and when overdue | outbox consumer and email | 8 (pending) |
-| AdminBilling | rule, due day, first part-month policy, window, grace, preview | `GET` and `PUT /hostels/{id}/billing/`, `POST /stays/billing/preview/` | 9 (pending) |
-| AdminDues | four totals, tab counts, row actions (Send reminder) | `GET /stays/admin/`, `POST /stays/dues/{id}/send-reminder/` | 9 (pending; Record payment already exists, Phase 6) |
+| AdminBilling | rule, due day, first part-month policy, window, grace, preview | `GET` and `PUT /hostels/{id}/billing/`, `POST /stays/billing/preview/` | **done in Phase 9** (`/stays/billing`) |
+| AdminDues | four totals, tab counts, row actions | `GET /stays/admin/`, `POST /stays/dues/{id}/send-reminder/` | **done in Phase 9** (`/stays`) |
 | AdminRecord | the form | `POST /stays/dues/{id}/record-payment/` | done in Phase 6; the owner list that links to it is 9 |
 | BookingsSettle (proposal) | pending amount of an ended stay | `pending_amount` is reserved and `null` | not built (decision D6) |
 
